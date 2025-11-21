@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import Header from "@/components/Header";
+import AppLayout from "@/components/AppLayout";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable } from "lucide-react";
+import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Product {
   id: string;
@@ -21,11 +23,18 @@ interface Product {
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadFeaturedProducts();
+    checkUser();
   }, []);
+
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+  };
 
   const loadFeaturedProducts = async () => {
     try {
@@ -50,134 +59,167 @@ const Home = () => {
   };
 
   const categories = [
-    { icon: Smartphone, label: "iPhone", slug: "iphone" },
-    { icon: Tablet, label: "iPad", slug: "ipad" },
-    { icon: Watch, label: "Apple Watch", slug: "apple-watch" },
-    { icon: Headphones, label: "AirPods", slug: "airpods" },
-    { icon: Cable, label: "Acessórios", slug: "acessorios" },
+    { icon: Smartphone, label: "iPhone", slug: "iphone", gradient: "from-blue-500 to-blue-600" },
+    { icon: Tablet, label: "iPad", slug: "ipad", gradient: "from-purple-500 to-purple-600" },
+    { icon: Watch, label: "Watch", slug: "apple-watch", gradient: "from-pink-500 to-pink-600" },
+    { icon: Headphones, label: "AirPods", slug: "airpods", gradient: "from-green-500 to-green-600" },
+    { icon: Cable, label: "Acessórios", slug: "acessorios", gradient: "from-orange-500 to-orange-600" },
+  ];
+
+  const banners = [
+    {
+      title: "iPhone 15 Pro",
+      subtitle: "Titânio. Tão forte. Tão leve. Tão Pro.",
+      gradient: "from-slate-900 to-slate-700",
+    },
+    {
+      title: "Parcele em 24x",
+      subtitle: "Com análise de crédito facilitada",
+      gradient: "from-primary to-blue-600",
+    },
+    {
+      title: "AirPods Pro",
+      subtitle: "Som imersivo de nova geração",
+      gradient: "from-purple-600 to-pink-600",
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header cartItemsCount={0} />
+    <AppLayout cartItemsCount={0}>
+      <div className="min-h-screen bg-background">
+        {/* Hero Carousel */}
+        <section className="px-4 pt-6 pb-4">
+          <Carousel className="w-full">
+            <CarouselContent>
+              {banners.map((banner, index) => (
+                <CarouselItem key={index}>
+                  <Card className="border-0 shadow-lg overflow-hidden">
+                    <CardContent className={`flex aspect-[2/1] items-center justify-center p-8 bg-gradient-to-br ${banner.gradient} text-white`}>
+                      <div className="text-center space-y-2">
+                        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                          {banner.title}
+                        </h2>
+                        <p className="text-sm opacity-90 sm:text-base">{banner.subtitle}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="left-2" />
+            <CarouselNext className="right-2" />
+          </Carousel>
+        </section>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-accent/10 py-20">
-        <div className="container px-4">
-          <div className="mx-auto max-w-4xl text-center">
-            <h1 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-              Bem-vindo à{" "}
-              <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                AppleHub
-              </span>
-            </h1>
-            <p className="mb-8 text-lg text-muted-foreground sm:text-xl">
-              Sua loja especializada em iPhones e produtos Apple. Parcele em até 24x com análise de crédito.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <Link to="/produtos">
-                <Button size="lg" className="gap-2">
-                  Ver todos os produtos
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link to="/auth">
-                <Button size="lg" variant="outline">
-                  Criar conta
-                </Button>
-              </Link>
-            </div>
+        {/* Quick Actions - Login/Signup */}
+        {!user && (
+          <section className="px-4 pb-6">
+            <Card className="bg-gradient-to-br from-primary/10 to-accent/10">
+              <CardContent className="p-6 text-center space-y-4">
+                <div className="flex justify-center">
+                  <Sparkles className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg">Bem-vindo à AppleHub!</h3>
+                <p className="text-sm text-muted-foreground">
+                  Faça login ou crie sua conta para aproveitar todas as vantagens
+                </p>
+                <div className="flex gap-2">
+                  <Link to="/auth" className="flex-1">
+                    <Button className="w-full" size="lg">Entrar</Button>
+                  </Link>
+                  <Link to="/auth" className="flex-1">
+                    <Button variant="outline" className="w-full" size="lg">Criar conta</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+
+        {/* Categories */}
+        <section className="px-4 pb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">Categorias</h2>
           </div>
-        </div>
-      </section>
-
-      {/* Categories */}
-      <section className="border-b py-12">
-        <div className="container px-4">
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-5">
+          <div className="grid grid-cols-3 gap-3">
             {categories.map((category) => (
               <Link
                 key={category.slug}
                 to={`/produtos?categoria=${category.slug}`}
                 className="group"
               >
-                <div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-6 transition-all hover:border-primary hover:shadow-md">
-                  <category.icon className="h-8 w-8 text-muted-foreground transition-colors group-hover:text-primary" />
-                  <span className="text-sm font-medium">{category.label}</span>
-                </div>
+                <Card className="border-0 shadow-sm overflow-hidden transition-all hover:shadow-md active:scale-95">
+                  <CardContent className={`p-4 bg-gradient-to-br ${category.gradient} text-white`}>
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <category.icon className="h-8 w-8" />
+                      <span className="text-xs font-medium">{category.label}</span>
+                    </div>
+                  </CardContent>
+                </Card>
               </Link>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Featured Products */}
-      <section className="py-16">
-        <div className="container px-4">
-          <div className="mb-8 flex items-center justify-between">
+        {/* Featured Products */}
+        <section className="px-4 pb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-3xl font-bold">Destaques da Semana</h2>
-              <p className="text-muted-foreground">
-                Os produtos mais procurados pelos nossos clientes
-              </p>
+              <h2 className="text-xl font-bold">Destaques</h2>
+              <p className="text-xs text-muted-foreground">Produtos em destaque</p>
             </div>
             <Link to="/produtos">
-              <Button variant="ghost" className="gap-2">
+              <Button variant="ghost" size="sm" className="gap-1 text-xs">
                 Ver todos
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3 w-3" />
               </Button>
             </Link>
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="h-96 animate-pulse rounded-lg bg-muted"
+                  className="h-72 animate-pulse rounded-xl bg-muted"
                 />
               ))}
             </div>
           ) : featuredProducts.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-              <p className="text-muted-foreground">
-                Nenhum produto em destaque no momento
-              </p>
-            </div>
+            <Card className="border-dashed">
+              <CardContent className="p-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Nenhum produto em destaque
+                </p>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {featuredProducts.map((product) => (
+            <div className="grid grid-cols-2 gap-3">
+              {featuredProducts.slice(0, 4).map((product) => (
                 <ProductCard key={product.id} {...product} />
               ))}
             </div>
           )}
-        </div>
-      </section>
+        </section>
 
-      {/* CTA Section */}
-      <section className="border-t bg-muted/50 py-16">
-        <div className="container px-4">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="mb-4 text-3xl font-bold">
-              Parcele em até 24x
-            </h2>
-            <p className="mb-6 text-lg text-muted-foreground">
-              Com análise de crédito facilitada. Realize seu sonho de ter um iPhone novo!
-            </p>
-            <Link to="/auth">
-              <Button size="lg">Criar minha conta</Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t py-8">
-        <div className="container px-4 text-center text-sm text-muted-foreground">
-          <p>© 2024 AppleHub. Todos os direitos reservados.</p>
-        </div>
-      </footer>
-    </div>
+        {/* CTA Parcelamento */}
+        <section className="px-4 pb-6">
+          <Card className="bg-gradient-to-br from-primary to-blue-600 text-white border-0 shadow-lg">
+            <CardContent className="p-6 text-center space-y-3">
+              <h3 className="text-lg font-bold">Parcele em até 24x</h3>
+              <p className="text-sm opacity-90">
+                Com análise de crédito facilitada
+              </p>
+              <Link to="/auth">
+                <Button variant="secondary" size="lg" className="w-full">
+                  Começar agora
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    </AppLayout>
   );
 };
 
