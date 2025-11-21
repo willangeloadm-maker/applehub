@@ -3,14 +3,15 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { Apple } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().email("E-mail inválido"),
+  cpf: z.string().min(11, "CPF inválido"),
   password: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
 });
 
@@ -38,47 +39,54 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const data = {
-      email: formData.get("email") as string,
-      password: formData.get("password") as string,
-    };
+    const cpf = formData.get("cpf") as string;
+    const password = formData.get("password") as string;
 
     try {
-      loginSchema.parse(data);
+      // Find user email by CPF
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("cpf", cpf.replace(/\D/g, ""))
+        .single();
+
+      if (!profile) {
+        throw new Error("CPF não encontrado");
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      const userEmail = user?.email;
+
+      if (!userEmail) {
+        throw new Error("E-mail não encontrado");
+      }
 
       const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
+        email: userEmail,
+        password: password,
       });
 
       if (error) throw error;
 
       toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo de volta à AppleHub",
+        title: "Login realizado!",
+        description: "Bem-vindo de volta",
       });
 
       navigate("/");
     } catch (error: any) {
-      if (error instanceof z.ZodError) {
-        toast({
-          title: "Erro de validação",
-          description: error.errors[0].message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Erro ao fazer login",
-          description: error.message || "Verifique suas credenciais",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Erro ao fazer login",
+        description: error.message || "Verifique suas credenciais",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -115,16 +123,16 @@ const Auth = () => {
         options: {
           data: {
             nome_completo: data.nome_completo,
-            cpf: data.cpf,
-            telefone: data.telefone,
+            cpf: data.cpf.replace(/\D/g, ""),
+            telefone: data.telefone.replace(/\D/g, ""),
             data_nascimento: data.data_nascimento,
-            cep: data.cep,
+            cep: data.cep.replace(/\D/g, ""),
             rua: data.rua,
             numero: data.numero,
             complemento: data.complemento,
             bairro: data.bairro,
             cidade: data.cidade,
-            estado: data.estado,
+            estado: data.estado.toUpperCase(),
           },
           emailRedirectTo: `${window.location.origin}/`,
         },
@@ -133,8 +141,8 @@ const Auth = () => {
       if (error) throw error;
 
       toast({
-        title: "Conta criada com sucesso!",
-        description: "Você já pode fazer login na AppleHub",
+        title: "Conta criada!",
+        description: "Você já pode fazer login",
       });
 
       navigate("/");
@@ -158,191 +166,259 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <span className="text-xl font-bold text-primary-foreground">A</span>
-            </div>
-            <span className="text-2xl font-bold">AppleHub</span>
-          </Link>
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-[#1e3a52] to-[#6b3d3d] overflow-y-auto">
+      <div className="w-full max-w-md my-8">
+        {/* Logo */}
+        <div className="mb-6 sm:mb-8 text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#ff6b35] to-[#ff4757] mb-3 sm:mb-4 shadow-xl">
+            <Apple className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="currentColor" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1 sm:mb-2">AppleHub</h1>
+          <p className="text-gray-300 text-xs sm:text-sm">Entre na sua conta</p>
         </div>
 
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="login">Entrar</TabsTrigger>
-            <TabsTrigger value="signup">Criar conta</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6 bg-white/10 backdrop-blur-sm p-1">
+            <TabsTrigger 
+              value="login" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#ff6b35] data-[state=active]:to-[#ff4757] data-[state=active]:text-white text-sm"
+            >
+              Entrar
+            </TabsTrigger>
+            <TabsTrigger 
+              value="signup" 
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#ff6b35] data-[state=active]:to-[#ff4757] data-[state=active]:text-white text-sm"
+            >
+              Cadastrar
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="login">
-            <Card>
-              <CardHeader>
-                <CardTitle>Entrar na conta</CardTitle>
-                <CardDescription>
-                  Entre com seu e-mail e senha
+          <TabsContent value="login" className="mt-0">
+            <Card className="border-0 bg-white/10 backdrop-blur-md shadow-xl">
+              <CardHeader className="space-y-1 pb-3 sm:pb-4">
+                <CardTitle className="text-lg sm:text-xl text-white">Login</CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-gray-300">
+                  Use seu CPF e senha para entrar
                 </CardDescription>
               </CardHeader>
               <form onSubmit={handleLogin}>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">E-mail</Label>
+                <CardContent className="space-y-3 sm:space-y-4">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="login-cpf" className="text-white text-sm">CPF</Label>
                     <Input
-                      id="login-email"
-                      name="email"
-                      type="email"
-                      placeholder="seu@email.com"
+                      id="login-cpf"
+                      name="cpf"
+                      placeholder="000.000.000-00"
                       required
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Senha</Label>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="login-password" className="text-white text-sm">Senha</Label>
                     <Input
                       id="login-password"
                       name="password"
                       type="password"
-                      placeholder="••••••"
+                      placeholder="Digite sua senha"
                       required
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                     />
                   </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white font-semibold shadow-lg h-11 sm:h-12 text-sm sm:text-base" 
+                    disabled={loading}
+                  >
                     {loading ? "Entrando..." : "Entrar"}
                   </Button>
-                </CardFooter>
+                  <p className="text-center text-xs sm:text-sm text-gray-300 pt-2">
+                    Não tem uma conta?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("signup")}
+                      className="text-[#ff6b35] hover:text-[#ff5722] font-semibold"
+                    >
+                      Cadastre-se
+                    </button>
+                  </p>
+                </CardContent>
               </form>
             </Card>
           </TabsContent>
 
-          <TabsContent value="signup">
-            <Card>
-              <CardHeader>
-                <CardTitle>Criar nova conta</CardTitle>
-                <CardDescription>
-                  Preencha seus dados para começar
+          <TabsContent value="signup" className="mt-0">
+            <Card className="border-0 bg-white/10 backdrop-blur-md shadow-xl">
+              <CardHeader className="space-y-1 pb-3 sm:pb-4">
+                <CardTitle className="text-lg sm:text-xl text-white">Criar conta</CardTitle>
+                <CardDescription className="text-xs sm:text-sm text-gray-300">
+                  Preencha seus dados abaixo
                 </CardDescription>
               </CardHeader>
               <form onSubmit={handleSignup}>
-                <CardContent className="space-y-4 max-h-[60vh] overflow-y-auto">
-                  <div className="space-y-2">
-                    <Label htmlFor="nome_completo">Nome completo *</Label>
-                    <Input id="nome_completo" name="nome_completo" required />
+                <CardContent className="space-y-3 sm:space-y-4 max-h-[50vh] sm:max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="nome_completo" className="text-white text-sm">Nome completo *</Label>
+                    <Input 
+                      id="nome_completo" 
+                      name="nome_completo" 
+                      required 
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">E-mail *</Label>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="signup-email" className="text-white text-sm">E-mail *</Label>
                     <Input
                       id="signup-email"
                       name="email"
                       type="email"
                       placeholder="seu@email.com"
                       required
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                     />
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="signup-password">Senha *</Label>
+                  <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label htmlFor="signup-password" className="text-white text-sm">Senha *</Label>
                       <Input
                         id="signup-password"
                         name="password"
                         type="password"
                         placeholder="••••••"
                         required
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirmar senha *</Label>
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label htmlFor="confirmPassword" className="text-white text-sm">Confirmar *</Label>
                       <Input
                         id="confirmPassword"
                         name="confirmPassword"
                         type="password"
                         placeholder="••••••"
                         required
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                       />
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="cpf">CPF *</Label>
+                  <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label htmlFor="cpf" className="text-white text-sm">CPF *</Label>
                       <Input
                         id="cpf"
                         name="cpf"
                         placeholder="000.000.000-00"
                         required
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="telefone">Telefone *</Label>
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label htmlFor="telefone" className="text-white text-sm">Telefone *</Label>
                       <Input
                         id="telefone"
                         name="telefone"
                         placeholder="(00) 00000-0000"
                         required
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="data_nascimento">Data de nascimento *</Label>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="data_nascimento" className="text-white text-sm">Data de nascimento *</Label>
                     <Input
                       id="data_nascimento"
                       name="data_nascimento"
                       type="date"
                       required
+                      className="bg-white/5 border-white/20 text-white h-10 sm:h-11"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="cep">CEP *</Label>
-                    <Input id="cep" name="cep" placeholder="00000-000" required />
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="cep" className="text-white text-sm">CEP *</Label>
+                    <Input 
+                      id="cep" 
+                      name="cep" 
+                      placeholder="00000-000" 
+                      required 
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="rua">Rua *</Label>
-                    <Input id="rua" name="rua" required />
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="rua" className="text-white text-sm">Rua *</Label>
+                    <Input 
+                      id="rua" 
+                      name="rua" 
+                      required 
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                    />
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="numero">Número *</Label>
-                      <Input id="numero" name="numero" required />
+                  <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label htmlFor="numero" className="text-white text-sm">Número *</Label>
+                      <Input 
+                        id="numero" 
+                        name="numero" 
+                        required 
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="complemento">Complemento</Label>
-                      <Input id="complemento" name="complemento" />
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label htmlFor="complemento" className="text-white text-sm">Complemento</Label>
+                      <Input 
+                        id="complemento" 
+                        name="complemento" 
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                      />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="bairro">Bairro *</Label>
-                    <Input id="bairro" name="bairro" required />
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="bairro" className="text-white text-sm">Bairro *</Label>
+                    <Input 
+                      id="bairro" 
+                      name="bairro" 
+                      required 
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                    />
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="cidade">Cidade *</Label>
-                      <Input id="cidade" name="cidade" required />
+                  <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label htmlFor="cidade" className="text-white text-sm">Cidade *</Label>
+                      <Input 
+                        id="cidade" 
+                        name="cidade" 
+                        required 
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="estado">Estado *</Label>
+                    <div className="space-y-1.5 sm:space-y-2">
+                      <Label htmlFor="estado" className="text-white text-sm">Estado *</Label>
                       <Input
                         id="estado"
                         name="estado"
                         placeholder="SP"
                         maxLength={2}
                         required
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                       />
                     </div>
                   </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Criando conta..." : "Criar conta"}
+
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white font-semibold shadow-lg h-11 sm:h-12 text-sm sm:text-base mt-2" 
+                    disabled={loading}
+                  >
+                    {loading ? "Criando..." : "Criar conta"}
                   </Button>
-                </CardFooter>
+                </CardContent>
               </form>
             </Card>
           </TabsContent>

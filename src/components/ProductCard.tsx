@@ -46,9 +46,9 @@ const ProductCard = ({
   };
 
   return (
-    <Card className="group overflow-hidden transition-all hover:shadow-lg active:scale-[0.98] border-0 shadow-sm">
+    <Card className="group overflow-hidden transition-all hover:shadow-lg active:scale-[0.98] border-0 shadow-sm bg-card">
       <Link to={`/produto/${id}`}>
-        <div className="aspect-square overflow-hidden bg-muted rounded-t-xl">
+        <div className="aspect-square overflow-hidden bg-secondary rounded-t-xl">
           <img
             src={imagens[0] || "/placeholder.svg"}
             alt={nome}

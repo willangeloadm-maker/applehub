@@ -59,28 +59,28 @@ const Home = () => {
   };
 
   const categories = [
-    { icon: Smartphone, label: "iPhone", slug: "iphone", gradient: "from-blue-500 to-blue-600" },
-    { icon: Tablet, label: "iPad", slug: "ipad", gradient: "from-purple-500 to-purple-600" },
-    { icon: Watch, label: "Watch", slug: "apple-watch", gradient: "from-pink-500 to-pink-600" },
-    { icon: Headphones, label: "AirPods", slug: "airpods", gradient: "from-green-500 to-green-600" },
-    { icon: Cable, label: "Acessórios", slug: "acessorios", gradient: "from-orange-500 to-orange-600" },
+    { icon: Smartphone, label: "iPhone", slug: "iphone", gradient: "from-[#ff6b35] to-[#ff5722]" },
+    { icon: Tablet, label: "iPad", slug: "ipad", gradient: "from-[#ff4757] to-[#ff3545]" },
+    { icon: Watch, label: "Watch", slug: "apple-watch", gradient: "from-[#6b3d3d] to-[#8b4d4d]" },
+    { icon: Headphones, label: "AirPods", slug: "airpods", gradient: "from-[#1e3a52] to-[#2d4a5f]" },
+    { icon: Cable, label: "Acessórios", slug: "acessorios", gradient: "from-[#ff6b35] to-[#6b3d3d]" },
   ];
 
   const banners = [
     {
       title: "iPhone 15 Pro",
       subtitle: "Titânio. Tão forte. Tão leve. Tão Pro.",
-      gradient: "from-slate-900 to-slate-700",
+      gradient: "from-[#1e3a52] via-[#2d4a5f] to-[#3d5a6f]",
     },
     {
       title: "Parcele em 24x",
       subtitle: "Com análise de crédito facilitada",
-      gradient: "from-primary to-blue-600",
+      gradient: "from-[#ff6b35] to-[#ff4757]",
     },
     {
       title: "AirPods Pro",
       subtitle: "Som imersivo de nova geração",
-      gradient: "from-purple-600 to-pink-600",
+      gradient: "from-[#6b3d3d] via-[#8b4d4d] to-[#ab5d5d]",
     },
   ];
 
@@ -204,7 +204,7 @@ const Home = () => {
 
         {/* CTA Parcelamento */}
         <section className="px-4 pb-6">
-          <Card className="bg-gradient-to-br from-primary to-blue-600 text-white border-0 shadow-lg">
+          <Card className="bg-gradient-to-br from-[#ff6b35] to-[#ff4757] text-white border-0 shadow-lg">
             <CardContent className="p-6 text-center space-y-3">
               <h3 className="text-lg font-bold">Parcele em até 24x</h3>
               <p className="text-sm opacity-90">
