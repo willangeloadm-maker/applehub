@@ -93,9 +93,9 @@ const Products = () => {
 
   return (
     <AppLayout cartItemsCount={0}>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen">
         {/* Search Header */}
-        <div className="sticky top-14 z-30 bg-background border-b">
+        <div className="sticky top-14 z-30 bg-card/95 backdrop-blur border-b border-border/40">
           <div className="px-4 py-3 space-y-3">
             <div>
               <h1 className="text-xl font-bold">{getCategoryTitle()}</h1>

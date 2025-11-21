@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Home, Search, ShoppingCart, User, Package } from "lucide-react";
+import { Home, Search, ShoppingCart, User, Package, Apple } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -31,14 +31,14 @@ const AppLayout = ({ children, cartItemsCount = 0 }: AppLayoutProps) => {
     <SidebarProvider>
       <div className="flex min-h-screen w-full flex-col">
         {/* Header com Menu */}
-        <header className="sticky top-0 z-40 flex h-14 items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
-          <SidebarTrigger className="-ml-2" />
+        <header className="sticky top-0 z-40 flex h-14 items-center border-b border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-4">
+          <SidebarTrigger className="-ml-2 text-foreground" />
           <div className="flex-1 text-center">
             <Link to="/" className="inline-flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
-                <span className="text-sm font-bold text-primary-foreground">A</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#ff6b35] to-[#ff4757]">
+                <Apple className="h-4 w-4 text-white" fill="currentColor" />
               </div>
-              <span className="text-lg font-bold">AppleHub</span>
+              <span className="text-lg font-bold text-foreground">AppleHub</span>
             </Link>
           </div>
           <div className="w-8" /> {/* Spacer para centralizar */}
@@ -54,7 +54,7 @@ const AppLayout = ({ children, cartItemsCount = 0 }: AppLayoutProps) => {
         </div>
 
         {/* Bottom Navigation - Mobile Only */}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background lg:hidden">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90 lg:hidden safe-area-pb">
           <div className="flex items-center justify-around h-16">
             {navItems.map((item) => {
               const Icon = item.icon;
