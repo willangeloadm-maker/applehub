@@ -61,9 +61,10 @@ const Home = () => {
 
   const banners = [
     {
-      title: "iPhone 15 Pro",
-      subtitle: "Titânio. Tão forte. Tão leve. Tão Pro.",
+      title: "iPhone 17 Pro Max",
+      subtitle: "Lançamento! Preço imperdível e parcele em até 24x*",
       gradient: "from-[#1e3a52] via-[#2d4a5f] to-[#3d5a6f]",
+      footnote: "*Sujeito a análise de crédito"
     },
     {
       title: "Parcele em 24x",
@@ -93,6 +94,9 @@ const Home = () => {
                           {banner.title}
                         </h2>
                         <p className="text-sm opacity-90 sm:text-base">{banner.subtitle}</p>
+                        {(banner as any).footnote && (
+                          <p className="text-xs opacity-75 italic">{(banner as any).footnote}</p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
