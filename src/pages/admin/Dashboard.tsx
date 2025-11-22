@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Package, ShoppingCart, Users, TrendingUp, DollarSign, Plus, Clock, CheckCircle2, AlertCircle, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useOrderNotifications } from '@/hooks/useOrderNotifications';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -19,6 +20,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
+
+  // Ativar notificações em tempo real de novos pedidos
+  useOrderNotifications();
 
   useEffect(() => {
     loadStats();
