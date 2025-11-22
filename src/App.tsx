@@ -19,6 +19,7 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminUsers from "./pages/admin/Users";
 import AdminCreditAnalyses from "./pages/admin/CreditAnalyses";
 import AdminTransactions from "./pages/admin/Transactions";
+import AdminInadimplencia from "./pages/admin/Inadimplencia";
 import AccountVerification from "./pages/AccountVerification";
 import { AdminRoute } from "./components/AdminRoute";
 
@@ -46,6 +47,7 @@ const App = () => (
           <Route path="/admin/usuarios" element={<AdminRoute><AdminUsers /></AdminRoute>} />
           <Route path="/admin/analises-credito" element={<AdminRoute><AdminCreditAnalyses /></AdminRoute>} />
           <Route path="/admin/transacoes" element={<AdminRoute><AdminTransactions /></AdminRoute>} />
+          <Route path="/admin/inadimplencia" element={<AdminRoute><AdminInadimplencia /></AdminRoute>} />
           <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettings /></AdminRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
