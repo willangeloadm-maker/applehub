@@ -19,7 +19,7 @@ export function useAdminInactivity() {
       description: "Você foi desconectado por inatividade",
       variant: "destructive",
     });
-    navigate("/admin/login");
+    navigate("/");
   }, [navigate, toast]);
 
   const showWarning = useCallback(() => {
