@@ -255,9 +255,18 @@ const Auth = () => {
           variant: "destructive",
         });
       } else {
+        let errorMessage = error.message;
+        
+        // Mensagens de erro mais amigáveis
+        if (error.message?.includes("User already registered")) {
+          errorMessage = "Este e-mail já está cadastrado. Tente fazer login ou use outro e-mail.";
+        } else if (error.message?.includes("duplicate key")) {
+          errorMessage = "CPF ou e-mail já cadastrado. Tente fazer login.";
+        }
+        
         toast({
           title: "Erro ao criar conta",
-          description: error.message,
+          description: errorMessage,
           variant: "destructive",
         });
       }
