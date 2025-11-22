@@ -37,6 +37,8 @@ const adminItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Produtos", url: "/admin/produtos", icon: ShoppingBag },
   { title: "Pedidos", url: "/admin/pedidos", icon: ClipboardList },
+  { title: "Usuários", url: "/admin/usuarios", icon: User },
+  { title: "Transações", url: "/admin/transacoes", icon: Package },
   { title: "Configurações", url: "/admin/configuracoes", icon: Wrench },
 ];
 
