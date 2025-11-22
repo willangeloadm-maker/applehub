@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
+import iphone17Banner from "@/assets/iphone-17-pro-max-banner.jpg";
 
 interface Product {
   id: string;
@@ -64,7 +65,8 @@ const Home = () => {
       title: "iPhone 17 Pro Max",
       subtitle: "Lançamento! Preço imperdível e parcele em até 24x*",
       gradient: "from-[#1e3a52] via-[#2d4a5f] to-[#3d5a6f]",
-      footnote: "*Sujeito a análise de crédito"
+      footnote: "*Sujeito a análise de crédito",
+      image: iphone17Banner
     },
     {
       title: "Parcele em 24x",
@@ -88,14 +90,20 @@ const Home = () => {
               {banners.map((banner, index) => (
                 <CarouselItem key={index}>
                   <Card className="border-0 shadow-lg overflow-hidden">
-                    <CardContent className={`flex aspect-[2/1] items-center justify-center p-8 bg-gradient-to-br ${banner.gradient} text-white`}>
-                      <div className="text-center space-y-2">
-                        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                    <CardContent className={`flex aspect-[2/1] items-center justify-center p-8 bg-gradient-to-br ${banner.gradient} text-white relative`}>
+                      {(banner as any).image && (
+                        <div 
+                          className="absolute inset-0 bg-cover bg-center opacity-40"
+                          style={{ backgroundImage: `url(${(banner as any).image})` }}
+                        />
+                      )}
+                      <div className="text-center space-y-2 relative z-10">
+                        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl drop-shadow-lg">
                           {banner.title}
                         </h2>
-                        <p className="text-sm opacity-90 sm:text-base">{banner.subtitle}</p>
+                        <p className="text-sm opacity-90 sm:text-base drop-shadow-md">{banner.subtitle}</p>
                         {(banner as any).footnote && (
-                          <p className="text-xs opacity-75 italic">{(banner as any).footnote}</p>
+                          <p className="text-xs opacity-75 italic drop-shadow-md">{(banner as any).footnote}</p>
                         )}
                       </div>
                     </CardContent>
