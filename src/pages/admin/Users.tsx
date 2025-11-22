@@ -38,19 +38,17 @@ export default function AdminUsers() {
 
   const loadUsers = async () => {
     try {
-      const { data: session } = await supabase.auth.getSession();
-      
-      if (!session?.session) {
-        throw new Error('Não autenticado');
-      }
-
       const { data, error } = await supabase.functions.invoke('get-users', {
-        headers: {
-          Authorization: `Bearer ${session.session.access_token}`
+        body: {
+          admin_password: 'Ar102030'
         }
       });
 
       if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       const verificationsMap: Record<string, Verification> = {};
       (data.verifications || []).forEach((v: any) => {
