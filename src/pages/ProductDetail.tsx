@@ -8,7 +8,8 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
-import { ArrowLeft, Minus, Plus, ShoppingCart, Shield, Truck, CreditCard } from "lucide-react";
+import { useWishlist } from "@/hooks/useWishlist";
+import { ArrowLeft, Minus, Plus, ShoppingCart, Shield, Truck, CreditCard, Heart } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 
 type Product = Tables<"products">;
@@ -18,12 +19,15 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addToCart } = useCart();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantidade, setQuantidade] = useState(1);
   const [adding, setAdding] = useState(false);
+
+  const isFavorite = product ? isInWishlist(product.id) : false;
 
   useEffect(() => {
     if (id) {
@@ -58,6 +62,15 @@ const ProductDetail = () => {
     setAdding(true);
     await addToCart(product.id, quantidade);
     setAdding(false);
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!product) return;
+    if (isFavorite) {
+      await removeFromWishlist(product.id);
+    } else {
+      await addToWishlist(product.id);
+    }
   };
 
   const formatPrice = (price: number) => {
@@ -235,6 +248,16 @@ const ProductDetail = () => {
                 >
                   <ShoppingCart className="w-5 h-5 mr-2" />
                   {adding ? "Adicionando..." : "Adicionar ao Carrinho"}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  size="lg"
+                  onClick={handleToggleFavorite}
+                >
+                  <Heart className={`w-5 h-5 mr-2 ${isFavorite ? 'fill-primary text-primary' : ''}`} />
+                  {isFavorite ? "Remover dos Favoritos" : "Adicionar aos Favoritos"}
                 </Button>
               </div>
 

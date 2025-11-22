@@ -1,4 +1,4 @@
-import { Home, Search, ShoppingCart, User, Package, Settings, HelpCircle, LogOut, LayoutDashboard } from "lucide-react";
+import { Home, Search, ShoppingCart, User, Package, Settings, HelpCircle, LogOut, LayoutDashboard, ShoppingBag, ClipboardList, Wrench } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -27,6 +27,13 @@ const mainItems = [
 const secondaryItems = [
   { title: "Configurações", url: "/configuracoes", icon: Settings },
   { title: "Ajuda", url: "/ajuda", icon: HelpCircle },
+];
+
+const adminItems = [
+  { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
+  { title: "Produtos", url: "/admin/produtos", icon: ShoppingBag },
+  { title: "Pedidos", url: "/admin/pedidos", icon: ClipboardList },
+  { title: "Configurações", url: "/admin/configuracoes", icon: Wrench },
 ];
 
 export function AppSidebar() {
@@ -62,6 +69,8 @@ export function AppSidebar() {
     return false;
   };
 
+  const isAdminPage = currentPath.startsWith('/admin');
+
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
@@ -82,71 +91,128 @@ export function AppSidebar() {
   return (
     <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className="hover:bg-accent"
-                      activeClassName="bg-accent text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              
-              {isAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to="/admin"
-                      className="hover:bg-accent"
-                      activeClassName="bg-accent text-primary font-medium"
-                    >
-                      <LayoutDashboard className="h-4 w-4" />
-                      {!collapsed && <span>Administração</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {isAdmin && isAdminPage ? (
+          // Menu Administrativo
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>Administração</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {adminItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          end={item.url === "/admin"}
+                          className="hover:bg-accent"
+                          activeClassName="bg-accent text-primary font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Outros</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {secondaryItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      className="hover:bg-accent"
-                      activeClassName="bg-accent text-primary font-medium"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-              
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={handleLogout}>
-                  <LogOut className="h-4 w-4" />
-                  {!collapsed && <span>Sair</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+            <SidebarGroup>
+              <SidebarGroupLabel>Voltar</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to="/"
+                        className="hover:bg-accent"
+                        activeClassName="bg-accent text-primary font-medium"
+                      >
+                        <Home className="h-4 w-4" />
+                        {!collapsed && <span>Loja</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={handleLogout}>
+                      <LogOut className="h-4 w-4" />
+                      {!collapsed && <span>Sair</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : (
+          // Menu Normal
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {mainItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          className="hover:bg-accent"
+                          activeClassName="bg-accent text-primary font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                  
+                  {isAdmin && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to="/admin"
+                          className="hover:bg-accent"
+                          activeClassName="bg-accent text-primary font-medium"
+                        >
+                          <LayoutDashboard className="h-4 w-4" />
+                          {!collapsed && <span>Administração</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Outros</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {secondaryItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          className="hover:bg-accent"
+                          activeClassName="bg-accent text-primary font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                  
+                  <SidebarMenuItem>
+                    <SidebarMenuButton onClick={handleLogout}>
+                      <LogOut className="h-4 w-4" />
+                      {!collapsed && <span>Sair</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
     </Sidebar>
   );

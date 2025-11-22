@@ -5,12 +5,15 @@ import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
+import { useWishlist } from "@/hooks/useWishlist";
+import ProductCard from "@/components/ProductCard";
 
 const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const navigate = useNavigate();
+  const { wishlist, loading: wishlistLoading } = useWishlist();
 
   useEffect(() => {
     checkUser();
@@ -151,6 +154,34 @@ const Profile = () => {
                 </div>
               ) : (
                 <p className="text-muted-foreground">Carregando informações...</p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Meus Favoritos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {wishlistLoading ? (
+                <p className="text-center text-muted-foreground">Carregando favoritos...</p>
+              ) : wishlist.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">
+                  Você ainda não tem produtos favoritos
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {wishlist.map((item) => (
+                    <ProductCard
+                      key={item.id}
+                      id={item.products.id}
+                      nome={item.products.nome}
+                      preco_vista={item.products.preco_vista}
+                      imagens={item.products.imagens}
+                      estado={item.products.estado as "novo" | "seminovo" | "usado"}
+                    />
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
