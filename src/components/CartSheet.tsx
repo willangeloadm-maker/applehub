@@ -1,0 +1,116 @@
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { ShoppingCart, Minus, Plus, Trash2 } from "lucide-react";
+import { useCart } from "@/hooks/useCart";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useNavigate } from "react-router-dom";
+
+export const CartSheet = () => {
+  const { cartItems, loading, updateQuantity, removeFromCart, getTotal, getItemCount } = useCart();
+  const navigate = useNavigate();
+
+  const handleCheckout = () => {
+    // TODO: Implementar checkout
+    navigate("/checkout");
+  };
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="icon" className="relative">
+          <ShoppingCart className="w-5 h-5" />
+          {getItemCount() > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+            >
+              {getItemCount()}
+            </Badge>
+          )}
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-full sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>Carrinho ({getItemCount()} {getItemCount() === 1 ? 'item' : 'itens'})</SheetTitle>
+        </SheetHeader>
+
+        <div className="flex flex-col h-full mt-6">
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-muted-foreground">Carregando...</p>
+            </div>
+          ) : cartItems.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+              <ShoppingCart className="w-16 h-16 text-muted-foreground" />
+              <p className="text-muted-foreground">Seu carrinho está vazio</p>
+              <Button onClick={() => navigate("/products")}>
+                Ver produtos
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                {cartItems.map((item) => (
+                  <div key={item.id} className="flex gap-4 border rounded-lg p-3">
+                    <img
+                      src={item.products.imagens[0] || "/placeholder.svg"}
+                      alt={item.products.nome}
+                      className="w-20 h-20 object-cover rounded"
+                    />
+                    <div className="flex-1 space-y-2">
+                      <h3 className="font-semibold text-sm line-clamp-2">{item.products.nome}</h3>
+                      <p className="text-sm font-bold text-primary">
+                        R$ {Number(item.products.preco_vista).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => updateQuantity(item.id, item.quantidade - 1)}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        <span className="text-sm font-medium w-8 text-center">{item.quantidade}</span>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => updateQuantity(item.id, item.quantidade + 1)}
+                          disabled={item.quantidade >= item.products.estoque}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 ml-auto"
+                          onClick={() => removeFromCart(item.id)}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-semibold">Total</span>
+                  <span className="text-2xl font-bold text-primary">
+                    R$ {getTotal().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <Button className="w-full" size="lg" onClick={handleCheckout}>
+                  Finalizar Compra
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};

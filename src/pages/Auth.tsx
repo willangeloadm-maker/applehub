@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { Apple } from "lucide-react";
+import { Apple, CheckCircle2, XCircle } from "lucide-react";
 
 const loginSchema = z.object({
   cpf: z.string().min(11, "CPF inválido"),
@@ -47,6 +47,41 @@ const Auth = () => {
     estado: "",
   });
   const [loadingCep, setLoadingCep] = useState(false);
+  const [cpfValid, setCpfValid] = useState<boolean | null>(null);
+  const [telefoneValid, setTelefoneValid] = useState<boolean | null>(null);
+
+  const validateCpf = (cpf: string): boolean => {
+    const numbers = cpf.replace(/\D/g, "");
+    if (numbers.length !== 11) return false;
+    
+    // Verifica se todos os dígitos são iguais
+    if (/^(\d)\1{10}$/.test(numbers)) return false;
+    
+    // Validação do primeiro dígito verificador
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += parseInt(numbers.charAt(i)) * (10 - i);
+    }
+    let digit = 11 - (sum % 11);
+    if (digit >= 10) digit = 0;
+    if (digit !== parseInt(numbers.charAt(9))) return false;
+    
+    // Validação do segundo dígito verificador
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+      sum += parseInt(numbers.charAt(i)) * (11 - i);
+    }
+    digit = 11 - (sum % 11);
+    if (digit >= 10) digit = 0;
+    if (digit !== parseInt(numbers.charAt(10))) return false;
+    
+    return true;
+  };
+
+  const validateTelefone = (telefone: string): boolean => {
+    const numbers = telefone.replace(/\D/g, "");
+    return numbers.length === 11;
+  };
 
   const formatCep = (value: string) => {
     const numbers = value.replace(/\D/g, "");
@@ -376,31 +411,59 @@ const Auth = () => {
                   <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5 sm:space-y-2">
                       <Label htmlFor="cpf" className="text-white text-sm">CPF *</Label>
-                      <Input
-                        id="cpf"
-                        name="cpf"
-                        placeholder="000.000.000-00"
-                        required
-                        maxLength={14}
-                        onChange={(e) => {
-                          e.target.value = formatCpf(e.target.value);
-                        }}
-                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
-                      />
+                      <div className="relative">
+                        <Input
+                          id="cpf"
+                          name="cpf"
+                          placeholder="000.000.000-00"
+                          required
+                          maxLength={14}
+                          onChange={(e) => {
+                            const formatted = formatCpf(e.target.value);
+                            e.target.value = formatted;
+                            const isValid = validateCpf(formatted);
+                            setCpfValid(formatted.length >= 14 ? isValid : null);
+                          }}
+                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 pr-10"
+                        />
+                        {cpfValid !== null && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {cpfValid ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <XCircle className="w-5 h-5 text-red-500" />
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="space-y-1.5 sm:space-y-2">
                       <Label htmlFor="telefone" className="text-white text-sm">Telefone *</Label>
-                      <Input
-                        id="telefone"
-                        name="telefone"
-                        placeholder="(00) 00000-0000"
-                        required
-                        maxLength={15}
-                        onChange={(e) => {
-                          e.target.value = formatTelefone(e.target.value);
-                        }}
-                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
-                      />
+                      <div className="relative">
+                        <Input
+                          id="telefone"
+                          name="telefone"
+                          placeholder="(00) 00000-0000"
+                          required
+                          maxLength={15}
+                          onChange={(e) => {
+                            const formatted = formatTelefone(e.target.value);
+                            e.target.value = formatted;
+                            const isValid = validateTelefone(formatted);
+                            setTelefoneValid(formatted.length >= 15 ? isValid : null);
+                          }}
+                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 pr-10"
+                        />
+                        {telefoneValid !== null && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {telefoneValid ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <XCircle className="w-5 h-5 text-red-500" />
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 

@@ -81,7 +81,7 @@ const Home = () => {
   ];
 
   return (
-    <AppLayout cartItemsCount={0}>
+    <AppLayout>
       <div className="min-h-screen bg-background">
         {/* Hero Carousel */}
         <section className="px-4 pt-6 pb-4">

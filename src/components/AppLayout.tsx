@@ -4,14 +4,17 @@ import { Link, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { CartSheet } from "@/components/CartSheet";
+import { useCart } from "@/hooks/useCart";
 
 interface AppLayoutProps {
   children: ReactNode;
   cartItemsCount?: number;
 }
 
-const AppLayout = ({ children, cartItemsCount = 0 }: AppLayoutProps) => {
+const AppLayout = ({ children }: AppLayoutProps) => {
   const location = useLocation();
+  const { getItemCount } = useCart();
 
   const isActive = (path: string) => {
     if (path === "/" && location.pathname === "/") return true;
@@ -22,7 +25,7 @@ const AppLayout = ({ children, cartItemsCount = 0 }: AppLayoutProps) => {
   const navItems = [
     { icon: Home, label: "Início", path: "/" },
     { icon: Search, label: "Buscar", path: "/produtos" },
-    { icon: ShoppingCart, label: "Carrinho", path: "/carrinho", badge: cartItemsCount },
+    { icon: ShoppingCart, label: "Carrinho", path: "/carrinho", badge: getItemCount() },
     { icon: Package, label: "Pedidos", path: "/pedidos" },
     { icon: User, label: "Perfil", path: "/perfil" },
   ];
@@ -41,7 +44,7 @@ const AppLayout = ({ children, cartItemsCount = 0 }: AppLayoutProps) => {
               <span className="text-lg font-bold text-foreground">AppleHub</span>
             </Link>
           </div>
-          <div className="w-8" /> {/* Spacer para centralizar */}
+          <CartSheet />
         </header>
 
         <div className="flex flex-1 w-full">
