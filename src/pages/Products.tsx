@@ -92,7 +92,7 @@ const Products = () => {
   };
 
   return (
-    <AppLayout cartItemsCount={0}>
+    <AppLayout>
       <div className="min-h-screen">
         {/* Search Header */}
         <div className="sticky top-14 z-30 bg-card/95 backdrop-blur border-b border-border/40">

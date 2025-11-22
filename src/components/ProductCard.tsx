@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCart } from "@/hooks/useCart";
+import { useState } from "react";
 
 interface ProductCardProps {
   id: string;
@@ -25,6 +27,16 @@ const ProductCard = ({
   capacidade,
   cor,
 }: ProductCardProps) => {
+  const { addToCart } = useCart();
+  const [adding, setAdding] = useState(false);
+
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setAdding(true);
+    await addToCart(id, 1);
+    setAdding(false);
+  };
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -90,9 +102,14 @@ const ProductCard = ({
       </CardContent>
 
       <CardFooter className="p-3 pt-0">
-        <Button className="w-full h-8 text-xs" size="sm">
+        <Button 
+          className="w-full h-8 text-xs" 
+          size="sm"
+          onClick={handleAddToCart}
+          disabled={adding}
+        >
           <ShoppingCart className="mr-1.5 h-3 w-3" />
-          Adicionar
+          {adding ? "Adicionando..." : "Adicionar"}
         </Button>
       </CardFooter>
     </Card>
