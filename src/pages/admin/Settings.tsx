@@ -171,12 +171,63 @@ export default function AdminSettings() {
   return (
     <AppLayout>
       <div className="container mx-auto p-6 max-w-2xl space-y-6">
-        <h1 className="text-3xl font-bold mb-6">Configurações</h1>
+        <h1 className="text-3xl font-bold mb-6">Configurações de API</h1>
 
         {loading ? (
           <div className="text-center py-12">Carregando...</div>
         ) : (
           <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Configurações Pagar.me</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePaymentSubmit} className="space-y-6">
+                  <div>
+                    <Label>ID do Recebedor (Recipient ID)</Label>
+                    <Input
+                      type="text"
+                      value={paymentSettings.recipient_id}
+                      onChange={(e) => setPaymentSettings({ ...paymentSettings, recipient_id: e.target.value })}
+                      required
+                      placeholder="re_..."
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ID do recebedor obtido no dashboard da Pagar.me
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label>Secret Key</Label>
+                    <Input
+                      type="password"
+                      value={paymentSettings.secret_key}
+                      onChange={(e) => setPaymentSettings({ ...paymentSettings, secret_key: e.target.value })}
+                      required
+                      placeholder="sk_..."
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Chave secreta da API Pagar.me (Secret Key)
+                    </p>
+                  </div>
+
+                  <div className="bg-muted/50 p-4 rounded-lg space-y-2 text-sm">
+                    <p className="font-medium">📌 URL do Webhook:</p>
+                    <code className="block bg-background p-2 rounded text-xs break-all">
+                      https://slwpupadtakrnaqzluqc.supabase.co/functions/v1/pagarme-webhook
+                    </code>
+                    <p className="text-muted-foreground text-xs mt-2">
+                      Configure esta URL no dashboard da Pagar.me em Configurações → Webhooks
+                    </p>
+                  </div>
+
+                  <Button type="submit" className="w-full">
+                    Salvar Configurações
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Parcelamento AppleHub</CardTitle>
@@ -241,48 +292,7 @@ export default function AdminSettings() {
                   </div>
 
                   <Button type="submit" className="w-full">
-                    Salvar Configurações
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>API Pagar.me</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handlePaymentSubmit} className="space-y-6">
-                  <div>
-                    <Label>ID do Recebedor</Label>
-                    <Input
-                      type="text"
-                      value={paymentSettings.recipient_id}
-                      onChange={(e) => setPaymentSettings({ ...paymentSettings, recipient_id: e.target.value })}
-                      required
-                      placeholder="re_..."
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      ID do recebedor da Pagar.me
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label>Secret Key</Label>
-                    <Input
-                      type="password"
-                      value={paymentSettings.secret_key}
-                      onChange={(e) => setPaymentSettings({ ...paymentSettings, secret_key: e.target.value })}
-                      required
-                      placeholder="sk_..."
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Chave secreta da API Pagar.me
-                    </p>
-                  </div>
-
-                  <Button type="submit" className="w-full">
-                    Salvar Configurações da API
+                    Salvar Regras de Parcelamento
                   </Button>
                 </form>
               </CardContent>
