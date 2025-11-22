@@ -5,34 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 export default function CreditAnalyses() {
-  const navigate = useNavigate();
   const [analyses, setAnalyses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAdmin();
     loadAnalyses();
   }, []);
-
-  const checkAdmin = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/admin/login');
-      return;
-    }
-
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-
-    if (!roles?.some(r => r.role === 'admin')) {
-      navigate('/');
-    }
-  };
 
   const loadAnalyses = async () => {
     try {
