@@ -23,27 +23,9 @@ export default function AdminSettings() {
   });
 
   useEffect(() => {
-    checkAdmin();
     loadSettings();
     loadPaymentSettings();
   }, []);
-
-  const checkAdmin = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate('/admin/login');
-      return;
-    }
-
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-
-    if (!roles?.some(r => r.role === 'admin')) {
-      navigate('/');
-    }
-  };
 
   const loadSettings = async () => {
     try {

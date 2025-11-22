@@ -15,7 +15,6 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProducts from "./pages/admin/Products";
 import AdminOrders from "./pages/admin/Orders";
 import AdminSettings from "./pages/admin/Settings";
-import AdminLogin from "./pages/admin/AdminLogin";
 import AdminUsers from "./pages/admin/Users";
 import AdminCreditAnalyses from "./pages/admin/CreditAnalyses";
 import AdminTransactions from "./pages/admin/Transactions";

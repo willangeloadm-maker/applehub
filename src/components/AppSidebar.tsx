@@ -66,7 +66,7 @@ export function AppSidebar() {
     return false;
   };
 
-  const isAdminPage = currentPath.startsWith('/admin') && currentPath !== '/admin/login';
+  const isAdminPage = currentPath.startsWith('/admin');
 
   const handleLogout = async () => {
     try {
@@ -91,7 +91,7 @@ export function AppSidebar() {
       title: "Sessão encerrada",
       description: "Você saiu do painel administrativo",
     });
-    navigate("/admin/login");
+    navigate("/");
   };
 
   return (
