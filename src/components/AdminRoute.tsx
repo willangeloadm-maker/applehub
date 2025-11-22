@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,17 +11,21 @@ interface AdminRouteProps {
 }
 
 export function AdminRoute({ children }: AdminRouteProps) {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [isChecking, setIsChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const authenticated = localStorage.getItem("admin_authenticated") === "true";
-    setIsAuthenticated(authenticated);
-    setIsChecking(false);
+    // Verifica se está autenticado ao carregar
+    const checkAuth = () => {
+      const authenticated = localStorage.getItem("admin_authenticated") === "true";
+      setIsAuthenticated(authenticated);
+      setIsChecking(false);
+    };
+    
+    checkAuth();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -46,12 +49,14 @@ export function AdminRoute({ children }: AdminRouteProps) {
         });
         
         setIsAuthenticated(true);
+        setSenha("");
       } else {
         toast({
           title: "Senha incorreta",
           description: "Tente novamente",
           variant: "destructive",
         });
+        setSenha("");
       }
     } catch (error: any) {
       toast({

@@ -1,11 +1,13 @@
 import { ReactNode } from "react";
-import { Home, Search, ShoppingCart, User, Package, Apple } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Home, Search, ShoppingCart, User, Package, Apple, LogOut } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { CartSheet } from "@/components/CartSheet";
 import { useCart } from "@/hooks/useCart";
+import { useToast } from "@/hooks/use-toast";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -14,7 +16,20 @@ interface AppLayoutProps {
 
 const AppLayout = ({ children }: AppLayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const { getItemCount } = useCart();
+  
+  const isAdminPage = location.pathname.startsWith('/admin');
+
+  const handleLogout = () => {
+    localStorage.removeItem("admin_authenticated");
+    toast({
+      title: "Logout realizado",
+      description: "Você saiu do painel administrativo",
+    });
+    navigate("/");
+  };
 
   const isActive = (path: string) => {
     if (path === "/" && location.pathname === "/") return true;
@@ -44,8 +59,19 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               <span className="text-base sm:text-lg font-bold text-foreground truncate">AppleHub</span>
             </Link>
           </div>
-          <div className="shrink-0">
-            <CartSheet />
+          <div className="flex items-center gap-2 shrink-0">
+            {isAdminPage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="hidden sm:inline">Sair</span>
+              </Button>
+            )}
+            {!isAdminPage && <CartSheet />}
           </div>
         </header>
 
