@@ -52,9 +52,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="flex flex-1 w-full max-w-full">
           <AppSidebar />
           
-          {/* Main Content - Centralizado no desktop */}
-          <main className="flex-1 w-full max-w-full pb-20 lg:pb-0 overflow-x-hidden lg:flex lg:justify-center">
-            <div className="w-full lg:max-w-5xl">
+          {/* Main Content */}
+          <main className="flex-1 w-full max-w-full pb-20 lg:pb-0 overflow-x-hidden">
+            <div className="w-full lg:px-8 lg:py-6 lg:max-w-[1400px] lg:mx-auto">
               {children}
             </div>
           </main>

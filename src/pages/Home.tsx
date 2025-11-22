@@ -8,8 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
-import iphone17Banner from "@/assets/iphone-17-pro-max-banner.jpg";
-import iphone17Orange from "@/assets/iphone-17-orange.png";
+import iphone17Hero from "@/assets/iphone-17-pro-max-hero.jpg";
 
 interface Product {
   id: string;
@@ -67,7 +66,7 @@ const Home = () => {
       subtitle: "Lançamento! Preço imperdível e parcele em até 24x*",
       gradient: "from-orange-600 via-orange-500 to-amber-600",
       footnote: "*Sujeito a análise de crédito",
-      image: iphone17Orange,
+      image: iphone17Hero,
       highlight: true
     },
     {
