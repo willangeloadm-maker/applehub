@@ -38,43 +38,35 @@ export default function AdminUsers() {
 
   const loadUsers = async () => {
     try {
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, nome_completo, cpf, telefone, created_at')
-        .order('created_at', { ascending: false });
+      const { data: session } = await supabase.auth.getSession();
+      
+      if (!session?.session) {
+        throw new Error('Não autenticado');
+      }
 
-      if (profilesError) throw profilesError;
+      const { data, error } = await supabase.functions.invoke('get-users', {
+        headers: {
+          Authorization: `Bearer ${session.session.access_token}`
+        }
+      });
 
-      // Buscar emails dos usuários
-      const usersWithEmails = await Promise.all(
-        (profiles || []).map(async (profile) => {
-          const { data: authData } = await supabase.auth.admin.getUserById(profile.id);
-          return {
-            ...profile,
-            email: authData.user?.email
-          };
-        })
-      );
-
-      // Buscar verificações
-      const { data: verificationsData } = await supabase
-        .from('account_verifications')
-        .select('user_id, status, verificado_em');
+      if (error) throw error;
 
       const verificationsMap: Record<string, Verification> = {};
-      (verificationsData || []).forEach(v => {
+      (data.verifications || []).forEach((v: any) => {
         verificationsMap[v.user_id] = {
           status: v.status,
           verificado_em: v.verificado_em
         };
       });
 
-      setUsers(usersWithEmails);
+      setUsers(data.users || []);
       setVerifications(verificationsMap);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error loading users:', error);
       toast({
         title: "Erro",
-        description: "Erro ao carregar usuários",
+        description: error.message || "Erro ao carregar usuários",
         variant: "destructive"
       });
     } finally {
