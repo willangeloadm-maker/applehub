@@ -89,7 +89,7 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
+    <Sidebar className={`${collapsed ? "w-14" : "w-64"} lg:hidden`} collapsible="icon">
       <SidebarContent>
         {isAdmin && isAdminPage ? (
           // Menu Administrativo
