@@ -17,10 +17,33 @@ export default function AdminSettings() {
     valor_minimo_parcelar: 100,
     ativo: true
   });
+  const [paymentSettings, setPaymentSettings] = useState({
+    recipient_id: '',
+    secret_key: ''
+  });
 
   useEffect(() => {
+    checkAdmin();
     loadSettings();
+    loadPaymentSettings();
   }, []);
+
+  const checkAdmin = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate('/admin/login');
+      return;
+    }
+
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id);
+
+    if (!roles?.some(r => r.role === 'admin')) {
+      navigate('/');
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -47,6 +70,26 @@ export default function AdminSettings() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPaymentSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payment_settings')
+        .select('*')
+        .single();
+
+      if (error && error.code !== 'PGRST116') return;
+      
+      if (data) {
+        setPaymentSettings({
+          recipient_id: data.recipient_id,
+          secret_key: data.secret_key
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações de pagamento:', error);
     }
   };
 
@@ -91,83 +134,160 @@ export default function AdminSettings() {
     }
   };
 
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const { data: existing } = await supabase
+        .from('payment_settings')
+        .select('id')
+        .single();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('payment_settings')
+          .update(paymentSettings)
+          .eq('id', existing.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('payment_settings')
+          .insert([paymentSettings]);
+
+        if (error) throw error;
+      }
+
+      toast({ description: "Configurações da API salvas com sucesso" });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar configurações da API",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <AppLayout>
-      <div className="container mx-auto p-6 max-w-2xl">
-        <h1 className="text-3xl font-bold mb-6">Configurações de Parcelamento</h1>
+      <div className="container mx-auto p-6 max-w-2xl space-y-6">
+        <h1 className="text-3xl font-bold mb-6">Configurações</h1>
 
         {loading ? (
           <div className="text-center py-12">Carregando...</div>
         ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Parcelamento AppleHub</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <Label>Máximo de Parcelas</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="48"
-                    value={settings.max_parcelas}
-                    onChange={(e) => setSettings({ ...settings, max_parcelas: parseInt(e.target.value) })}
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Número máximo de parcelas permitidas
-                  </p>
-                </div>
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Parcelamento AppleHub</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div>
+                    <Label>Máximo de Parcelas</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="48"
+                      value={settings.max_parcelas}
+                      onChange={(e) => setSettings({ ...settings, max_parcelas: parseInt(e.target.value) })}
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Número máximo de parcelas permitidas
+                    </p>
+                  </div>
 
-                <div>
-                  <Label>Juros Mensal (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={settings.juros_mensal}
-                    onChange={(e) => setSettings({ ...settings, juros_mensal: parseFloat(e.target.value) })}
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Taxa de juros mensal aplicada no parcelamento
-                  </p>
-                </div>
+                  <div>
+                    <Label>Juros Mensal (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={settings.juros_mensal}
+                      onChange={(e) => setSettings({ ...settings, juros_mensal: parseFloat(e.target.value) })}
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Taxa de juros mensal aplicada no parcelamento
+                    </p>
+                  </div>
 
-                <div>
-                  <Label>Valor Mínimo para Parcelar (R$)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={settings.valor_minimo_parcelar}
-                    onChange={(e) => setSettings({ ...settings, valor_minimo_parcelar: parseFloat(e.target.value) })}
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Valor mínimo do pedido para permitir parcelamento
-                  </p>
-                </div>
+                  <div>
+                    <Label>Valor Mínimo para Parcelar (R$)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={settings.valor_minimo_parcelar}
+                      onChange={(e) => setSettings({ ...settings, valor_minimo_parcelar: parseFloat(e.target.value) })}
+                      required
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Valor mínimo do pedido para permitir parcelamento
+                    </p>
+                  </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="ativo"
-                    checked={settings.ativo}
-                    onChange={(e) => setSettings({ ...settings, ativo: e.target.checked })}
-                  />
-                  <Label htmlFor="ativo" className="cursor-pointer">
-                    Sistema de parcelamento ativo
-                  </Label>
-                </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="ativo"
+                      checked={settings.ativo}
+                      onChange={(e) => setSettings({ ...settings, ativo: e.target.checked })}
+                    />
+                    <Label htmlFor="ativo" className="cursor-pointer">
+                      Sistema de parcelamento ativo
+                    </Label>
+                  </div>
 
-                <Button type="submit" className="w-full">
-                  Salvar Configurações
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  <Button type="submit" className="w-full">
+                    Salvar Configurações
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>API Pagar.me</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handlePaymentSubmit} className="space-y-6">
+                  <div>
+                    <Label>ID do Recebedor</Label>
+                    <Input
+                      type="text"
+                      value={paymentSettings.recipient_id}
+                      onChange={(e) => setPaymentSettings({ ...paymentSettings, recipient_id: e.target.value })}
+                      required
+                      placeholder="re_..."
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ID do recebedor da Pagar.me
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label>Secret Key</Label>
+                    <Input
+                      type="password"
+                      value={paymentSettings.secret_key}
+                      onChange={(e) => setPaymentSettings({ ...paymentSettings, secret_key: e.target.value })}
+                      required
+                      placeholder="sk_..."
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Chave secreta da API Pagar.me
+                    </p>
+                  </div>
+
+                  <Button type="submit" className="w-full">
+                    Salvar Configurações da API
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </AppLayout>

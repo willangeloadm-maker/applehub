@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import AppLayout from "@/components/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { useWishlist } from "@/hooks/useWishlist";
 import ProductCard from "@/components/ProductCard";
 
@@ -12,6 +13,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [verification, setVerification] = useState<any>(null);
   const navigate = useNavigate();
   const { wishlist, loading: wishlistLoading } = useWishlist();
 
@@ -56,6 +58,15 @@ const Profile = () => {
 
       if (error) throw error;
       setProfile(data);
+
+      // Carregar status de verificação
+      const { data: verificationData } = await supabase
+        .from("account_verifications")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      setVerification(verificationData);
     } catch (error) {
       console.error("Erro ao carregar perfil:", error);
     }
@@ -117,6 +128,58 @@ const Profile = () => {
     <AppLayout cartItemsCount={0}>
       <div className="min-h-screen bg-background p-4">
         <div className="max-w-2xl mx-auto space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Verificação de Conta</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!verification || verification.status === 'pendente' ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-lg">
+                    <Clock className="w-5 h-5 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="font-medium">Conta não verificada</p>
+                      <p className="text-sm text-muted-foreground">
+                        Verifique sua conta para acessar o parcelamento AppleHub
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => navigate('/verificacao')}
+                    className="w-full"
+                  >
+                    Verificar Conta
+                  </Button>
+                </div>
+              ) : verification.status === 'verificado' ? (
+                <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <div className="flex-1">
+                    <p className="font-medium text-green-800 dark:text-green-200">
+                      Conta Verificada
+                    </p>
+                    <p className="text-sm text-green-700 dark:text-green-300">
+                      Verificado em {new Date(verification.verificado_em).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <Badge variant="default" className="bg-green-600">Ativo</Badge>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-800">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  <div className="flex-1">
+                    <p className="font-medium text-red-800 dark:text-red-200">
+                      Verificação Rejeitada
+                    </p>
+                    <p className="text-sm text-red-700 dark:text-red-300">
+                      Entre em contato conosco pelo WhatsApp
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Meu Perfil</CardTitle>

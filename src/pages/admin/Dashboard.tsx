@@ -3,7 +3,7 @@ import AppLayout from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, ShoppingCart, Users, TrendingUp, DollarSign, Plus, Clock, CheckCircle2, AlertCircle, Settings } from 'lucide-react';
+import { Package, ShoppingCart, Users, TrendingUp, DollarSign, Plus, Clock, CheckCircle2, AlertCircle, Settings, BarChart3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useOrderNotifications } from '@/hooks/useOrderNotifications';
@@ -118,6 +118,13 @@ export default function AdminDashboard() {
       icon: Users,
       path: "/admin/usuarios",
       gradient: "from-green-500 to-emerald-500"
+    },
+    {
+      title: "Análises de Crédito",
+      description: "Ver análises",
+      icon: BarChart3,
+      path: "/admin/analises-credito",
+      gradient: "from-purple-500 to-violet-500"
     },
     {
       title: "Transações",

@@ -1,4 +1,4 @@
-import { Home, Search, ShoppingCart, User, Package, Settings, HelpCircle, LogOut, LayoutDashboard, ShoppingBag, ClipboardList, Wrench } from "lucide-react";
+import { Home, Search, ShoppingCart, User, Package, Settings, HelpCircle, LogOut, LayoutDashboard, ShoppingBag, ClipboardList, Wrench, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -38,6 +38,7 @@ const adminItems = [
   { title: "Produtos", url: "/admin/produtos", icon: ShoppingBag },
   { title: "Pedidos", url: "/admin/pedidos", icon: ClipboardList },
   { title: "Usuários", url: "/admin/usuarios", icon: User },
+  { title: "Análises Crédito", url: "/admin/analises-credito", icon: BarChart3 },
   { title: "Transações", url: "/admin/transacoes", icon: Package },
   { title: "Configurações", url: "/admin/configuracoes", icon: Wrench },
 ];

@@ -367,6 +367,30 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          recipient_id: string
+          secret_key: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          recipient_id: string
+          secret_key: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          recipient_id?: string
+          secret_key?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           ativo: boolean | null
