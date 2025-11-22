@@ -25,7 +25,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const navItems = [
     { icon: Home, label: "Início", path: "/" },
     { icon: Search, label: "Buscar", path: "/produtos" },
-    { icon: ShoppingCart, label: "Carrinho", path: "/carrinho", badge: getItemCount() },
+    { icon: ShoppingCart, label: "Carrinho", path: "#", badge: getItemCount(), isCart: true },
     { icon: Package, label: "Pedidos", path: "/pedidos" },
     { icon: User, label: "Perfil", path: "/perfil" },
   ];
@@ -62,6 +62,15 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
+              
+              if (item.isCart) {
+                return (
+                  <div key="cart" className="flex flex-col items-center justify-center flex-1 h-full gap-1">
+                    <CartSheet />
+                    <span className="text-[10px] font-medium text-muted-foreground">Carrinho</span>
+                  </div>
+                );
+              }
               
               return (
                 <Link
