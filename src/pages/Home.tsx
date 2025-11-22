@@ -23,18 +23,11 @@ interface Product {
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadFeaturedProducts();
-    checkUser();
   }, []);
-
-  const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
-  };
 
   const loadFeaturedProducts = async () => {
     try {
@@ -111,30 +104,6 @@ const Home = () => {
           </Carousel>
         </section>
 
-        {/* Quick Actions - Login/Signup */}
-        {!user && (
-          <section className="px-4 pb-6">
-            <Card className="bg-gradient-to-br from-primary/10 to-accent/10">
-              <CardContent className="p-6 text-center space-y-4">
-                <div className="flex justify-center">
-                  <Sparkles className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="font-semibold text-lg">Bem-vindo à AppleHub!</h3>
-                <p className="text-sm text-muted-foreground">
-                  Faça login ou crie sua conta para aproveitar todas as vantagens
-                </p>
-                <div className="flex gap-2">
-                  <Link to="/auth" className="flex-1">
-                    <Button className="w-full" size="lg">Entrar</Button>
-                  </Link>
-                  <Link to="/auth" className="flex-1">
-                    <Button variant="outline" className="w-full" size="lg">Criar conta</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-        )}
 
         {/* Categories */}
         <section className="px-4 pb-6">
