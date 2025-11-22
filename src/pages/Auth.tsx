@@ -48,8 +48,32 @@ const Auth = () => {
   });
   const [loadingCep, setLoadingCep] = useState(false);
 
+  const formatCep = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 5) return numbers;
+    return `${numbers.slice(0, 5)}-${numbers.slice(5, 8)}`;
+  };
+
+  const formatTelefone = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 2) return numbers;
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  const formatCpf = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
+    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
+    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
+  };
+
   const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const cep = e.target.value.replace(/\D/g, "");
+    const formatted = formatCep(e.target.value);
+    e.target.value = formatted;
+    
+    const cep = formatted.replace(/\D/g, "");
     
     if (cep.length === 8) {
       setLoadingCep(true);
@@ -252,6 +276,10 @@ const Auth = () => {
                       name="cpf"
                       placeholder="000.000.000-00"
                       required
+                      maxLength={14}
+                      onChange={(e) => {
+                        e.target.value = formatCpf(e.target.value);
+                      }}
                       className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                     />
                   </div>
@@ -353,6 +381,10 @@ const Auth = () => {
                         name="cpf"
                         placeholder="000.000.000-00"
                         required
+                        maxLength={14}
+                        onChange={(e) => {
+                          e.target.value = formatCpf(e.target.value);
+                        }}
                         className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                       />
                     </div>
@@ -363,6 +395,10 @@ const Auth = () => {
                         name="telefone"
                         placeholder="(00) 00000-0000"
                         required
+                        maxLength={15}
+                        onChange={(e) => {
+                          e.target.value = formatTelefone(e.target.value);
+                        }}
                         className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                       />
                     </div>
@@ -385,7 +421,8 @@ const Auth = () => {
                       id="cep" 
                       name="cep" 
                       placeholder="00000-000" 
-                      required 
+                      required
+                      maxLength={9}
                       onChange={handleCepChange}
                       className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                     />
