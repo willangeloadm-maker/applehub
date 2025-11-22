@@ -172,6 +172,34 @@ export const useCart = () => {
 
   useEffect(() => {
     fetchCart();
+    
+    // Atualizar carrinho em tempo real
+    const setupRealtimeSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const channel = supabase
+        .channel('cart-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'cart_items',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            fetchCart();
+          }
+        )
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+    
+    setupRealtimeSubscription();
   }, []);
 
   return {
