@@ -35,8 +35,8 @@ const AppLayout = ({ children }: AppLayoutProps) => {
       <div className="flex min-h-screen w-full max-w-full overflow-x-hidden flex-col">
         {/* Header com Menu */}
         <header className="sticky top-0 z-40 flex h-14 w-full items-center border-b border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-3 sm:px-4">
-          <SidebarTrigger className="-ml-1 sm:-ml-2 text-foreground shrink-0" />
-          <div className="flex-1 text-center min-w-0 px-2">
+          <SidebarTrigger className="-ml-1 sm:-ml-2 text-foreground shrink-0 lg:hidden" />
+          <div className="flex-1 text-center lg:text-left min-w-0 px-2">
             <Link to="/" className="inline-flex items-center gap-1.5 sm:gap-2">
               <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#ff6b35] to-[#ff4757] shrink-0">
                 <Apple className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" fill="currentColor" />
@@ -52,9 +52,11 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="flex flex-1 w-full max-w-full">
           <AppSidebar />
           
-          {/* Main Content */}
-          <main className="flex-1 w-full max-w-full pb-20 lg:pb-0 overflow-x-hidden">
-            {children}
+          {/* Main Content - Centralizado no desktop */}
+          <main className="flex-1 w-full max-w-full pb-20 lg:pb-0 overflow-x-hidden lg:flex lg:justify-center">
+            <div className="w-full lg:max-w-5xl">
+              {children}
+            </div>
           </main>
         </div>
 
