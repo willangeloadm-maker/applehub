@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import iphone17Banner from "@/assets/iphone-17-pro-max-banner.jpg";
+import iphone17Orange from "@/assets/iphone-17-orange.png";
 
 interface Product {
   id: string;
@@ -64,9 +65,10 @@ const Home = () => {
     {
       title: "iPhone 17 Pro Max",
       subtitle: "Lançamento! Preço imperdível e parcele em até 24x*",
-      gradient: "from-[#1e3a52] via-[#2d4a5f] to-[#3d5a6f]",
+      gradient: "from-orange-600 via-orange-500 to-amber-600",
       footnote: "*Sujeito a análise de crédito",
-      image: iphone17Banner
+      image: iphone17Orange,
+      highlight: true
     },
     {
       title: "Parcele em 24x",
@@ -89,21 +91,34 @@ const Home = () => {
             <CarouselContent>
               {banners.map((banner, index) => (
                 <CarouselItem key={index}>
-                  <Card className="border-0 shadow-lg overflow-hidden">
-                    <CardContent className={`flex aspect-[2/1] items-center justify-center p-8 bg-gradient-to-br ${banner.gradient} text-white relative`}>
+                  <Card className="border-0 shadow-xl overflow-hidden">
+                    <CardContent className={`flex ${(banner as any).highlight ? 'aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[2/1]'} items-center justify-center p-8 lg:p-12 bg-gradient-to-br ${banner.gradient} text-white relative`}>
                       {(banner as any).image && (
                         <div 
-                          className="absolute inset-0 bg-cover bg-center opacity-40"
-                          style={{ backgroundImage: `url(${(banner as any).image})` }}
+                          className="absolute inset-0 bg-cover bg-center"
+                          style={{ 
+                            backgroundImage: `url(${(banner as any).image})`,
+                            opacity: (banner as any).highlight ? '0.85' : '0.40'
+                          }}
                         />
                       )}
-                      <div className="text-center space-y-2 relative z-10">
-                        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl drop-shadow-lg">
+                      <div className={`${(banner as any).highlight ? 'text-left max-w-xl' : 'text-center'} space-y-3 lg:space-y-4 relative z-10`}>
+                        <Sparkles className={`${(banner as any).highlight ? 'h-8 w-8 lg:h-10 lg:w-10 mb-2' : 'hidden'} animate-pulse`} />
+                        <h2 className={`${(banner as any).highlight ? 'text-4xl lg:text-6xl' : 'text-2xl sm:text-3xl'} font-bold tracking-tight drop-shadow-2xl`}>
                           {banner.title}
                         </h2>
-                        <p className="text-sm opacity-90 sm:text-base drop-shadow-md">{banner.subtitle}</p>
+                        <p className={`${(banner as any).highlight ? 'text-base lg:text-xl' : 'text-sm sm:text-base'} opacity-95 drop-shadow-lg`}>
+                          {banner.subtitle}
+                        </p>
                         {(banner as any).footnote && (
-                          <p className="text-xs opacity-75 italic drop-shadow-md">{(banner as any).footnote}</p>
+                          <p className="text-xs lg:text-sm opacity-80 italic drop-shadow-md">{(banner as any).footnote}</p>
+                        )}
+                        {(banner as any).highlight && (
+                          <Link to="/produtos">
+                            <Button size="lg" className="mt-4 bg-white text-orange-600 hover:bg-gray-100 font-bold shadow-lg">
+                              Ver agora
+                            </Button>
+                          </Link>
                         )}
                       </div>
                     </CardContent>
