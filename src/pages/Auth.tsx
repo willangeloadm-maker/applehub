@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,48 @@ const Auth = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  const [addressData, setAddressData] = useState({
+    rua: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+  });
+  const [loadingCep, setLoadingCep] = useState(false);
+
+  const handleCepChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cep = e.target.value.replace(/\D/g, "");
+    
+    if (cep.length === 8) {
+      setLoadingCep(true);
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await response.json();
+        
+        if (!data.erro) {
+          setAddressData({
+            rua: data.logradouro,
+            bairro: data.bairro,
+            cidade: data.localidade,
+            estado: data.uf,
+          });
+        } else {
+          toast({
+            title: "CEP não encontrado",
+            description: "Verifique o CEP digitado",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Erro ao buscar CEP",
+          description: "Tente novamente mais tarde",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingCep(false);
+      }
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -344,6 +386,7 @@ const Auth = () => {
                       name="cep" 
                       placeholder="00000-000" 
                       required 
+                      onChange={handleCepChange}
                       className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                     />
                   </div>
@@ -353,8 +396,11 @@ const Auth = () => {
                     <Input 
                       id="rua" 
                       name="rua" 
+                      value={addressData.rua}
+                      onChange={(e) => setAddressData({...addressData, rua: e.target.value})}
                       required 
-                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                      disabled={loadingCep}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 disabled:opacity-50"
                     />
                   </div>
 
@@ -383,8 +429,11 @@ const Auth = () => {
                     <Input 
                       id="bairro" 
                       name="bairro" 
+                      value={addressData.bairro}
+                      onChange={(e) => setAddressData({...addressData, bairro: e.target.value})}
                       required 
-                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                      disabled={loadingCep}
+                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 disabled:opacity-50"
                     />
                   </div>
 
@@ -394,8 +443,11 @@ const Auth = () => {
                       <Input 
                         id="cidade" 
                         name="cidade" 
+                        value={addressData.cidade}
+                        onChange={(e) => setAddressData({...addressData, cidade: e.target.value})}
                         required 
-                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                        disabled={loadingCep}
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 disabled:opacity-50"
                       />
                     </div>
                     <div className="space-y-1.5 sm:space-y-2">
@@ -405,8 +457,11 @@ const Auth = () => {
                         name="estado"
                         placeholder="SP"
                         maxLength={2}
+                        value={addressData.estado}
+                        onChange={(e) => setAddressData({...addressData, estado: e.target.value})}
                         required
-                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
+                        disabled={loadingCep}
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 disabled:opacity-50"
                       />
                     </div>
                   </div>
