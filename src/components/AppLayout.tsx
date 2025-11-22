@@ -32,26 +32,28 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full flex-col">
+      <div className="flex min-h-screen w-full max-w-full overflow-x-hidden flex-col">
         {/* Header com Menu */}
-        <header className="sticky top-0 z-40 flex h-14 items-center border-b border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-4">
-          <SidebarTrigger className="-ml-2 text-foreground" />
-          <div className="flex-1 text-center">
-            <Link to="/" className="inline-flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#ff6b35] to-[#ff4757]">
-                <Apple className="h-4 w-4 text-white" fill="currentColor" />
+        <header className="sticky top-0 z-40 flex h-14 w-full items-center border-b border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-3 sm:px-4">
+          <SidebarTrigger className="-ml-1 sm:-ml-2 text-foreground shrink-0" />
+          <div className="flex-1 text-center min-w-0 px-2">
+            <Link to="/" className="inline-flex items-center gap-1.5 sm:gap-2">
+              <div className="flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#ff6b35] to-[#ff4757] shrink-0">
+                <Apple className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" fill="currentColor" />
               </div>
-              <span className="text-lg font-bold text-foreground">AppleHub</span>
+              <span className="text-base sm:text-lg font-bold text-foreground truncate">AppleHub</span>
             </Link>
           </div>
-          <CartSheet />
+          <div className="shrink-0">
+            <CartSheet />
+          </div>
         </header>
 
-        <div className="flex flex-1 w-full">
+        <div className="flex flex-1 w-full max-w-full">
           <AppSidebar />
           
           {/* Main Content */}
-          <main className="flex-1 pb-20 lg:pb-0">
+          <main className="flex-1 w-full max-w-full pb-20 lg:pb-0 overflow-x-hidden">
             {children}
           </main>
         </div>
