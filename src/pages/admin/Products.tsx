@@ -167,14 +167,23 @@ export default function AdminProducts() {
   };
 
   const openEditDialog = async (product: Product) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('products')
       .select('*')
       .eq('id', product.id)
       .single();
 
+    if (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar dados do produto",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (data) {
-      setEditingProduct(product);
+      setEditingProduct(data);
       setFormData({
         nome: data.nome,
         descricao: data.descricao,

@@ -113,6 +113,20 @@ export default function AdminDashboard() {
       badge: stats.pendingOrders
     },
     {
+      title: "Usuários",
+      description: "Gerenciar clientes",
+      icon: Users,
+      path: "/admin/usuarios",
+      gradient: "from-green-500 to-emerald-500"
+    },
+    {
+      title: "Transações",
+      description: "Ver pagamentos",
+      icon: DollarSign,
+      path: "/admin/transacoes",
+      gradient: "from-blue-500 to-cyan-500"
+    },
+    {
       title: "Configurações",
       description: "Ajustar parcelamento",
       icon: Settings,

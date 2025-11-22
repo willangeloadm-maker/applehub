@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_verifications: {
+        Row: {
+          created_at: string | null
+          documento_frente: string | null
+          documento_verso: string | null
+          id: string
+          selfie: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+          verificado_em: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          documento_frente?: string | null
+          documento_verso?: string | null
+          id?: string
+          selfie?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+          verificado_em?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          documento_frente?: string | null
+          documento_verso?: string | null
+          id?: string
+          selfie?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          verificado_em?: string | null
+        }
+        Relationships: []
+      }
       admin_settings: {
         Row: {
           created_at: string | null
@@ -96,6 +132,50 @@ export type Database = {
           slug?: string
         }
         Relationships: []
+      }
+      credit_analyses: {
+        Row: {
+          created_at: string | null
+          id: string
+          order_id: string | null
+          percentual_aprovado: number
+          status: string
+          updated_at: string | null
+          user_id: string
+          valor_aprovado: number
+          valor_solicitado: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          order_id?: string | null
+          percentual_aprovado: number
+          status?: string
+          updated_at?: string | null
+          user_id: string
+          valor_aprovado: number
+          valor_solicitado: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          order_id?: string | null
+          percentual_aprovado?: number
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          valor_aprovado?: number
+          valor_solicitado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_analyses_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       favorites: {
         Row: {
@@ -405,6 +485,68 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      transactions: {
+        Row: {
+          created_at: string | null
+          data_pagamento: string | null
+          data_vencimento: string | null
+          id: string
+          metodo_pagamento: string | null
+          order_id: string | null
+          parcela_numero: number | null
+          pix_copia_cola: string | null
+          pix_qr_code: string | null
+          status: string
+          tipo: string
+          total_parcelas: number | null
+          updated_at: string | null
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          id?: string
+          metodo_pagamento?: string | null
+          order_id?: string | null
+          parcela_numero?: number | null
+          pix_copia_cola?: string | null
+          pix_qr_code?: string | null
+          status?: string
+          tipo: string
+          total_parcelas?: number | null
+          updated_at?: string | null
+          user_id: string
+          valor: number
+        }
+        Update: {
+          created_at?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          id?: string
+          metodo_pagamento?: string | null
+          order_id?: string | null
+          parcela_numero?: number | null
+          pix_copia_cola?: string | null
+          pix_qr_code?: string | null
+          status?: string
+          tipo?: string
+          total_parcelas?: number | null
+          updated_at?: string | null
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
