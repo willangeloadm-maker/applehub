@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Upload, Camera, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import CameraCapture from '@/components/CameraCapture';
+import { formatCPF, formatPhone, formatCurrency, unformatCurrency, formatDate, validateCPF, validatePhone } from '@/lib/formatters';
 
 export default function AccountVerification() {
   const navigate = useNavigate();
@@ -19,8 +21,11 @@ export default function AccountVerification() {
   const [formData, setFormData] = useState({
     nome_completo: '',
     cpf: '',
-    telefone: '',
     data_nascimento: '',
+    telefone: '',
+    nome_mae: '',
+    profissao: '',
+    patrimonio: '',
     renda_mensal: ''
   });
   const [kycData, setKycData] = useState({
@@ -240,43 +245,108 @@ export default function AccountVerification() {
                   <Input
                     value={formData.nome_completo}
                     onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
+                    placeholder="Nome completo"
                     required
                   />
                 </div>
+
                 <div>
-                  <Label>CPF</Label>
+                  <Label className="flex items-center gap-2">
+                    CPF
+                    {formData.cpf && (
+                      validateCPF(formData.cpf) ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-500" />
+                      )
+                    )}
+                  </Label>
                   <Input
                     value={formData.cpf}
-                    onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, cpf: formatCPF(e.target.value) })}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
                     required
                   />
                 </div>
-                <div>
-                  <Label>Telefone</Label>
-                  <Input
-                    value={formData.telefone}
-                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                    required
-                  />
-                </div>
+
                 <div>
                   <Label>Data de Nascimento</Label>
                   <Input
-                    type="date"
                     value={formData.data_nascimento}
-                    onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, data_nascimento: formatDate(e.target.value) })}
+                    placeholder="DD/MM/AAAA"
+                    maxLength={10}
                     required
                   />
                 </div>
+
+                <div>
+                  <Label className="flex items-center gap-2">
+                    Telefone
+                    {formData.telefone && (
+                      validatePhone(formData.telefone) ? (
+                        <CheckCircle className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-500" />
+                      )
+                    )}
+                  </Label>
+                  <Input
+                    value={formData.telefone}
+                    onChange={(e) => setFormData({ ...formData, telefone: formatPhone(e.target.value) })}
+                    placeholder="(00) 00000-0000"
+                    maxLength={15}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label>Nome da Mãe</Label>
+                  <Input
+                    value={formData.nome_mae}
+                    onChange={(e) => setFormData({ ...formData, nome_mae: e.target.value })}
+                    placeholder="Nome completo da mãe"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label>Profissão</Label>
+                  <Input
+                    value={formData.profissao}
+                    onChange={(e) => setFormData({ ...formData, profissao: e.target.value })}
+                    placeholder="Sua profissão"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label>Patrimônio</Label>
+                  <Input
+                    value={formData.patrimonio}
+                    onChange={(e) => {
+                      const formatted = formatCurrency(e.target.value);
+                      setFormData({ ...formData, patrimonio: formatted });
+                    }}
+                    placeholder="R$ 0,00"
+                    required
+                  />
+                </div>
+
                 <div>
                   <Label>Renda Mensal</Label>
                   <Input
-                    type="number"
                     value={formData.renda_mensal}
-                    onChange={(e) => setFormData({ ...formData, renda_mensal: e.target.value })}
+                    onChange={(e) => {
+                      const formatted = formatCurrency(e.target.value);
+                      setFormData({ ...formData, renda_mensal: formatted });
+                    }}
+                    placeholder="R$ 0,00"
                     required
                   />
                 </div>
+
                 <Button type="submit" className="w-full">
                   Continuar
                 </Button>
@@ -303,55 +373,41 @@ export default function AccountVerification() {
             <CardContent>
               <form onSubmit={handleKycSubmit} className="space-y-6">
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Para sua segurança, precisamos verificar sua identidade. Envie fotos dos documentos solicitados.
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Para sua segurança, precisamos verificar sua identidade. Use a câmera para fotografar seus documentos.
                   </p>
 
-                  <div className="border-2 border-dashed border-border rounded-lg p-6">
-                    <Label className="flex items-center gap-2 mb-2">
-                      <Upload className="w-4 h-4" />
-                      Documento (Frente)
-                    </Label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setKycData({ ...kycData, documento_frente: e.target.files?.[0] || null })}
-                      required
-                    />
-                  </div>
+                  <CameraCapture
+                    label="Documento (Frente)"
+                    guideType="document"
+                    onCapture={(file) => setKycData({ ...kycData, documento_frente: file })}
+                    captured={kycData.documento_frente}
+                  />
 
-                  <div className="border-2 border-dashed border-border rounded-lg p-6">
-                    <Label className="flex items-center gap-2 mb-2">
-                      <Upload className="w-4 h-4" />
-                      Documento (Verso)
-                    </Label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setKycData({ ...kycData, documento_verso: e.target.files?.[0] || null })}
-                      required
-                    />
-                  </div>
+                  <CameraCapture
+                    label="Documento (Verso)"
+                    guideType="document"
+                    onCapture={(file) => setKycData({ ...kycData, documento_verso: file })}
+                    captured={kycData.documento_verso}
+                  />
 
-                  <div className="border-2 border-dashed border-border rounded-lg p-6">
-                    <Label className="flex items-center gap-2 mb-2">
-                      <Camera className="w-4 h-4" />
-                      Selfie com Documento
-                    </Label>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      capture="user"
-                      onChange={(e) => setKycData({ ...kycData, selfie: e.target.files?.[0] || null })}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Tire uma selfie segurando seu documento ao lado do rosto
-                    </p>
-                  </div>
+                  <CameraCapture
+                    label="Selfie com Documento"
+                    guideType="selfie"
+                    onCapture={(file) => setKycData({ ...kycData, selfie: file })}
+                    captured={kycData.selfie}
+                  />
+
+                  <p className="text-xs text-muted-foreground text-center bg-muted/50 p-3 rounded-lg">
+                    💡 Dica: Certifique-se de estar em um ambiente bem iluminado e que os documentos estejam legíveis
+                  </p>
                 </div>
 
-                <Button type="submit" className="w-full">
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={!kycData.documento_frente || !kycData.documento_verso || !kycData.selfie}
+                >
                   Enviar Documentos
                 </Button>
               </form>
