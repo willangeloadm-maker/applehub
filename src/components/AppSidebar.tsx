@@ -24,6 +24,10 @@ const mainItems = [
   { title: "Perfil", url: "/perfil", icon: User },
 ];
 
+const adminMainItems = [
+  { title: "Loja", url: "/", icon: Home },
+];
+
 const secondaryItems = [
   { title: "Configurações", url: "/configuracoes", icon: Settings },
   { title: "Ajuda", url: "/ajuda", icon: HelpCircle },
@@ -45,22 +49,11 @@ export function AppSidebar() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    checkAdminStatus();
-  }, []);
-
-  const checkAdminStatus = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .single();
-      
-      setIsAdmin(!!data);
-    }
-  };
+    // Verificar se está na área admin pelo caminho
+    const isAdminArea = location.pathname.startsWith('/admin');
+    const isAdminAuth = localStorage.getItem("admin_authenticated") === "true";
+    setIsAdmin(isAdminArea && isAdminAuth);
+  }, [location.pathname]);
 
   const currentPath = location.pathname;
   const isActive = (path: string) => {
@@ -69,7 +62,7 @@ export function AppSidebar() {
     return false;
   };
 
-  const isAdminPage = currentPath.startsWith('/admin');
+  const isAdminPage = currentPath.startsWith('/admin') && currentPath !== '/admin/login';
 
   const handleLogout = async () => {
     try {
@@ -86,6 +79,15 @@ export function AppSidebar() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem("admin_authenticated");
+    toast({
+      title: "Sessão encerrada",
+      description: "Você saiu do painel administrativo",
+    });
+    navigate("/admin/login");
   };
 
   return (
@@ -121,20 +123,22 @@ export function AppSidebar() {
               <SidebarGroupLabel>Voltar</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
+                  {adminMainItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          className="hover:bg-accent"
+                          activeClassName="bg-accent text-primary font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
                   <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to="/"
-                        className="hover:bg-accent"
-                        activeClassName="bg-accent text-primary font-medium"
-                      >
-                        <Home className="h-4 w-4" />
-                        {!collapsed && <span>Loja</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton onClick={handleLogout}>
+                    <SidebarMenuButton onClick={handleAdminLogout}>
                       <LogOut className="h-4 w-4" />
                       {!collapsed && <span>Sair</span>}
                     </SidebarMenuButton>
@@ -164,21 +168,6 @@ export function AppSidebar() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
-                  
-                  {isAdmin && (
-                    <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <NavLink
-                          to="/admin"
-                          className="hover:bg-accent"
-                          activeClassName="bg-accent text-primary font-medium"
-                        >
-                          <LayoutDashboard className="h-4 w-4" />
-                          {!collapsed && <span>Administração</span>}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  )}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

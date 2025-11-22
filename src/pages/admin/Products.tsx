@@ -58,34 +58,8 @@ export default function AdminProducts() {
   });
 
   useEffect(() => {
-    checkAdminAndLoadProducts();
+    loadProducts();
   }, []);
-
-  const checkAdminAndLoadProducts = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .single();
-
-      if (!roleData) {
-        navigate('/');
-        return;
-      }
-
-      loadProducts();
-    } catch (error) {
-      console.error('Erro ao verificar permissões:', error);
-    }
-  };
 
   const loadProducts = async () => {
     try {

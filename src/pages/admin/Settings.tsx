@@ -19,34 +19,8 @@ export default function AdminSettings() {
   });
 
   useEffect(() => {
-    checkAdminAndLoadSettings();
+    loadSettings();
   }, []);
-
-  const checkAdminAndLoadSettings = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .single();
-
-      if (!roleData) {
-        navigate('/');
-        return;
-      }
-
-      loadSettings();
-    } catch (error) {
-      console.error('Erro ao verificar permissões:', error);
-    }
-  };
 
   const loadSettings = async () => {
     try {

@@ -51,34 +51,8 @@ export default function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   useEffect(() => {
-    checkAdminAndLoadOrders();
+    loadOrders();
   }, []);
-
-  const checkAdminAndLoadOrders = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .single();
-
-      if (!roleData) {
-        navigate('/');
-        return;
-      }
-
-      loadOrders();
-    } catch (error) {
-      console.error('Erro ao verificar permissões:', error);
-    }
-  };
 
   const loadOrders = async () => {
     try {
