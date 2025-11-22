@@ -20,29 +20,11 @@ export default function AdminDashboard() {
   const [topProducts, setTopProducts] = useState<any[]>([]);
 
   useEffect(() => {
-    checkAdminAndLoadStats();
+    loadStats();
   }, []);
 
-  const checkAdminAndLoadStats = async () => {
+  const loadStats = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .single();
-
-      if (!roleData) {
-        navigate('/');
-        return;
-      }
-
       // Carregar estatísticas
       const [products, orders, users, pending, allOrders] = await Promise.all([
         supabase.from('products').select('id', { count: 'exact', head: true }),
