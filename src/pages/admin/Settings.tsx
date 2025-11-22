@@ -120,24 +120,18 @@ export default function AdminSettings() {
     e.preventDefault();
 
     try {
-      const { data: existing } = await supabase
-        .from('payment_settings')
-        .select('id')
-        .single();
+      const { data, error } = await supabase.functions.invoke('save-payment-settings', {
+        body: {
+          recipient_id: paymentSettings.recipient_id,
+          secret_key: paymentSettings.secret_key,
+          admin_password: 'Ar102030'
+        }
+      });
 
-      if (existing) {
-        const { error } = await supabase
-          .from('payment_settings')
-          .update(paymentSettings)
-          .eq('id', existing.id);
+      if (error) throw error;
 
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('payment_settings')
-          .insert([paymentSettings]);
-
-        if (error) throw error;
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       toast({ description: "Configurações da API salvas com sucesso" });
