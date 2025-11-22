@@ -18,7 +18,7 @@ type Profile = Tables<"profiles">;
 const Checkout = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { cartItems, getTotal, clearCart } = useCart();
+  const { cartItems, getTotal, clearCart, loading: cartLoading } = useCart();
   
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -31,15 +31,23 @@ const Checkout = () => {
 
   useEffect(() => {
     loadProfile();
-    if (cartItems.length === 0) {
-      toast({
-        title: "Carrinho vazio",
-        description: "Adicione produtos ao carrinho antes de fazer o checkout",
-        variant: "destructive",
-      });
-      navigate("/produtos");
+  }, []);
+
+  useEffect(() => {
+    // Só redireciona se o carrinho realmente estiver vazio E não estiver carregando
+    if (cartItems.length === 0 && !cartLoading) {
+      const timer = setTimeout(() => {
+        toast({
+          title: "Carrinho vazio",
+          description: "Adicione produtos ao carrinho antes de fazer o checkout",
+          variant: "destructive",
+        });
+        navigate("/products");
+      }, 500);
+      
+      return () => clearTimeout(timer);
     }
-  }, [cartItems]);
+  }, [cartItems, cartLoading]);
 
   const loadProfile = async () => {
     try {

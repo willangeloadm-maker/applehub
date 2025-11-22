@@ -96,15 +96,26 @@ export const CartSheet = () => {
                 ))}
               </div>
 
-              <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-3 pt-4 border-t mt-4 bg-muted/30 -mx-6 px-6 py-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold">Total</span>
+                  <span className="text-base font-medium text-muted-foreground">Subtotal</span>
+                  <span className="text-lg font-semibold">
+                    R$ {getTotal().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <Separator />
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold">Total</span>
                   <span className="text-2xl font-bold text-primary">
                     R$ {getTotal().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
-                <Button className="w-full" size="lg" onClick={handleCheckout}>
-                  Finalizar Compra
+                <Button 
+                  className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white font-bold shadow-lg" 
+                  size="lg" 
+                  onClick={handleCheckout}
+                >
+                  Continuar para Pagamento
                 </Button>
               </div>
             </>
