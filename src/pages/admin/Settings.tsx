@@ -142,9 +142,10 @@ export default function AdminSettings() {
 
       toast({ description: "Configurações da API salvas com sucesso" });
     } catch (error) {
+      console.error('Erro ao salvar configurações da API:', error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar configurações da API",
+        description: error instanceof Error ? error.message : "Erro ao salvar configurações da API",
         variant: "destructive"
       });
     }
@@ -182,7 +183,7 @@ export default function AdminSettings() {
                   <div>
                     <Label>Secret Key</Label>
                     <Input
-                      type="password"
+                      type="text"
                       value={paymentSettings.secret_key}
                       onChange={(e) => setPaymentSettings({ ...paymentSettings, secret_key: e.target.value })}
                       required
