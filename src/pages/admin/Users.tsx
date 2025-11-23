@@ -75,17 +75,26 @@ export default function AdminUsers() {
 
   // Função para obter URL pública do storage
   const getStorageUrl = (path: string | null) => {
-    if (!path) return null;
+    if (!path) {
+      console.log('❌ Path vazio para documento');
+      return null;
+    }
+    
+    console.log('📸 Gerando URL para:', path);
     
     const { data } = supabase.storage
       .from('verification-documents')
       .getPublicUrl(path);
+    
+    console.log('✅ URL gerada:', data.publicUrl);
     
     return data.publicUrl;
   };
 
   const viewUserDetails = async (user: User) => {
     try {
+      console.log('🔍 Buscando detalhes do usuário:', user.id);
+      
       const [profileData, ordersData, verificationsData, creditAnalyses, transactions] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('orders').select('*').eq('user_id', user.id),
@@ -93,6 +102,8 @@ export default function AdminUsers() {
         supabase.from('credit_analyses').select('*').eq('user_id', user.id),
         supabase.from('transactions').select('*').eq('user_id', user.id)
       ]);
+
+      console.log('📄 Dados de verificação:', verificationsData.data);
 
       setSelectedUser(user);
       setUserDetails({
@@ -103,6 +114,7 @@ export default function AdminUsers() {
         transactions: transactions.data || []
       });
     } catch (error) {
+      console.error('❌ Erro ao carregar detalhes:', error);
       toast({
         title: "Erro",
         description: "Erro ao carregar detalhes do usuário",

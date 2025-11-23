@@ -260,37 +260,90 @@ export const useCart = () => {
   useEffect(() => {
     fetchCart();
     
-    // Atualizar carrinho em tempo real (apenas para sync de outros dispositivos)
+    // Atualizar carrinho em tempo real (sync eficiente)
     const setupRealtimeSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) return null;
       
       const channel = supabase
         .channel('cart-changes')
         .on(
           'postgres_changes',
           {
-            event: '*',
+            event: 'INSERT',
+            schema: 'public',
+            table: 'cart_items',
+            filter: `user_id=eq.${user.id}`
+          },
+          async (payload) => {
+            console.log('Novo item adicionado:', payload.new);
+            // Buscar dados completos do produto para o novo item
+            const { data: newItem } = await supabase
+              .from("cart_items")
+              .select(`
+                id,
+                user_id,
+                product_id,
+                quantidade,
+                created_at,
+                updated_at,
+                products (*)
+              `)
+              .eq("id", payload.new.id)
+              .single();
+            
+            if (newItem) {
+              setCartItems(prev => [...prev, newItem as CartItem]);
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
             schema: 'public',
             table: 'cart_items',
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            // Apenas atualiza se for um evento externo (outro dispositivo/aba)
-            // Ignora updates otimistas locais
-            if (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE') {
-              setTimeout(() => fetchCart(), 100);
-            }
+            console.log('Item atualizado:', payload.new);
+            setCartItems(prev => 
+              prev.map(item => 
+                item.id === payload.new.id 
+                  ? { ...item, quantidade: payload.new.quantidade }
+                  : item
+              )
+            );
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'cart_items',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Item removido:', payload.old);
+            setCartItems(prev => prev.filter(item => item.id !== payload.old.id));
           }
         )
         .subscribe();
       
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      return channel;
     };
     
-    setupRealtimeSubscription();
+    let channelCleanup: any = null;
+    setupRealtimeSubscription().then(channel => {
+      channelCleanup = channel;
+    });
+    
+    return () => {
+      if (channelCleanup) {
+        supabase.removeChannel(channelCleanup);
+      }
+    };
   }, []);
 
   return {
