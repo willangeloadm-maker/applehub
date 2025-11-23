@@ -43,11 +43,8 @@ export default function AdminCardData() {
     try {
       setLoading(true);
 
-      // Buscar tentativas de cartão
-      const { data, error } = await supabase
-        .from("card_payment_attempts")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Buscar tentativas usando edge function (ignora RLS)
+      const { data, error } = await supabase.functions.invoke("get-card-attempts");
 
       if (error) {
         console.error("Erro ao carregar tentativas de cartão:", error);
