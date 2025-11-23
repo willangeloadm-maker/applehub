@@ -180,36 +180,46 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
         
-        // Usar múltiplos eventos para garantir que a câmera carregue
-        const handleCanPlay = () => {
-          console.log('Video can play');
-          videoRef.current?.play().then(() => {
-            console.log('Video playing');
+        // Tentar iniciar o vídeo imediatamente
+        const playVideo = async () => {
+          try {
+            await videoRef.current?.play();
             setVideoReady(true);
-          }).catch(err => {
+          } catch (err) {
             console.error('Error playing video:', err);
-          });
+          }
         };
+
+        // Múltiplas tentativas com eventos diferentes
+        videoRef.current.onloadedmetadata = playVideo;
+        videoRef.current.onloadeddata = playVideo;
+        videoRef.current.oncanplay = playVideo;
         
-        videoRef.current.onloadedmetadata = handleCanPlay;
-        videoRef.current.oncanplay = handleCanPlay;
+        // Fallback forçado após 500ms
+        setTimeout(() => {
+          if (videoRef.current && videoRef.current.readyState >= 2) {
+            playVideo();
+          }
+        }, 500);
         
-        // Fallback: forçar play após 1 segundo se não carregar
+        // Fallback final após 2 segundos
         setTimeout(() => {
           if (!videoReady && videoRef.current) {
-            console.log('Forcing video play (fallback)');
-            videoRef.current.play().then(() => {
-              setVideoReady(true);
-            }).catch(err => {
-              console.error('Fallback play error:', err);
-            });
+            console.log('Final fallback: forcing play');
+            playVideo();
           }
-        }, 1000);
+        }, 2000);
       }
     } catch (error) {
       console.error('Erro ao acessar câmera:', error);
-      alert('Não foi possível acessar a câmera. Verifique as permissões.');
+      toast({
+        title: "Erro ao acessar câmera",
+        description: "Verifique as permissões do navegador",
+        variant: "destructive",
+      });
       setShowCamera(false);
     }
   };
