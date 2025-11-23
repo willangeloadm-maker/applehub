@@ -168,16 +168,14 @@ const Auth = () => {
           throw new Error("CPF não encontrado no sistema");
         }
 
-        // Buscar o usuário pelo ID usando RPC ou função auxiliar
-        // Como não temos acesso direto ao email do auth.users pelo client,
-        // vamos tentar uma abordagem alternativa
-        const { data, error } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id });
+        // Buscar o email do usuário usando a função do banco
+        const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id }) as { data: string | null, error: any };
         
-        if (error || !data) {
+        if (emailError || !emailData) {
           throw new Error("Não foi possível encontrar o email. Use login por email.");
         }
         
-        email = data;
+        email = emailData;
       } else if (loginMethod === "telefone") {
         // Buscar profile pelo telefone para obter o user_id
         const telefone = (formData.get("identifier") as string).replace(/\D/g, "");
@@ -191,13 +189,13 @@ const Auth = () => {
           throw new Error("Telefone não encontrado no sistema");
         }
 
-        const { data, error } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id });
+        const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id }) as { data: string | null, error: any };
         
-        if (error || !data) {
+        if (emailError || !emailData) {
           throw new Error("Não foi possível encontrar o email. Use login por email.");
         }
         
-        email = data;
+        email = emailData;
       }
 
       const { error } = await supabase.auth.signInWithPassword({
