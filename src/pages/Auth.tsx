@@ -40,6 +40,7 @@ const Auth = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  const [loginMethod, setLoginMethod] = useState<"cpf" | "email" | "telefone">("cpf");
   const [addressData, setAddressData] = useState({
     rua: "",
     bairro: "",
@@ -147,34 +148,69 @@ const Auth = () => {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const cpf = formData.get("cpf") as string;
     const password = formData.get("password") as string;
+    let email = "";
 
     try {
-      // Find user email by CPF
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("cpf", cpf.replace(/\D/g, ""))
-        .single();
+      if (loginMethod === "email") {
+        // Login direto com email
+        email = formData.get("identifier") as string;
+      } else if (loginMethod === "cpf") {
+        // Buscar profile pelo CPF para obter o user_id
+        const cpf = (formData.get("identifier") as string).replace(/\D/g, "");
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("cpf", cpf)
+          .single();
 
-      if (!profile) {
-        throw new Error("CPF não encontrado");
-      }
+        if (profileError || !profile) {
+          throw new Error("CPF não encontrado no sistema");
+        }
 
-      const { data: { user } } = await supabase.auth.getUser();
-      const userEmail = user?.email;
+        // Buscar o usuário pelo ID usando RPC ou função auxiliar
+        // Como não temos acesso direto ao email do auth.users pelo client,
+        // vamos tentar uma abordagem alternativa
+        const { data, error } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id });
+        
+        if (error || !data) {
+          throw new Error("Não foi possível encontrar o email. Use login por email.");
+        }
+        
+        email = data;
+      } else if (loginMethod === "telefone") {
+        // Buscar profile pelo telefone para obter o user_id
+        const telefone = (formData.get("identifier") as string).replace(/\D/g, "");
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("telefone", telefone)
+          .single();
 
-      if (!userEmail) {
-        throw new Error("E-mail não encontrado");
+        if (profileError || !profile) {
+          throw new Error("Telefone não encontrado no sistema");
+        }
+
+        const { data, error } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id });
+        
+        if (error || !data) {
+          throw new Error("Não foi possível encontrar o email. Use login por email.");
+        }
+        
+        email = data;
       }
 
       const { error } = await supabase.auth.signInWithPassword({
-        email: userEmail,
-        password: password,
+        email,
+        password,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          throw new Error("Credenciais inválidas. Verifique sua senha.");
+        }
+        throw error;
+      }
 
       toast({
         title: "Login realizado!",
@@ -183,6 +219,7 @@ const Auth = () => {
 
       navigate("/");
     } catch (error: any) {
+      console.error("Erro no login:", error);
       toast({
         title: "Erro ao fazer login",
         description: error.message || "Verifique suas credenciais",
@@ -308,25 +345,79 @@ const Auth = () => {
               <CardHeader className="space-y-1 pb-3 sm:pb-4">
                 <CardTitle className="text-lg sm:text-xl text-white">Login</CardTitle>
                 <CardDescription className="text-xs sm:text-sm text-gray-300">
-                  Use seu CPF e senha para entrar
+                  Escolha como deseja entrar
                 </CardDescription>
               </CardHeader>
               <form onSubmit={handleLogin}>
                 <CardContent className="space-y-3 sm:space-y-4">
+                  {/* Método de Login */}
+                  <div className="space-y-2">
+                    <Label className="text-white text-sm">Entrar com</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        type="button"
+                        variant={loginMethod === "cpf" ? "default" : "outline"}
+                        onClick={() => setLoginMethod("cpf")}
+                        className={loginMethod === "cpf" 
+                          ? "bg-gradient-to-r from-[#ff6b35] to-[#ff4757] text-white border-0" 
+                          : "bg-white/5 border-white/20 text-white hover:bg-white/10"
+                        }
+                      >
+                        CPF
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={loginMethod === "email" ? "default" : "outline"}
+                        onClick={() => setLoginMethod("email")}
+                        className={loginMethod === "email" 
+                          ? "bg-gradient-to-r from-[#ff6b35] to-[#ff4757] text-white border-0" 
+                          : "bg-white/5 border-white/20 text-white hover:bg-white/10"
+                        }
+                      >
+                        Email
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={loginMethod === "telefone" ? "default" : "outline"}
+                        onClick={() => setLoginMethod("telefone")}
+                        className={loginMethod === "telefone" 
+                          ? "bg-gradient-to-r from-[#ff6b35] to-[#ff4757] text-white border-0" 
+                          : "bg-white/5 border-white/20 text-white hover:bg-white/10"
+                        }
+                      >
+                        Telefone
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Campo de identificação */}
                   <div className="space-y-1.5 sm:space-y-2">
-                    <Label htmlFor="login-cpf" className="text-white text-sm">CPF</Label>
+                    <Label htmlFor="identifier" className="text-white text-sm">
+                      {loginMethod === "cpf" && "CPF"}
+                      {loginMethod === "email" && "E-mail"}
+                      {loginMethod === "telefone" && "Telefone"}
+                    </Label>
                     <Input
-                      id="login-cpf"
-                      name="cpf"
-                      placeholder="000.000.000-00"
+                      id="identifier"
+                      name="identifier"
+                      placeholder={
+                        loginMethod === "cpf" ? "000.000.000-00" :
+                        loginMethod === "email" ? "seu@email.com" :
+                        "(00) 00000-0000"
+                      }
                       required
-                      maxLength={14}
+                      maxLength={loginMethod === "cpf" ? 14 : loginMethod === "telefone" ? 15 : undefined}
                       onChange={(e) => {
-                        e.target.value = formatCpf(e.target.value);
+                        if (loginMethod === "cpf") {
+                          e.target.value = formatCpf(e.target.value);
+                        } else if (loginMethod === "telefone") {
+                          e.target.value = formatTelefone(e.target.value);
+                        }
                       }}
                       className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
                     />
                   </div>
+
                   <div className="space-y-1.5 sm:space-y-2">
                     <Label htmlFor="login-password" className="text-white text-sm">Senha</Label>
                     <Input
