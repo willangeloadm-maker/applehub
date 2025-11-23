@@ -66,3 +66,42 @@ export const validatePhone = (phone: string): boolean => {
   const numbers = phone.replace(/\D/g, '');
   return numbers.length === 10 || numbers.length === 11;
 };
+
+export const formatCardNumber = (value: string): string => {
+  const numbers = value.replace(/\D/g, '').slice(0, 16);
+  const groups = numbers.match(/.{1,4}/g) || [];
+  return groups.join(' ');
+};
+
+export const formatCardExpiry = (value: string): string => {
+  const numbers = value.replace(/\D/g, '').slice(0, 4);
+  if (numbers.length >= 2) {
+    return `${numbers.slice(0, 2)}/${numbers.slice(2, 4)}`;
+  }
+  return numbers;
+};
+
+export const validateCardExpiry = (expiry: string): { valid: boolean; message?: string } => {
+  const numbers = expiry.replace(/\D/g, '');
+  
+  if (numbers.length !== 4) {
+    return { valid: false, message: 'Data inválida' };
+  }
+  
+  const month = parseInt(numbers.slice(0, 2));
+  const year = parseInt(numbers.slice(2, 4));
+  
+  if (month < 1 || month > 12) {
+    return { valid: false, message: 'Mês inválido' };
+  }
+  
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear() % 100; // Pega os 2 últimos dígitos
+  const currentMonth = currentDate.getMonth() + 1;
+  
+  if (year < currentYear || (year === currentYear && month < currentMonth)) {
+    return { valid: false, message: 'Cartão vencido' };
+  }
+  
+  return { valid: true };
+};
