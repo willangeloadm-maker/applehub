@@ -54,10 +54,10 @@ serve(async (req) => {
       );
     }
 
-    // Buscar dados do perfil do usuário para obter o telefone
+    // Buscar dados do perfil do usuário para obter telefone, CPF e endereço
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("telefone, cpf")
+      .select("telefone, cpf, rua, numero, cep, cidade, estado")
       .eq("id", user_id)
       .maybeSingle();
 
@@ -119,6 +119,13 @@ serve(async (req) => {
                 exp_month: parseInt(card_expiration_date.substring(0, 2)),
                 exp_year: parseInt("20" + card_expiration_date.substring(2, 4)),
                 cvv: card_cvv,
+                billing_address: {
+                  line_1: `${profile.rua}, ${profile.numero}`,
+                  zip_code: profile.cep.replace(/\D/g, ""),
+                  city: profile.cidade,
+                  state: profile.estado,
+                  country: "BR",
+                }
               },
               installments: 1,
               statement_descriptor: "APPLEHUB",
