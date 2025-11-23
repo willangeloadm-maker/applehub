@@ -1,8 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Camera, X, Check, RotateCcw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Camera, X, Check, RotateCcw, Sun, Focus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+type QualityLevel = 'good' | 'warning' | 'error';
+
+interface QualityIndicators {
+  brightness: { level: QualityLevel; value: number };
+  sharpness: { level: QualityLevel; value: number };
+}
 
 interface CameraCaptureProps {
   onCapture: (file: File) => void;
@@ -16,8 +24,10 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   const [showCamera, setShowCamera] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [videoReady, setVideoReady] = useState(false);
+  const [qualityIndicators, setQualityIndicators] = useState<QualityIndicators | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const qualityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (captured) {
@@ -32,8 +42,31 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      if (qualityCheckIntervalRef.current) {
+        clearInterval(qualityCheckIntervalRef.current);
+      }
     };
   }, [stream]);
+
+  useEffect(() => {
+    if (videoReady && showCamera) {
+      qualityCheckIntervalRef.current = setInterval(() => {
+        checkQualityRealtime();
+      }, 500);
+    } else {
+      if (qualityCheckIntervalRef.current) {
+        clearInterval(qualityCheckIntervalRef.current);
+        qualityCheckIntervalRef.current = null;
+      }
+      setQualityIndicators(null);
+    }
+
+    return () => {
+      if (qualityCheckIntervalRef.current) {
+        clearInterval(qualityCheckIntervalRef.current);
+      }
+    };
+  }, [videoReady, showCamera]);
 
   const startCamera = async () => {
     try {
@@ -70,6 +103,97 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     }
     setShowCamera(false);
     setVideoReady(false);
+  };
+
+  const checkQualityRealtime = () => {
+    if (!videoRef.current || !canvasRef.current || !videoReady) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+    // Usar um canvas menor para performance
+    const sampleWidth = 320;
+    const sampleHeight = 240;
+    canvas.width = sampleWidth;
+    canvas.height = sampleHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, sampleWidth, sampleHeight);
+    const imageData = ctx.getImageData(0, 0, sampleWidth, sampleHeight);
+    
+    const indicators = analyzeImageQuality(imageData);
+    setQualityIndicators(indicators);
+  };
+
+  const analyzeImageQuality = (imageData: ImageData): QualityIndicators => {
+    const data = imageData.data;
+    let totalBrightness = 0;
+    let pixelCount = 0;
+
+    // Calcular brilho médio
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const brightness = (r + g + b) / 3;
+      totalBrightness += brightness;
+      pixelCount++;
+    }
+
+    const avgBrightness = totalBrightness / pixelCount;
+
+    // Determinar nível de brilho
+    let brightnessLevel: QualityLevel;
+    if (avgBrightness < 50 || avgBrightness > 220) {
+      brightnessLevel = 'error';
+    } else if (avgBrightness < 80 || avgBrightness > 200) {
+      brightnessLevel = 'warning';
+    } else {
+      brightnessLevel = 'good';
+    }
+
+    // Detecção de nitidez usando Laplaciano
+    const width = imageData.width;
+    const height = imageData.height;
+    let laplacianSum = 0;
+    let laplacianCount = 0;
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        const center = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        
+        const top = (data[idx - width * 4] + data[idx - width * 4 + 1] + data[idx - width * 4 + 2]) / 3;
+        const bottom = (data[idx + width * 4] + data[idx + width * 4 + 1] + data[idx + width * 4 + 2]) / 3;
+        const left = (data[idx - 4] + data[idx - 3] + data[idx - 2]) / 3;
+        const right = (data[idx + 4] + data[idx + 5] + data[idx + 6]) / 3;
+
+        const laplacian = Math.abs(4 * center - top - bottom - left - right);
+        laplacianSum += laplacian;
+        laplacianCount++;
+      }
+    }
+
+    const sharpnessValue = laplacianSum / laplacianCount;
+
+    // Determinar nível de nitidez
+    let sharpnessLevel: QualityLevel;
+    if (sharpnessValue < 10) {
+      sharpnessLevel = 'error';
+    } else if (sharpnessValue < 20) {
+      sharpnessLevel = 'warning';
+    } else {
+      sharpnessLevel = 'good';
+    }
+
+    return {
+      brightness: { level: brightnessLevel, value: avgBrightness },
+      sharpness: { level: sharpnessLevel, value: sharpnessValue }
+    };
   };
 
   const validateImageQuality = (imageData: ImageData): { isValid: boolean; message: string } => {
@@ -276,6 +400,45 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
             className="w-full rounded-lg"
           />
           
+          {/* Indicadores de qualidade */}
+          {qualityIndicators && (
+            <div className="absolute top-4 left-4 right-4 flex gap-2 pointer-events-none z-10">
+              <Badge 
+                variant={qualityIndicators.brightness.level === 'good' ? 'default' : qualityIndicators.brightness.level === 'warning' ? 'secondary' : 'destructive'}
+                className={cn(
+                  "flex items-center gap-1.5 animate-fade-in",
+                  qualityIndicators.brightness.level === 'good' && "bg-green-600 hover:bg-green-700",
+                  qualityIndicators.brightness.level === 'warning' && "bg-yellow-600 hover:bg-yellow-700",
+                  qualityIndicators.brightness.level === 'error' && "bg-red-600 hover:bg-red-700"
+                )}
+              >
+                <Sun className="w-3 h-3" />
+                <span className="text-xs">
+                  {qualityIndicators.brightness.level === 'good' && 'Iluminação OK'}
+                  {qualityIndicators.brightness.level === 'warning' && 'Ajuste a luz'}
+                  {qualityIndicators.brightness.level === 'error' && 'Iluminação ruim'}
+                </span>
+              </Badge>
+
+              <Badge 
+                variant={qualityIndicators.sharpness.level === 'good' ? 'default' : qualityIndicators.sharpness.level === 'warning' ? 'secondary' : 'destructive'}
+                className={cn(
+                  "flex items-center gap-1.5 animate-fade-in",
+                  qualityIndicators.sharpness.level === 'good' && "bg-green-600 hover:bg-green-700",
+                  qualityIndicators.sharpness.level === 'warning' && "bg-yellow-600 hover:bg-yellow-700",
+                  qualityIndicators.sharpness.level === 'error' && "bg-red-600 hover:bg-red-700"
+                )}
+              >
+                <Focus className="w-3 h-3" />
+                <span className="text-xs">
+                  {qualityIndicators.sharpness.level === 'good' && 'Foco OK'}
+                  {qualityIndicators.sharpness.level === 'warning' && 'Estabilize'}
+                  {qualityIndicators.sharpness.level === 'error' && 'Foto desfocada'}
+                </span>
+              </Badge>
+            </div>
+          )}
+
           {/* Guia visual */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             {guideType === 'document' && (
