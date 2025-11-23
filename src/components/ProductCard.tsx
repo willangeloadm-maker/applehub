@@ -36,9 +36,15 @@ const ProductCard = ({
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (adding) return;
+    
     setAdding(true);
-    await addToCart(id, 1);
-    setAdding(false);
+    
+    // Chama addToCart sem await para não travar a UI
+    addToCart(id, 1).finally(() => {
+      setTimeout(() => setAdding(false), 500);
+    });
   };
 
   const handleToggleFavorite = async (e: React.MouseEvent) => {

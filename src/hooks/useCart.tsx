@@ -51,15 +51,37 @@ export const useCart = () => {
           description: "Você precisa estar logado para adicionar ao carrinho",
           variant: "destructive",
         });
-        return;
+        return false;
       }
 
       // Verifica se já existe no carrinho
       const existingItem = cartItems.find(item => item.product_id === productId);
 
+      // Update otimista - atualiza UI imediatamente
+      toast({
+        title: "✓ Adicionado!",
+        duration: 2000,
+      });
+
       if (existingItem) {
-        await updateQuantity(existingItem.id, existingItem.quantidade + quantidade);
+        // Update otimista da quantidade
+        setCartItems(prev => 
+          prev.map(item => 
+            item.id === existingItem.id 
+              ? { ...item, quantidade: item.quantidade + quantidade }
+              : item
+          )
+        );
+
+        // Atualiza no banco em background
+        const { error } = await supabase
+          .from("cart_items")
+          .update({ quantidade: existingItem.quantidade + quantidade })
+          .eq("id", existingItem.id);
+
+        if (error) throw error;
       } else {
+        // Inserir no banco
         const { error } = await supabase
           .from("cart_items")
           .insert({
@@ -69,20 +91,22 @@ export const useCart = () => {
           });
 
         if (error) throw error;
-
-        toast({
-          title: "Produto adicionado!",
-          description: "O produto foi adicionado ao carrinho",
-        });
-
-        await fetchCart();
+        
+        // O realtime vai atualizar automaticamente o carrinho
       }
+      
+      return true;
     } catch (error: any) {
+      // Recarregar em caso de erro
+      await fetchCart();
+      
       toast({
         title: "Erro ao adicionar",
         description: error.message,
         variant: "destructive",
       });
+      
+      return false;
     }
   };
 
@@ -93,15 +117,24 @@ export const useCart = () => {
         return;
       }
 
+      // Update otimista
+      setCartItems(prev =>
+        prev.map(item =>
+          item.id === cartItemId ? { ...item, quantidade: newQuantidade } : item
+        )
+      );
+
+      // Atualiza no banco
       const { error } = await supabase
         .from("cart_items")
         .update({ quantidade: newQuantidade })
         .eq("id", cartItemId);
 
       if (error) throw error;
-
-      await fetchCart();
     } catch (error: any) {
+      // Reverte em caso de erro
+      await fetchCart();
+      
       toast({
         title: "Erro ao atualizar",
         description: error.message,
@@ -112,20 +145,25 @@ export const useCart = () => {
 
   const removeFromCart = async (cartItemId: string) => {
     try {
+      // Update otimista
+      setCartItems(prev => prev.filter(item => item.id !== cartItemId));
+
+      toast({
+        title: "✓ Removido",
+        duration: 2000,
+      });
+
+      // Remove no banco
       const { error } = await supabase
         .from("cart_items")
         .delete()
         .eq("id", cartItemId);
 
       if (error) throw error;
-
-      toast({
-        title: "Produto removido",
-        description: "O produto foi removido do carrinho",
-      });
-
-      await fetchCart();
     } catch (error: any) {
+      // Reverte em caso de erro
+      await fetchCart();
+      
       toast({
         title: "Erro ao remover",
         description: error.message,
