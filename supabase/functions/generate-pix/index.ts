@@ -102,49 +102,72 @@ serve(async (req) => {
     console.log("📱 DDD:", ddd, "Número:", number);
 
     // Chamar API da Pagar.me para gerar PIX
+    const startTime = Date.now();
+    const requestBody = {
+      customer: {
+        name: profile.nome_completo,
+        email: emailData,
+        type: "individual",
+        document: profile.cpf.replace(/\D/g, ""),
+        document_type: "CPF",
+        phones: {
+          mobile_phone: {
+            country_code: "55",
+            area_code: ddd,
+            number: number,
+          }
+        }
+      },
+      items: [
+        {
+          code: `ITEM-${Date.now()}`,
+          amount: Math.round(amount * 100),
+          description,
+          quantity: 1,
+        },
+      ],
+      payments: [
+        {
+          payment_method: "pix",
+          pix: {
+            expires_in: 3600,
+          },
+        },
+      ],
+    };
+
     const pagarmeResponse = await fetch("https://api.pagar.me/core/v5/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Basic ${btoa(settings.secret_key + ":")}`,
       },
-      body: JSON.stringify({
-        customer: {
-          name: profile.nome_completo,
-          email: emailData,
-          type: "individual",
-          document: profile.cpf.replace(/\D/g, ""),
-          document_type: "CPF",
-          phones: {
-            mobile_phone: {
-              country_code: "55",
-              area_code: ddd,
-              number: number,
-            }
-          }
-        },
-        items: [
-          {
-            code: `ITEM-${Date.now()}`, // Código obrigatório
-            amount: Math.round(amount * 100), // Converter para centavos
-            description,
-            quantity: 1,
-          },
-        ],
-        payments: [
-          {
-            payment_method: "pix",
-            pix: {
-              expires_in: 3600, // 1 hora
-            },
-          },
-        ],
-      }),
+      body: JSON.stringify(requestBody),
     });
 
+    const duration = Date.now() - startTime;
+    const responseStatus = pagarmeResponse.status;
+    let responseBody: any = null;
+    let errorData: string | null = null;
+
     if (!pagarmeResponse.ok) {
-      const errorData = await pagarmeResponse.text();
+      errorData = await pagarmeResponse.text();
       console.error("Erro Pagar.me:", errorData);
+      
+      // Registrar log de erro
+      await supabase.from("pagarme_api_logs").insert({
+        endpoint: "/core/v5/orders",
+        method: "POST",
+        request_body: requestBody,
+        response_status: responseStatus,
+        response_body: { error: errorData },
+        error_message: `Erro ao gerar PIX: ${errorData}`,
+        user_id,
+        order_id,
+        duration_ms: duration,
+        metadata: { type: "pix_generation", description }
+      });
+
       return new Response(
         JSON.stringify({ error: "Erro ao gerar PIX", details: errorData }),
         {
@@ -155,11 +178,12 @@ serve(async (req) => {
     }
 
     const pixData = await pagarmeResponse.json();
+    responseBody = pixData;
     const qrCode = pixData.charges[0].last_transaction.qr_code;
     const qrCodeUrl = pixData.charges[0].last_transaction.qr_code_url;
 
     // Salvar transação no banco
-    const { error: transactionError } = await supabase.from("transactions").insert({
+    const { data: transactionData, error: transactionError } = await supabase.from("transactions").insert({
       user_id,
       order_id,
       tipo: "entrada",
@@ -168,12 +192,33 @@ serve(async (req) => {
       metodo_pagamento: "pix",
       pix_qr_code: qrCodeUrl,
       pix_copia_cola: qrCode,
-      data_vencimento: new Date(Date.now() + 3600000).toISOString(), // 1 hora
-    });
+      data_vencimento: new Date(Date.now() + 3600000).toISOString(),
+    }).select().single();
 
     if (transactionError) {
       console.error("Erro ao salvar transação:", transactionError);
     }
+
+    // Registrar log de sucesso
+    await supabase.from("pagarme_api_logs").insert({
+      endpoint: "/core/v5/orders",
+      method: "POST",
+      request_body: requestBody,
+      response_status: responseStatus,
+      response_body: responseBody,
+      user_id,
+      order_id,
+      transaction_id: transactionData?.id,
+      duration_ms: duration,
+      metadata: { 
+        type: "pix_generation", 
+        description,
+        qr_code_generated: true,
+        expires_at: new Date(Date.now() + 3600000).toISOString()
+      }
+    });
+
+    console.log(`✅ PIX gerado com sucesso em ${duration}ms`);
 
     return new Response(
       JSON.stringify({
