@@ -47,8 +47,11 @@ export default function AdminSettings() {
     loadPaymentSettings();
   }, []);
 
-  const checkConnection = async () => {
-    if (!paymentSettings.recipient_id || !paymentSettings.secret_key) {
+  const checkConnection = async (recipientId?: string, secretKey?: string) => {
+    const rid = recipientId || paymentSettings.recipient_id;
+    const skey = secretKey || paymentSettings.secret_key;
+    
+    if (!rid || !skey) {
       setConnectionStatus({ status: 'not_configured' });
       return;
     }
@@ -56,10 +59,10 @@ export default function AdminSettings() {
     setConnectionStatus({ status: 'checking' });
 
     try {
-      const response = await fetch(`https://api.pagar.me/core/v5/recipients/${paymentSettings.recipient_id}`, {
+      const response = await fetch(`https://api.pagar.me/core/v5/recipients/${rid}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Basic ${btoa(paymentSettings.secret_key + ':')}`,
+          'Authorization': `Basic ${btoa(skey + ':')}`,
           'Content-Type': 'application/json',
         },
       });
@@ -119,14 +122,17 @@ export default function AdminSettings() {
       }
       
       if (data?.data) {
+        const recipientId = data.data.recipient_id;
+        const secretKey = data.data.secret_key;
+        
         setPaymentSettings({
-          recipient_id: data.data.recipient_id,
-          secret_key: data.data.secret_key
+          recipient_id: recipientId,
+          secret_key: secretKey
         });
         
-        // Verificar conexão após carregar as configurações
+        // Verificar conexão com as credenciais carregadas
         setTimeout(() => {
-          checkConnection();
+          checkConnection(recipientId, secretKey);
         }, 500);
       }
     } catch (error) {
@@ -203,13 +209,8 @@ export default function AdminSettings() {
         description: "Credenciais validadas e salvas com sucesso",
       });
       
-      // Recarregar as configurações após salvar
+      // Recarregar as configurações e verificar conexão
       await loadPaymentSettings();
-      
-      // Verificar conexão após salvar
-      setTimeout(() => {
-        checkConnection();
-      }, 500);
     } catch (error) {
       console.error('Erro ao salvar configurações da API:', error);
       toast({
@@ -351,7 +352,7 @@ export default function AdminSettings() {
                     <Button 
                       type="button" 
                       variant="outline" 
-                      onClick={checkConnection}
+                      onClick={() => checkConnection()}
                       disabled={!paymentSettings.recipient_id || !paymentSettings.secret_key || connectionStatus.status === 'checking'}
                       className="flex-1"
                     >
@@ -372,75 +373,6 @@ export default function AdminSettings() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Parcelamento AppleHub</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div>
-                    <Label>Máximo de Parcelas</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="48"
-                      value={settings.max_parcelas}
-                      onChange={(e) => setSettings({ ...settings, max_parcelas: parseInt(e.target.value) })}
-                      required
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Número máximo de parcelas permitidas
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label>Juros Mensal (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={settings.juros_mensal}
-                      onChange={(e) => setSettings({ ...settings, juros_mensal: parseFloat(e.target.value) })}
-                      required
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Taxa de juros mensal aplicada no parcelamento
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label>Valor Mínimo para Parcelar (R$)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={settings.valor_minimo_parcelar}
-                      onChange={(e) => setSettings({ ...settings, valor_minimo_parcelar: parseFloat(e.target.value) })}
-                      required
-                    />
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Valor mínimo do pedido para permitir parcelamento
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="ativo"
-                      checked={settings.ativo}
-                      onChange={(e) => setSettings({ ...settings, ativo: e.target.checked })}
-                    />
-                    <Label htmlFor="ativo" className="cursor-pointer">
-                      Sistema de parcelamento ativo
-                    </Label>
-                  </div>
-
-                  <Button type="submit" className="w-full">
-                    Salvar Regras de Parcelamento
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
 
             <Card className="border-destructive">
               <CardHeader>
