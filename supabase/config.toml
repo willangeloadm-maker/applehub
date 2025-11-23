@@ -1,5 +1,8 @@
 project_id = "slwpupadtakrnaqzluqc"
 
+[functions.send-password-reset]
+verify_jwt = false
+
 [functions.send-order-notification]
 verify_jwt = false
 
