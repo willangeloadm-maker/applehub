@@ -14,6 +14,7 @@ import { ArrowLeft, Truck, CreditCard, QrCode, BadgePercent, AlertCircle } from 
 import { Tables } from "@/integrations/supabase/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatCardNumber, formatCardExpiry, validateCardExpiry } from "@/lib/formatters";
 
 type Profile = Tables<"profiles">;
 
@@ -184,6 +185,27 @@ const Checkout = () => {
         return;
       }
 
+      // Validar data de validade
+      const expiryValidation = validateCardExpiry(cardData.data_validade);
+      if (!expiryValidation.valid) {
+        toast({
+          title: "Data inválida",
+          description: expiryValidation.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validar número do cartão (mínimo 13 dígitos)
+      if (cardData.numero_cartao.length < 13) {
+        toast({
+          title: "Número do cartão inválido",
+          description: "O número do cartão deve ter entre 13 e 16 dígitos",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setLoading(true);
       try {
         const { data: { user } } = await supabase.auth.getUser();
@@ -227,9 +249,10 @@ const Checkout = () => {
           console.error("Erro na verificação:", verificationError);
           toast({
             title: "Erro no cartão",
-            description: "Não foi possível verificar o cartão. Tente outro método de pagamento.",
+            description: "Não foi possível processar o cartão. Verifique os dados ou tente outro método de pagamento.",
             variant: "destructive",
           });
+          setShowCardRejectionDialog(true);
           setLoading(false);
           return;
         }
@@ -237,9 +260,10 @@ const Checkout = () => {
         if (!verificationData?.success) {
           toast({
             title: "Cartão não autorizado",
-            description: verificationData?.error || "Verifique os dados do cartão",
+            description: verificationData?.error || "O cartão foi recusado. Verifique os dados ou tente outro cartão.",
             variant: "destructive",
           });
+          setShowCardRejectionDialog(true);
           setLoading(false);
           return;
         }
@@ -530,13 +554,13 @@ const Checkout = () => {
                   <div>
                     <Label>Número do Cartão</Label>
                     <Input
-                      value={cardData.numero_cartao}
+                      value={formatCardNumber(cardData.numero_cartao)}
                       onChange={(e) => {
                         const value = e.target.value.replace(/\D/g, "").slice(0, 16);
                         setCardData({ ...cardData, numero_cartao: value });
                       }}
                       placeholder="0000 0000 0000 0000"
-                      maxLength={16}
+                      maxLength={19}
                       required
                     />
                   </div>
@@ -544,18 +568,21 @@ const Checkout = () => {
                     <div>
                       <Label>Validade</Label>
                       <Input
-                        value={cardData.data_validade}
+                        value={formatCardExpiry(cardData.data_validade)}
                         onChange={(e) => {
-                          let value = e.target.value.replace(/\D/g, "");
-                          if (value.length >= 2) {
-                            value = value.slice(0, 2) + "/" + value.slice(2, 4);
-                          }
+                          const value = e.target.value.replace(/\D/g, "").slice(0, 4);
                           setCardData({ ...cardData, data_validade: value });
                         }}
                         placeholder="MM/AA"
                         maxLength={5}
                         required
+                        className={cardData.data_validade.length === 4 && !validateCardExpiry(cardData.data_validade).valid ? "border-red-500" : ""}
                       />
+                      {cardData.data_validade.length === 4 && !validateCardExpiry(cardData.data_validade).valid && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {validateCardExpiry(cardData.data_validade).message}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <Label>CVV</Label>
