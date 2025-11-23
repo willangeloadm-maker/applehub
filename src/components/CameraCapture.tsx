@@ -15,6 +15,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [videoReady, setVideoReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -36,14 +37,25 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
   const startCamera = async () => {
     try {
+      setVideoReady(false);
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: guideType === 'selfie' ? 'user' : 'environment' },
+        video: { 
+          facingMode: guideType === 'selfie' ? 'user' : 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
         audio: false
       });
       setStream(mediaStream);
       setShowCamera(true);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+        };
+        videoRef.current.onplaying = () => {
+          setVideoReady(true);
+        };
       }
     } catch (error) {
       console.error('Erro ao acessar câmera:', error);
@@ -57,28 +69,45 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       setStream(null);
     }
     setShowCamera(false);
+    setVideoReady(false);
   };
 
   const capturePhoto = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current) {
+      alert('Câmera não está pronta. Aguarde um momento.');
+      return;
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
+
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      alert('Aguarde a câmera carregar completamente.');
+      return;
+    }
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      alert('Erro ao processar imagem.');
+      return;
+    }
 
     ctx.drawImage(video, 0, 0);
 
     canvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], `${label}.jpg`, { type: 'image/jpeg' });
+      if (!blob) {
+        alert('Erro ao capturar foto. Tente novamente.');
+        return;
+      }
+      const file = new File([blob], `${label.replace(/\s+/g, '_')}.jpg`, { type: 'image/jpeg' });
+      const previewUrl = canvas.toDataURL('image/jpeg', 0.95);
       onCapture(file);
-      setPreview(canvas.toDataURL('image/jpeg'));
+      setPreview(previewUrl);
       stopCamera();
-    }, 'image/jpeg', 0.9);
+    }, 'image/jpeg', 0.95);
   };
 
   const retake = () => {
@@ -148,6 +177,12 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
           <canvas ref={canvasRef} className="hidden" />
           
+          {!videoReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+              <span className="text-white text-sm">Carregando câmera...</span>
+            </div>
+          )}
+
           <div className="flex gap-2 mt-4">
             <Button
               type="button"
@@ -161,10 +196,11 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
             <Button
               type="button"
               onClick={capturePhoto}
-              className="flex-1 bg-green-600 hover:bg-green-700"
+              disabled={!videoReady}
+              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
             >
               <Camera className="w-4 h-4 mr-2" />
-              Capturar
+              {videoReady ? 'Capturar' : 'Aguarde...'}
             </Button>
           </div>
         </div>
