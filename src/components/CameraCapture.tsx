@@ -359,12 +359,13 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     );
   }
 
-  // Interface da câmera
+  // Interface da câmera em tela cheia
   if (showCamera) {
     return (
-      <Card className="p-4 bg-black">
-        <div className="relative">
-          <div className="relative rounded-lg overflow-hidden">
+      <div className="fixed inset-0 z-50 bg-black">
+        <div className="relative w-full h-full flex flex-col">
+          {/* Área da câmera - ocupa todo o espaço disponível */}
+          <div className="flex-1 relative overflow-hidden">
             {!cameraReady && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
                 <Loader2 className="w-12 h-12 text-white animate-spin mb-4" />
@@ -378,7 +379,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
               screenshotFormat="image/jpeg"
               videoConstraints={videoConstraints}
               className={cn(
-                "w-full rounded-lg",
+                "w-full h-full object-cover",
                 guideType === 'selfie' && "scale-x-[-1]" // Flip horizontal para selfie
               )}
               onUserMedia={() => {
@@ -400,9 +401,9 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
             {cameraReady && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 {guideType === 'document' && (
-                  <div className="w-[85%] h-[60%] border-4 border-white/70 rounded-lg shadow-lg">
-                    <div className="absolute top-2 left-2 right-2 text-center">
-                      <span className="text-white text-sm font-medium bg-black/50 px-3 py-1 rounded">
+                  <div className="w-[90%] max-w-lg h-[60%] border-4 border-white/70 rounded-lg shadow-lg">
+                    <div className="absolute -top-12 left-0 right-0 text-center">
+                      <span className="text-white text-base font-medium bg-black/70 px-4 py-2 rounded-lg inline-block">
                         Posicione o documento dentro do quadro
                       </span>
                     </div>
@@ -427,12 +428,12 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
                           <div className="absolute bottom-0 right-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.6s' }} />
                         </>
                       )}
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-center">
+                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
                         <span className={cn(
-                          "text-sm font-medium px-3 py-1 rounded whitespace-nowrap transition-colors",
+                          "text-base font-medium px-4 py-2 rounded-lg transition-colors inline-block",
                           faceDetected 
-                            ? "text-green-400 bg-green-900/50" 
-                            : "text-white bg-black/50"
+                            ? "text-green-400 bg-green-900/70" 
+                            : "text-white bg-black/70"
                         )}>
                           {faceDetected ? "✓ Rosto detectado!" : "Posicione seu rosto no círculo"}
                         </span>
@@ -444,32 +445,37 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
             )}
           </div>
 
-          <div className="flex gap-2 mt-4">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                setShowCamera(false);
-                setCameraReady(false);
-                setFaceDetected(false);
-              }}
-              className="flex-1"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={capturePhoto}
-              disabled={!cameraReady}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
-            >
-              <Camera className="w-4 h-4 mr-2" />
-              Capturar
-            </Button>
+          {/* Botões fixos na parte inferior - sempre visíveis */}
+          <div className="safe-area-inset-bottom bg-black/90 backdrop-blur-sm border-t border-white/10 p-4">
+            <div className="max-w-lg mx-auto flex gap-3">
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  setShowCamera(false);
+                  setCameraReady(false);
+                  setFaceDetected(false);
+                }}
+                className="flex-1 h-14 text-base"
+                size="lg"
+              >
+                <X className="w-5 h-5 mr-2" />
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={capturePhoto}
+                disabled={!cameraReady}
+                className="flex-1 h-14 text-base bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                size="lg"
+              >
+                <Camera className="w-5 h-5 mr-2" />
+                Capturar
+              </Button>
+            </div>
           </div>
         </div>
-      </Card>
+      </div>
     );
   }
 
