@@ -622,7 +622,89 @@ export default function AccountVerification() {
                   </>
                 )}
 
-                {/* ... keep existing code */}
+                {documentType === 'cnh' && cnhFormat === 'digital' && (
+                  <>
+                    <CameraCapture
+                      label="CNH Digital (PDF)"
+                      guideType="document"
+                      onCapture={async (file) => {
+                        if (file.type !== 'application/pdf') {
+                          toast({
+                            title: "Formato inválido",
+                            description: "Por favor, envie um arquivo PDF da CNH Digital",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        
+                        setValidatingDocument(true);
+                        try {
+                          // Converter PDF para base64
+                          const reader = new FileReader();
+                          const base64Promise = new Promise<string>((resolve, reject) => {
+                            reader.onload = () => resolve(reader.result as string);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(file);
+                          });
+
+                          const pdfBase64 = await base64Promise;
+
+                          // Chamar a edge function de validação de PDF
+                          const { data, error } = await supabase.functions.invoke('validate-document-pdf', {
+                            body: {
+                              pdfBase64,
+                              userId: user.id,
+                              documentType: 'CNH'
+                            }
+                          });
+
+                          if (error) {
+                            console.error('Erro ao validar PDF:', error);
+                            toast({
+                              title: "Erro na validação",
+                              description: "Não foi possível validar o documento. Tente novamente.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+
+                          if (!data.isValid) {
+                            toast({
+                              title: "❌ Documento inválido",
+                              description: data.reason || "O documento não passou na validação.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+
+                          toast({
+                            title: "✓ Documento validado",
+                            description: "CNH Digital verificada com sucesso",
+                          });
+                          
+                          setKycData({ ...kycData, documento_frente: file, documento_verso: file });
+                          setStep('kyc_selfie');
+                        } catch (error) {
+                          console.error('Erro ao processar PDF:', error);
+                          toast({
+                            title: "Erro",
+                            description: "Erro ao processar PDF. Tente novamente.",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setValidatingDocument(false);
+                        }
+                      }}
+                      captured={kycData.documento_frente}
+                    />
+                    {validatingDocument && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Validando CNH Digital...
+                      </div>
+                    )}
+                  </>
+                )}
 
                 {documentType === 'rg' && (
                   <>
