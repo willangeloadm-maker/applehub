@@ -35,11 +35,6 @@ export default function AccountVerification() {
     documento_verso: null as File | null,
     selfie: null as File | null
   });
-  const [creditResult, setCreditResult] = useState<any>(null);
-  const [selectedDownPayment, setSelectedDownPayment] = useState<any>(null);
-  const [installments, setInstallments] = useState(24);
-  const [pixData, setPixData] = useState<any>(null);
-  const [generatingPix, setGeneratingPix] = useState(false);
   const [validatingDocument, setValidatingDocument] = useState(false);
   const [ocrResult, setOcrResult] = useState<any>(null);
 
@@ -145,7 +140,7 @@ export default function AccountVerification() {
   const handleKycSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!kycData.documento_frente || !kycData.documento_verso || !kycData.selfie) {
+    if (!kycData.documento_frente || !kycData.selfie) {
       toast({
         title: "Erro",
         description: "Por favor, envie todos os documentos necessários",
@@ -164,42 +159,14 @@ export default function AccountVerification() {
           user_id: user.id,
           status: 'pendente',
           documento_frente: 'uploaded',
-          documento_verso: 'uploaded',
+          documento_verso: documentType === 'rg' || cnhFormat === 'fechada' ? 'uploaded' : null,
           selfie: 'uploaded'
         });
 
       if (error) throw error;
 
-      // Simular análise de crédito de 10 segundos
+      // Simular verificação de 10 segundos
       setTimeout(async () => {
-        const valorTotal = 10000;
-        const percentualAprovado = 90;
-        const valorAprovado = valorTotal * (percentualAprovado / 100);
-        
-        const result = {
-          aprovado: true,
-          percentual_aprovado: percentualAprovado,
-          valor_total: valorTotal,
-          valor_aprovado: valorAprovado,
-          opcoes_entrada: [
-            { percentual: 10, valor: valorAprovado * 0.10, juros: 2.5 },
-            { percentual: 15, valor: valorAprovado * 0.15, juros: 2.0 },
-            { percentual: 20, valor: valorAprovado * 0.20, juros: 1.5 },
-            { percentual: 25, valor: valorAprovado * 0.25, juros: 1.0 }
-          ]
-        };
-
-        // Criar análise de crédito
-        await supabase.from('credit_analyses').insert({
-          user_id: user.id,
-          valor_solicitado: valorTotal,
-          valor_aprovado: valorAprovado,
-          percentual_aprovado: percentualAprovado,
-          status: 'aprovado'
-        });
-
-        setCreditResult(result);
-
         // Atualizar verificação como verificada e enviar email
         await supabase
           .from('account_verifications')
@@ -222,6 +189,11 @@ export default function AccountVerification() {
             nome: profile?.nome_completo || 'Cliente',
             status: 'verificado'
           }
+        });
+
+        toast({
+          title: "Conta verificada!",
+          description: "Sua conta foi verificada com sucesso."
         });
 
         setStep('result');
@@ -725,9 +697,9 @@ export default function AccountVerification() {
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-16 h-16 animate-spin text-primary mb-4" />
-              <p className="text-xl font-semibold mb-2">Analisando crédito...</p>
+              <p className="text-xl font-semibold mb-2">Verificando documentos...</p>
               <p className="text-sm text-muted-foreground text-center">
-                Estamos verificando seus documentos e analisando seu crédito.
+                Estamos verificando seus documentos.
                 <br />
                 Isso pode levar alguns instantes.
               </p>
@@ -735,165 +707,39 @@ export default function AccountVerification() {
           </Card>
         )}
 
-        {step === 'result' && creditResult && (
+        {step === 'result' && (
           <Card className="border-green-500">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-600">
                 <CheckCircle2 className="w-6 h-6" />
-                Crédito Aprovado!
+                Conta Verificada!
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="mb-6">
-                <p className="text-sm text-muted-foreground mb-2">
-                  Parabéns! Seu crédito foi aprovado com {creditResult.percentual_aprovado}% do valor solicitado.
+            <CardContent className="space-y-6">
+              <p className="text-muted-foreground">
+                Parabéns! Sua conta foi verificada com sucesso. Agora você pode fazer compras com o Parcelamento AppleHub em até 24x.
+              </p>
+              
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  💡 <strong>Próximos passos:</strong> Escolha os produtos que deseja comprar e finalize a compra. Durante o checkout, você verá seu limite de crédito aprovado baseado no valor da sua compra.
                 </p>
-                <div className="text-2xl font-bold text-primary mb-4">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                    creditResult.valor_total * (creditResult.percentual_aprovado / 100)
-                  )}
-                </div>
               </div>
 
-              <div className="space-y-4">
-                <p className="font-medium">Escolha o valor de entrada:</p>
-                <p className="text-sm text-muted-foreground mb-2">
-                  * Quanto maior a entrada, menor os juros mensais
-                </p>
-                {creditResult.opcoes_entrada.map((opcao: any) => (
-                  <Button
-                    key={opcao.percentual}
-                    variant="outline"
-                    className="w-full h-auto py-4"
-                    onClick={() => setSelectedDownPayment(opcao)}
-                  >
-                    <div className="text-left w-full">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-semibold">{opcao.percentual}% de entrada</span>
-                        <Badge variant="secondary">{opcao.juros}% juros/mês</Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Entrada: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(opcao.valor)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Financiar: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(creditResult.valor_aprovado - opcao.valor)}
-                      </div>
-                    </div>
-                  </Button>
-                ))}
-              </div>
+              <Button 
+                onClick={() => navigate('/products')}
+                className="w-full"
+              >
+                Ver Produtos
+              </Button>
 
-              {selectedDownPayment && (
-                <Card className="mt-6 border-primary">
-                  <CardHeader>
-                    <CardTitle>Detalhes do Financiamento</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label>Número de Parcelas</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="24"
-                        value={installments}
-                        onChange={(e) => setInstallments(parseInt(e.target.value))}
-                      />
-                    </div>
-
-                    <div className="bg-secondary/50 p-4 rounded-lg space-y-2">
-                      <div className="flex justify-between">
-                        <span>Valor aprovado:</span>
-                        <span className="font-medium">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(creditResult.valor_aprovado)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Entrada ({selectedDownPayment.percentual}%):</span>
-                        <span className="font-medium">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedDownPayment.valor)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>A financiar:</span>
-                        <span className="font-medium">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(creditResult.valor_aprovado - selectedDownPayment.valor)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Juros mensal:</span>
-                        <span className="font-medium">{selectedDownPayment.juros}%</span>
-                      </div>
-                      <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
-                        <span>Parcelas:</span>
-                        <span>
-                          {installments}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                            ((creditResult.valor_aprovado - selectedDownPayment.valor) * Math.pow(1 + selectedDownPayment.juros/100, installments)) / installments
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Button
-                      onClick={async () => {
-                        setGeneratingPix(true);
-                        try {
-                          const { data, error } = await supabase.functions.invoke('generate-pix', {
-                            body: {
-                              amount: selectedDownPayment.valor,
-                              description: `Entrada - Crédito AppleHub`,
-                              user_id: user.id
-                            }
-                          });
-
-                          if (error) throw error;
-                          setPixData(data);
-                        } catch (error) {
-                          console.error('Erro ao gerar PIX:', error);
-                        } finally {
-                          setGeneratingPix(false);
-                        }
-                      }}
-                      className="w-full"
-                      disabled={generatingPix}
-                    >
-                      {generatingPix ? 'Gerando PIX...' : 'Gerar PIX para Entrada'}
-                    </Button>
-
-                    {pixData && (
-                      <div className="space-y-4 border-t pt-4">
-                        <div className="text-center">
-                          <img src={pixData.qr_code_url} alt="QR Code PIX" className="mx-auto w-64 h-64" />
-                        </div>
-                        <div>
-                          <Label>PIX Copia e Cola</Label>
-                          <div className="flex gap-2">
-                            <Input value={pixData.qr_code} readOnly />
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                navigator.clipboard.writeText(pixData.qr_code);
-                              }}
-                            >
-                              Copiar
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg">
-                          <p className="text-sm text-blue-800 dark:text-blue-200">
-                            <strong>Valor:</strong> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(pixData.amount)}
-                          </p>
-                          <p className="text-sm text-blue-800 dark:text-blue-200">
-                            <strong>Válido até:</strong> {new Date(pixData.expires_at).toLocaleString('pt-BR')}
-                          </p>
-                          <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                            Após o pagamento, as parcelas seguintes serão cobradas a cada 30 dias.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/profile')}
+                className="w-full"
+              >
+                Voltar ao Perfil
+              </Button>
             </CardContent>
           </Card>
         )}

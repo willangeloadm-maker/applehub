@@ -47,7 +47,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${settings.secret_key}`,
+        "Authorization": `Basic ${btoa(settings.secret_key + ":")}`,
       },
       body: JSON.stringify({
         customer: {
