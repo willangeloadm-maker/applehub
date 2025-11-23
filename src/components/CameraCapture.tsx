@@ -4,8 +4,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Camera, X, Check, RotateCcw, Sun, Focus, Zap } from 'lucide-react';
+import { Camera, X, Check, RotateCcw, Sun, Focus, Zap, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type QualityLevel = 'good' | 'warning' | 'error';
 
@@ -34,6 +35,8 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   const qualityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoCaptureTimerRef = useRef<number>(0);
   const autoCaptureStartRef = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (captured) {
@@ -485,6 +488,75 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     startCamera();
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
+      toast({
+        title: "Arquivo inválido",
+        description: "Por favor, selecione uma imagem (JPG, PNG) ou PDF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Para PDFs, criar o File diretamente
+    if (file.type === 'application/pdf') {
+      onCapture(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setPreview('pdf');
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // Para imagens, processar e validar
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const img = new Image();
+      img.onload = async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível processar a imagem",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0);
+        
+        // Comprimir imagem
+        const { blob } = await compressImage(canvas);
+        if (!blob) {
+          toast({
+            title: "Erro",
+            description: "Erro ao processar imagem",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const processedFile = new File([blob], file.name, { type: 'image/jpeg' });
+        onCapture(processedFile);
+        setPreview(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
   if (preview) {
     return (
       <Card className="p-4 bg-muted/30">
@@ -503,7 +575,13 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
               <RotateCcw className="w-4 h-4" />
             </Button>
           </div>
-          <img src={preview} alt={label} className="w-full rounded-lg" />
+          {preview === 'pdf' ? (
+            <div className="w-full h-40 rounded-lg bg-muted flex items-center justify-center">
+              <p className="text-sm text-muted-foreground">PDF carregado</p>
+            </div>
+          ) : (
+            <img src={preview} alt={label} className="w-full rounded-lg" />
+          )}
         </div>
       </Card>
     );
@@ -656,23 +734,45 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   }
 
   return (
-    <Card className={cn(
-      "p-6 border-2 border-dashed cursor-pointer hover:border-primary transition-colors",
-      "bg-muted/30"
-    )}>
-      <button
-        type="button"
-        onClick={startCamera}
-        className="w-full flex flex-col items-center gap-3"
-      >
-        <Camera className="w-8 h-8 text-muted-foreground" />
-        <div className="text-center">
-          <p className="font-medium">{label}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Clique para {guideType === 'selfie' ? 'tirar selfie' : 'fotografar documento'}
-          </p>
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,application/pdf"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+      <Card className={cn(
+        "p-6 border-2 border-dashed transition-colors",
+        "bg-muted/30"
+      )}>
+        <div className="w-full flex flex-col items-center gap-3">
+          <div className="flex gap-3 w-full">
+            <button
+              type="button"
+              onClick={startCamera}
+              className="flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+            >
+              <Camera className="w-8 h-8 text-muted-foreground" />
+              <p className="text-xs text-center">Usar câmera</p>
+            </button>
+            <button
+              type="button"
+              onClick={triggerFileUpload}
+              className="flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+            >
+              <Upload className="w-8 h-8 text-muted-foreground" />
+              <p className="text-xs text-center">Escolher arquivo</p>
+            </button>
+          </div>
+          <div className="text-center">
+            <p className="font-medium">{label}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {guideType === 'selfie' ? 'Tire uma selfie ou escolha uma foto' : 'Fotografe ou escolha o documento (foto ou PDF)'}
+            </p>
+          </div>
         </div>
-      </button>
-    </Card>
+      </Card>
+    </>
   );
 }

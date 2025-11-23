@@ -40,6 +40,8 @@ export default function AccountVerification() {
   const [installments, setInstallments] = useState(24);
   const [pixData, setPixData] = useState<any>(null);
   const [generatingPix, setGeneratingPix] = useState(false);
+  const [validatingDocument, setValidatingDocument] = useState(false);
+  const [ocrResult, setOcrResult] = useState<any>(null);
 
   useEffect(() => {
     checkUser();
@@ -82,6 +84,62 @@ export default function AccountVerification() {
       toast({ description: "Dados validados com sucesso!" });
       setStep('kyc_doc_type');
     }, 4000);
+  };
+
+  const validateDocumentWithOCR = async (file: File, docType: 'RG' | 'CNH') => {
+    setValidatingDocument(true);
+    setOcrResult(null);
+
+    try {
+      // Converter arquivo para base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const imageBase64 = await base64Promise;
+
+      // Chamar a edge function de validação OCR
+      const { data, error } = await supabase.functions.invoke('validate-document-ocr', {
+        body: {
+          imageBase64,
+          documentType: docType,
+          userData: {
+            nome_completo: formData.nome_completo,
+            cpf: formData.cpf.replace(/\D/g, ''),
+            data_nascimento: formData.data_nascimento
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      setOcrResult(data);
+      
+      if (data.valido && data.confianca >= 70) {
+        toast({
+          title: "✓ Documento validado",
+          description: `Documento verificado com ${data.confianca}% de confiança`,
+        });
+      } else {
+        toast({
+          title: "Atenção",
+          description: data.problemas?.join('. ') || 'Não foi possível validar automaticamente o documento',
+          variant: "destructive",
+        });
+      }
+
+    } catch (error) {
+      console.error('Erro na validação OCR:', error);
+      toast({
+        title: "Aviso",
+        description: "Não foi possível validar automaticamente. O documento será revisado manualmente.",
+      });
+    } finally {
+      setValidatingDocument(false);
+    }
   };
 
   const handleKycSubmit = async (e: React.FormEvent) => {
@@ -477,15 +535,29 @@ export default function AccountVerification() {
                 </p>
 
                 {documentType === 'cnh' && cnhFormat === 'aberta' && (
-                  <CameraCapture
-                    label="CNH Aberta"
-                    guideType="document"
-                    onCapture={(file) => {
-                      setKycData({ ...kycData, documento_frente: file, documento_verso: file });
-                      setStep('kyc_selfie');
-                    }}
-                    captured={kycData.documento_frente}
-                  />
+                  <>
+                    <CameraCapture
+                      label="CNH Aberta"
+                      guideType="document"
+                      onCapture={async (file) => {
+                        setKycData({ ...kycData, documento_frente: file, documento_verso: file });
+                        await validateDocumentWithOCR(file, 'CNH');
+                        setStep('kyc_selfie');
+                      }}
+                      captured={kycData.documento_frente}
+                    />
+                    {validatingDocument && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Validando documento automaticamente...
+                      </div>
+                    )}
+                    {ocrResult && (
+                      <div className={`p-3 rounded-lg text-sm ${ocrResult.valido ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-yellow-50 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200'}`}>
+                        {ocrResult.valido ? '✓ Documento validado automaticamente' : '⚠ Documento será revisado manualmente'}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {documentType === 'cnh' && cnhFormat === 'fechada' && (
@@ -493,9 +565,23 @@ export default function AccountVerification() {
                     <CameraCapture
                       label="CNH (Frente)"
                       guideType="document"
-                      onCapture={(file) => setKycData({ ...kycData, documento_frente: file })}
+                      onCapture={async (file) => {
+                        setKycData({ ...kycData, documento_frente: file });
+                        await validateDocumentWithOCR(file, 'CNH');
+                      }}
                       captured={kycData.documento_frente}
                     />
+                    {validatingDocument && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Validando documento automaticamente...
+                      </div>
+                    )}
+                    {ocrResult && kycData.documento_frente && (
+                      <div className={`p-3 rounded-lg text-sm ${ocrResult.valido ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-yellow-50 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200'}`}>
+                        {ocrResult.valido ? '✓ Documento validado automaticamente' : '⚠ Documento será revisado manualmente'}
+                      </div>
+                    )}
                     {kycData.documento_frente && (
                       <CameraCapture
                         label="CNH (Verso)"
@@ -539,9 +625,23 @@ export default function AccountVerification() {
                     <CameraCapture
                       label="RG (Frente)"
                       guideType="document"
-                      onCapture={(file) => setKycData({ ...kycData, documento_frente: file })}
+                      onCapture={async (file) => {
+                        setKycData({ ...kycData, documento_frente: file });
+                        await validateDocumentWithOCR(file, 'RG');
+                      }}
                       captured={kycData.documento_frente}
                     />
+                    {validatingDocument && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Validando documento automaticamente...
+                      </div>
+                    )}
+                    {ocrResult && kycData.documento_frente && (
+                      <div className={`p-3 rounded-lg text-sm ${ocrResult.valido ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-yellow-50 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200'}`}>
+                        {ocrResult.valido ? '✓ Documento validado automaticamente' : '⚠ Documento será revisado manualmente'}
+                      </div>
+                    )}
                     {kycData.documento_frente && (
                       <CameraCapture
                         label="RG (Verso)"
