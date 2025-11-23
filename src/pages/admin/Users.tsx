@@ -123,12 +123,17 @@ export default function AdminUsers() {
       
       const [profileData, ordersData, creditAnalyses, transactions] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('orders').select('*').eq('user_id', user.id),
+        supabase.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
         supabase.from('credit_analyses').select('*').eq('user_id', user.id),
         supabase.from('transactions').select('*').eq('user_id', user.id)
       ]);
 
       console.log('📄 Dados de verificação existentes:', existingVerification);
+      console.log('📦 Pedidos carregados:', ordersData.data);
+
+      if (ordersData.error) {
+        console.error('❌ Erro ao carregar pedidos:', ordersData.error);
+      }
 
       setSelectedUser(user);
       setUserDetails({
@@ -403,37 +408,61 @@ export default function AdminUsers() {
                             </p>
                           ) : (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {userDetails.verification.documento_frente && (
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold text-muted-foreground">Documento (Frente)</p>
+                              {/* CNH Digital PDF - exibe em coluna completa */}
+                              {userDetails.verification.documento_frente?.endsWith('.pdf') ? (
+                                <div className="space-y-2 md:col-span-3">
+                                  <p className="text-xs font-semibold text-muted-foreground">CNH Digital (PDF)</p>
                                   <div className="relative group">
-                                    <img 
-                                      src={getStorageUrl(userDetails.verification.documento_frente) || userDetails.verification.documento_frente} 
-                                      alt="Documento Frente"
-                                      className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
-                                      onClick={() => setFullscreenImage(getStorageUrl(userDetails.verification.documento_frente) || userDetails.verification.documento_frente)}
-                                    />
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                      <ZoomIn className="w-8 h-8 text-white" />
-                                    </div>
+                                    <a 
+                                      href={getStorageUrl(userDetails.verification.documento_frente) || userDetails.verification.documento_frente}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center justify-center w-full h-32 bg-secondary/50 rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
+                                    >
+                                      <div className="text-center">
+                                        <svg className="w-12 h-12 mx-auto mb-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        <p className="text-sm font-medium">Clique para visualizar PDF</p>
+                                      </div>
+                                    </a>
                                   </div>
                                 </div>
-                              )}
-                              {userDetails.verification.documento_verso && (
-                                <div className="space-y-2">
-                                  <p className="text-xs font-semibold text-muted-foreground">Documento (Verso)</p>
-                                  <div className="relative group">
-                                    <img 
-                                      src={getStorageUrl(userDetails.verification.documento_verso) || userDetails.verification.documento_verso} 
-                                      alt="Documento Verso"
-                                      className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
-                                      onClick={() => setFullscreenImage(getStorageUrl(userDetails.verification.documento_verso) || userDetails.verification.documento_verso)}
-                                    />
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                      <ZoomIn className="w-8 h-8 text-white" />
+                              ) : (
+                                <>
+                                  {userDetails.verification.documento_frente && (
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-semibold text-muted-foreground">Documento (Frente)</p>
+                                      <div className="relative group">
+                                        <img 
+                                          src={getStorageUrl(userDetails.verification.documento_frente) || userDetails.verification.documento_frente} 
+                                          alt="Documento Frente"
+                                          className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
+                                          onClick={() => setFullscreenImage(getStorageUrl(userDetails.verification.documento_frente) || userDetails.verification.documento_frente)}
+                                        />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                          <ZoomIn className="w-8 h-8 text-white" />
+                                        </div>
+                                      </div>
                                     </div>
-                                  </div>
-                                </div>
+                                  )}
+                                  {userDetails.verification.documento_verso && (
+                                    <div className="space-y-2">
+                                      <p className="text-xs font-semibold text-muted-foreground">Documento (Verso)</p>
+                                      <div className="relative group">
+                                        <img 
+                                          src={getStorageUrl(userDetails.verification.documento_verso) || userDetails.verification.documento_verso} 
+                                          alt="Documento Verso"
+                                          className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
+                                          onClick={() => setFullscreenImage(getStorageUrl(userDetails.verification.documento_verso) || userDetails.verification.documento_verso)}
+                                        />
+                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                          <ZoomIn className="w-8 h-8 text-white" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
                               )}
                               {userDetails.verification.selfie && (
                                 <div className="space-y-2">
