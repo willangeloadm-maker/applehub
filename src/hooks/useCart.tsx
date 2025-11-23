@@ -74,7 +74,7 @@ export const useCart = () => {
       // Update otimista - atualiza UI imediatamente
       toast({
         title: "✓ Adicionado!",
-        duration: 2000,
+        duration: 1500,
       });
 
       if (existingItem) {
@@ -88,25 +88,56 @@ export const useCart = () => {
         );
 
         // Atualiza no banco em background
-        const { error } = await supabase
+        supabase
           .from("cart_items")
           .update({ quantidade: existingItem.quantidade + quantidade })
-          .eq("id", existingItem.id);
-
-        if (error) throw error;
+          .eq("id", existingItem.id)
+          .then(({ error }) => {
+            if (error) {
+              console.error("Erro ao atualizar:", error);
+              fetchCart(); // Reverte em caso de erro
+            }
+          });
       } else {
-        // Inserir no banco
-        const { error } = await supabase
-          .from("cart_items")
-          .insert({
+        // Buscar produto para update otimista
+        const { data: product } = await supabase
+          .from("products")
+          .select("id, nome, preco_vista, imagens, estado, estoque, capacidade, cor")
+          .eq("id", productId)
+          .single();
+
+        if (product) {
+          // Update otimista - adiciona imediatamente na UI
+          const tempItem: CartItem = {
+            id: `temp-${Date.now()}`,
             user_id: user.id,
             product_id: productId,
             quantidade,
-          });
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            products: product as any,
+          };
+          
+          setCartItems(prev => [...prev, tempItem]);
 
-        if (error) throw error;
-        
-        // O realtime vai atualizar automaticamente o carrinho
+          // Inserir no banco em background
+          supabase
+            .from("cart_items")
+            .insert({
+              user_id: user.id,
+              product_id: productId,
+              quantidade,
+            })
+            .then(({ error }) => {
+              if (error) {
+                console.error("Erro ao inserir:", error);
+                fetchCart(); // Reverte em caso de erro
+              } else {
+                // Atualizar com ID real do banco
+                fetchCart();
+              }
+            });
+        }
       }
       
       return true;
@@ -225,8 +256,7 @@ export const useCart = () => {
   useEffect(() => {
     fetchCart();
     
-    // Atualizar carrinho em tempo real (com debounce)
-    let realtimeTimeout: NodeJS.Timeout;
+    // Atualizar carrinho em tempo real (apenas para sync de outros dispositivos)
     const setupRealtimeSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -241,18 +271,17 @@ export const useCart = () => {
             table: 'cart_items',
             filter: `user_id=eq.${user.id}`
           },
-          () => {
-            // Debounce para evitar múltiplas chamadas
-            clearTimeout(realtimeTimeout);
-            realtimeTimeout = setTimeout(() => {
-              fetchCart();
-            }, 300);
+          (payload) => {
+            // Apenas atualiza se for um evento externo (outro dispositivo/aba)
+            // Ignora updates otimistas locais
+            if (payload.eventType === 'DELETE' || payload.eventType === 'UPDATE') {
+              setTimeout(() => fetchCart(), 100);
+            }
           }
         )
         .subscribe();
       
       return () => {
-        clearTimeout(realtimeTimeout);
         supabase.removeChannel(channel);
       };
     };
