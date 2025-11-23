@@ -41,7 +41,7 @@ serve(async (req) => {
     const { data: settings, error: settingsError } = await supabase
       .from("payment_settings")
       .select("*")
-      .single();
+      .maybeSingle();
 
     if (settingsError || !settings) {
       console.error("❌ Erro ao buscar configurações:", settingsError);
@@ -54,8 +54,34 @@ serve(async (req) => {
       );
     }
 
+    // Buscar dados do perfil do usuário para obter o telefone
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("telefone, cpf")
+      .eq("id", user_id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      console.error("❌ Erro ao buscar perfil:", profileError);
+      return new Response(
+        JSON.stringify({ error: "Perfil do usuário não encontrado" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log("📱 Telefone do usuário:", profile.telefone);
+
     // Criar pedido com cobrança no cartão
     console.log("💳 Criando cobrança de R$", amount.toFixed(2));
+    
+    // Formatar telefone removendo caracteres não numéricos
+    const phoneNumbers = profile.telefone.replace(/\D/g, "");
+    const ddd = phoneNumbers.substring(0, 2);
+    const number = phoneNumbers.substring(2);
+    
     const pagarmeResponse = await fetch("https://api.pagar.me/core/v5/orders", {
       method: "POST",
       headers: {
@@ -66,6 +92,15 @@ serve(async (req) => {
         customer: {
           name: card_holder_name,
           type: "individual",
+          document: profile.cpf.replace(/\D/g, ""),
+          document_type: "CPF",
+          phones: {
+            mobile_phone: {
+              country_code: "55",
+              area_code: ddd,
+              number: number,
+            }
+          }
         },
         items: [
           {
@@ -115,8 +150,13 @@ serve(async (req) => {
     const chargeId = orderData.charges?.[0]?.id;
     const transactionId = orderData.charges?.[0]?.last_transaction?.id;
     const status = orderData.charges?.[0]?.status;
+    const gatewayResponse = orderData.charges?.[0]?.last_transaction?.gateway_response;
 
     console.log("💳 Status da cobrança:", status);
+    
+    if (gatewayResponse) {
+      console.log("🔍 Gateway Response:", JSON.stringify(gatewayResponse, null, 2));
+    }
 
     // Se a cobrança foi bem-sucedida, fazer o reembolso imediato
     if (status === "paid" && chargeId) {
@@ -171,10 +211,23 @@ serve(async (req) => {
       }
     } else {
       console.error("❌ Cobrança não foi autorizada:", status);
+      
+      // Logar detalhes do erro para debug
+      if (gatewayResponse) {
+        console.error("🔍 Detalhes do erro:", JSON.stringify(gatewayResponse));
+      }
+      
+      // Extrair mensagem de erro amigável
+      let errorMessage = "Cartão não foi autorizado. Verifique os dados e tente novamente.";
+      
+      if (gatewayResponse?.errors && gatewayResponse.errors.length > 0) {
+        errorMessage = gatewayResponse.errors[0].message || errorMessage;
+      }
+      
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Cartão não foi autorizado. Verifique os dados e tente novamente.",
+          error: errorMessage,
           status,
         }),
         {
