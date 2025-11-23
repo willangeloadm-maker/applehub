@@ -57,7 +57,7 @@ serve(async (req) => {
     // Buscar dados do perfil do usuário para obter telefone, CPF e endereço
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("telefone, cpf, rua, numero, cep, cidade, estado")
+      .select("telefone, cpf, rua, numero, cep, cidade, estado, id")
       .eq("id", user_id)
       .maybeSingle();
 
@@ -72,6 +72,23 @@ serve(async (req) => {
       );
     }
 
+    // Buscar email do usuário
+    const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { 
+      user_id: profile.id 
+    }) as { data: string | null, error: any };
+    
+    if (emailError || !emailData) {
+      console.error("❌ Erro ao buscar email:", emailError);
+      return new Response(
+        JSON.stringify({ error: "Email do usuário não encontrado" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log("📧 Email:", emailData);
     console.log("📱 Telefone do usuário:", profile.telefone);
 
     // Criar pedido com cobrança no cartão
@@ -106,6 +123,7 @@ serve(async (req) => {
       body: JSON.stringify({
         customer: {
           name: card_holder_name,
+          email: emailData,
           type: "individual",
           document: profile.cpf.replace(/\D/g, ""),
           document_type: "CPF",
