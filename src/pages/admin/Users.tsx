@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Search, UserCheck, UserX, Eye } from 'lucide-react';
+import { Search, UserCheck, UserX, Eye, ZoomIn, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -31,6 +31,7 @@ export default function AdminUsers() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userDetails, setUserDetails] = useState<any>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -70,6 +71,17 @@ export default function AdminUsers() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Função para obter URL pública do storage
+  const getStorageUrl = (path: string | null) => {
+    if (!path) return null;
+    
+    const { data } = supabase.storage
+      .from('verification-documents')
+      .getPublicUrl(path);
+    
+    return data.publicUrl;
   };
 
   const viewUserDetails = async (user: User) => {
@@ -273,34 +285,49 @@ export default function AdminUsers() {
                               {userDetails.verification.documento_frente && (
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold text-muted-foreground">Documento (Frente)</p>
-                                  <img 
-                                    src={userDetails.verification.documento_frente} 
-                                    alt="Documento Frente"
-                                    className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
-                                    onClick={() => window.open(userDetails.verification.documento_frente, '_blank')}
-                                  />
+                                  <div className="relative group">
+                                    <img 
+                                      src={getStorageUrl(userDetails.verification.documento_frente) || userDetails.verification.documento_frente} 
+                                      alt="Documento Frente"
+                                      className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
+                                      onClick={() => setFullscreenImage(getStorageUrl(userDetails.verification.documento_frente) || userDetails.verification.documento_frente)}
+                                    />
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                      <ZoomIn className="w-8 h-8 text-white" />
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                               {userDetails.verification.documento_verso && (
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold text-muted-foreground">Documento (Verso)</p>
-                                  <img 
-                                    src={userDetails.verification.documento_verso} 
-                                    alt="Documento Verso"
-                                    className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
-                                    onClick={() => window.open(userDetails.verification.documento_verso, '_blank')}
-                                  />
+                                  <div className="relative group">
+                                    <img 
+                                      src={getStorageUrl(userDetails.verification.documento_verso) || userDetails.verification.documento_verso} 
+                                      alt="Documento Verso"
+                                      className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
+                                      onClick={() => setFullscreenImage(getStorageUrl(userDetails.verification.documento_verso) || userDetails.verification.documento_verso)}
+                                    />
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                      <ZoomIn className="w-8 h-8 text-white" />
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                               {userDetails.verification.selfie && (
                                 <div className="space-y-2">
                                   <p className="text-xs font-semibold text-muted-foreground">Selfie</p>
-                                  <img 
-                                    src={userDetails.verification.selfie} 
-                                    alt="Selfie"
-                                    className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
-                                    onClick={() => window.open(userDetails.verification.selfie, '_blank')}
-                                  />
+                                  <div className="relative group">
+                                    <img 
+                                      src={getStorageUrl(userDetails.verification.selfie) || userDetails.verification.selfie} 
+                                      alt="Selfie"
+                                      className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
+                                      onClick={() => setFullscreenImage(getStorageUrl(userDetails.verification.selfie) || userDetails.verification.selfie)}
+                                    />
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                                      <ZoomIn className="w-8 h-8 text-white" />
+                                    </div>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -396,6 +423,29 @@ export default function AdminUsers() {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Modal de visualização em tela cheia */}
+        {fullscreenImage && (
+          <div 
+            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+            onClick={() => setFullscreenImage(null)}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 text-white hover:bg-white/20"
+              onClick={() => setFullscreenImage(null)}
+            >
+              <X className="w-6 h-6" />
+            </Button>
+            <img 
+              src={fullscreenImage} 
+              alt="Visualização em tela cheia"
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
       </div>
     </AppLayout>
   );
