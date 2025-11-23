@@ -166,26 +166,22 @@ const Auth = () => {
         // Buscar profile pelo CPF para obter o user_id
         const identifierValue = formData.get("identifier") as string;
         const cpf = identifierValue.replace(/\D/g, "");
-        console.log("CPF digitado (formatado):", identifierValue);
-        console.log("CPF limpo:", cpf);
         
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("id")
           .eq("cpf", cpf)
-          .single();
-        
-        console.log("Profile encontrado:", profile);
+          .maybeSingle();
 
         if (profileError || !profile) {
-          throw new Error("CPF não encontrado no sistema");
+          throw new Error("CPF não encontrado. Verifique se está cadastrado.");
         }
 
         // Buscar o email do usuário usando a função do banco
         const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id }) as { data: string | null, error: any };
         
         if (emailError || !emailData) {
-          throw new Error("Não foi possível encontrar o email. Use login por email.");
+          throw new Error("Erro ao buscar dados do usuário. Tente com e-mail.");
         }
         
         email = emailData;
@@ -198,16 +194,16 @@ const Auth = () => {
           .from("profiles")
           .select("id")
           .eq("telefone", telefone)
-          .single();
+          .maybeSingle();
 
         if (profileError || !profile) {
-          throw new Error("Telefone não encontrado no sistema");
+          throw new Error("Telefone não encontrado. Verifique se está cadastrado.");
         }
 
         const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id }) as { data: string | null, error: any };
         
         if (emailError || !emailData) {
-          throw new Error("Não foi possível encontrar o email. Use login por email.");
+          throw new Error("Erro ao buscar dados do usuário. Tente com e-mail.");
         }
         
         email = emailData;
