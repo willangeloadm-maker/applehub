@@ -29,6 +29,51 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validar credenciais com a API Pagar.me
+    console.log('Validando credenciais Pagar.me...');
+    try {
+      const pagarmeResponse = await fetch(`https://api.pagar.me/core/v5/recipients/${recipient_id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${secret_key}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!pagarmeResponse.ok) {
+        const errorData = await pagarmeResponse.text();
+        console.error('Erro ao validar credenciais Pagar.me:', pagarmeResponse.status, errorData);
+        
+        if (pagarmeResponse.status === 401 || pagarmeResponse.status === 403) {
+          return new Response(
+            JSON.stringify({ error: 'Secret Key inválida. Verifique suas credenciais no dashboard da Pagar.me.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        if (pagarmeResponse.status === 404) {
+          return new Response(
+            JSON.stringify({ error: 'Recipient ID não encontrado. Verifique se o ID está correto.' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ error: `Erro ao validar credenciais Pagar.me: ${pagarmeResponse.status}` }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const recipientData = await pagarmeResponse.json();
+      console.log('Credenciais validadas com sucesso. Recipient:', recipientData.name || recipientData.id);
+    } catch (validationError) {
+      console.error('Erro na validação da API Pagar.me:', validationError);
+      return new Response(
+        JSON.stringify({ error: 'Não foi possível conectar à API Pagar.me. Verifique suas credenciais e tente novamente.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create Supabase client with service role key to bypass RLS
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

@@ -135,8 +135,13 @@ export default function AdminSettings() {
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
+      toast({ 
+        description: "Validando credenciais...",
+      });
+
       const { data, error } = await supabase.functions.invoke('save-payment-settings', {
         body: {
           recipient_id: paymentSettings.recipient_id,
@@ -151,17 +156,22 @@ export default function AdminSettings() {
         throw new Error(data.error);
       }
 
-      toast({ description: "Configurações da API salvas com sucesso" });
+      toast({ 
+        title: "✓ Sucesso",
+        description: "Credenciais validadas e salvas com sucesso",
+      });
       
       // Recarregar as configurações após salvar
       await loadPaymentSettings();
     } catch (error) {
       console.error('Erro ao salvar configurações da API:', error);
       toast({
-        title: "Erro",
+        title: "Erro na validação",
         description: error instanceof Error ? error.message : "Erro ao salvar configurações da API",
-        variant: "destructive"
+        variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -260,8 +270,8 @@ export default function AdminSettings() {
                     </p>
                   </div>
 
-                  <Button type="submit" className="w-full">
-                    Salvar Configurações
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? 'Validando credenciais...' : 'Salvar Configurações'}
                   </Button>
                 </form>
               </CardContent>
