@@ -1,8 +1,8 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Camera, X, Check, RotateCcw, Upload } from 'lucide-react';
+import { Camera, X, Check, RotateCcw, Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,9 +16,31 @@ interface CameraCaptureProps {
 export default function CameraCapture({ onCapture, label, guideType, captured }: CameraCaptureProps) {
   const [showCamera, setShowCamera] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Timeout para caso a câmera não carregue
+  useEffect(() => {
+    if (!showCamera) {
+      setCameraReady(false);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      if (!cameraReady) {
+        toast({
+          title: "Câmera não disponível",
+          description: "Não foi possível inicializar a câmera. Tente usar a opção de anexar arquivo.",
+          variant: "destructive",
+        });
+        setShowCamera(false);
+      }
+    }, 10000); // 10 segundos de timeout
+
+    return () => clearTimeout(timeout);
+  }, [showCamera, cameraReady, toast]);
 
   // Configurações da webcam baseadas no tipo
   const videoConstraints = {
@@ -241,53 +263,69 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       <Card className="p-4 bg-black">
         <div className="relative">
           <div className="relative rounded-lg overflow-hidden">
+            {!cameraReady && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
+                <Loader2 className="w-12 h-12 text-white animate-spin mb-4" />
+                <p className="text-white text-sm">Iniciando câmera...</p>
+                <p className="text-white/60 text-xs mt-2">Aguarde alguns segundos</p>
+              </div>
+            )}
             <Webcam
               ref={webcamRef}
               audio={false}
               screenshotFormat="image/jpeg"
               videoConstraints={videoConstraints}
               className="w-full rounded-lg"
+              onUserMedia={() => {
+                console.log('Câmera iniciada com sucesso');
+                setCameraReady(true);
+              }}
               onUserMediaError={(error) => {
                 console.error('Erro ao acessar câmera:', error);
                 toast({
                   title: "Erro ao acessar câmera",
-                  description: "Verifique as permissões do navegador",
+                  description: "Verifique as permissões do navegador ou use a opção de anexar arquivo",
                   variant: "destructive",
                 });
                 setShowCamera(false);
               }}
             />
             
-            {/* Guia visual */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              {guideType === 'document' && (
-                <div className="w-[85%] h-[60%] border-4 border-white/70 rounded-lg shadow-lg">
-                  <div className="absolute top-2 left-2 right-2 text-center">
-                    <span className="text-white text-sm font-medium bg-black/50 px-3 py-1 rounded">
-                      Posicione o documento dentro do quadro
-                    </span>
-                  </div>
-                </div>
-              )}
-              {guideType === 'selfie' && (
-                <div className="relative">
-                  <div className="w-64 h-80 border-4 border-white/70 rounded-full">
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-center">
-                      <span className="text-white text-sm font-medium bg-black/50 px-3 py-1 rounded whitespace-nowrap">
-                        Posicione seu rosto no círculo
+            {/* Guia visual - só mostra quando a câmera está pronta */}
+            {cameraReady && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                {guideType === 'document' && (
+                  <div className="w-[85%] h-[60%] border-4 border-white/70 rounded-lg shadow-lg">
+                    <div className="absolute top-2 left-2 right-2 text-center">
+                      <span className="text-white text-sm font-medium bg-black/50 px-3 py-1 rounded">
+                        Posicione o documento dentro do quadro
                       </span>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+                {guideType === 'selfie' && (
+                  <div className="relative">
+                    <div className="w-64 h-80 border-4 border-white/70 rounded-full">
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-center">
+                        <span className="text-white text-sm font-medium bg-black/50 px-3 py-1 rounded whitespace-nowrap">
+                          Posicione seu rosto no círculo
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2 mt-4">
             <Button
               type="button"
               variant="destructive"
-              onClick={() => setShowCamera(false)}
+              onClick={() => {
+                setShowCamera(false);
+                setCameraReady(false);
+              }}
               className="flex-1"
             >
               <X className="w-4 h-4 mr-2" />
@@ -296,7 +334,8 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
             <Button
               type="button"
               onClick={capturePhoto}
-              className="flex-1 bg-green-600 hover:bg-green-700"
+              disabled={!cameraReady}
+              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
             >
               <Camera className="w-4 h-4 mr-2" />
               Capturar
