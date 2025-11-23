@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadFeaturedProducts();
@@ -50,6 +51,38 @@ const Home = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleParcelamentoClick = async () => {
+    try {
+      // Verificar se usuário está logado
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // Se não estiver logado, redirecionar para login
+        navigate('/auth');
+        return;
+      }
+
+      // Verificar se a conta está verificada
+      const { data: verification } = await supabase
+        .from('account_verifications')
+        .select('status')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!verification || verification.status !== 'verificado') {
+        // Se não estiver verificado, redirecionar para verificação
+        navigate('/verificacao');
+        return;
+      }
+
+      // Se já estiver verificado, redirecionar para produtos
+      navigate('/produtos');
+    } catch (error) {
+      console.error('Erro ao verificar status:', error);
+      navigate('/auth');
     }
   };
 
@@ -206,11 +239,14 @@ const Home = () => {
               <p className="text-sm opacity-90">
                 Com análise de crédito facilitada
               </p>
-              <Link to="/auth">
-                <Button variant="secondary" size="lg" className="w-full">
-                  Começar agora
-                </Button>
-              </Link>
+              <Button 
+                variant="secondary" 
+                size="lg" 
+                className="w-full"
+                onClick={handleParcelamentoClick}
+              >
+                Começar agora
+              </Button>
             </CardContent>
           </Card>
         </section>
