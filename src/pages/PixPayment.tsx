@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, CheckCircle, Clock, QrCode as QrCodeIcon } from "lucide-react";
 import QRCode from "react-qr-code";
+import { formatInTimeZone } from 'date-fns-tz';
 
 const PixPayment = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const PixPayment = () => {
   const [pixData, setPixData] = useState<any>(null);
   const [order, setOrder] = useState<any>(null);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   useEffect(() => {
     if (!orderId) {
@@ -26,6 +28,64 @@ const PixPayment = () => {
     }
     loadPixData();
   }, [orderId]);
+
+  // Realtime para atualização de pagamento
+  useEffect(() => {
+    if (!orderId) return;
+
+    const channel = supabase
+      .channel(`order-${orderId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'transactions',
+          filter: `order_id=eq.${orderId}`
+        },
+        (payload) => {
+          console.log('Transaction updated:', payload);
+          const newStatus = payload.new.status;
+          
+          if (newStatus === 'pago' || newStatus === 'paid') {
+            setPaymentConfirmed(true);
+            toast({
+              title: "Pagamento Confirmado! 🎉",
+              description: "Seu pagamento foi confirmado com sucesso. Seu pedido está sendo processado.",
+              duration: 10000,
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${orderId}`
+        },
+        (payload) => {
+          console.log('Order updated:', payload);
+          const newStatus = payload.new.status;
+          setOrder((prev: any) => ({ ...prev, status: newStatus }));
+          
+          if (newStatus === 'pagamento_confirmado') {
+            setPaymentConfirmed(true);
+            toast({
+              title: "Pedido Confirmado! 🎉",
+              description: "Seu pedido foi confirmado e está sendo preparado para envio.",
+              duration: 10000,
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [orderId, toast]);
 
   useEffect(() => {
     if (!pixData?.expires_at) return;
@@ -143,22 +203,43 @@ const PixPayment = () => {
       <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5">
         <div className="max-w-2xl mx-auto p-4 lg:p-6 space-y-6">
           {/* Header com status */}
-          <Card className="border-primary/20">
+          <Card className={paymentConfirmed ? "border-green-500" : "border-primary/20"}>
             <CardContent className="pt-6">
               <div className="text-center space-y-3">
-                <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Clock className="w-8 h-8 text-primary" />
+                <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center ${
+                  paymentConfirmed ? 'bg-green-500/10' : 'bg-primary/10'
+                }`}>
+                  {paymentConfirmed ? (
+                    <CheckCircle className="w-8 h-8 text-green-500" />
+                  ) : (
+                    <Clock className="w-8 h-8 text-primary" />
+                  )}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold">Aguardando Pagamento</h1>
+                  <h1 className="text-2xl font-bold">
+                    {paymentConfirmed ? 'Pagamento Confirmado!' : 'Aguardando Pagamento'}
+                  </h1>
                   <p className="text-muted-foreground mt-1">
                     Pedido #{order.numero_pedido}
                   </p>
+                  {order.updated_at && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Atualizado em: {formatInTimeZone(new Date(order.updated_at), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm:ss')}
+                    </p>
+                  )}
                 </div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50">
-                  <Clock className="w-4 h-4" />
-                  <span className="font-mono font-semibold">{timeRemaining}</span>
-                </div>
+                {!paymentConfirmed && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-mono font-semibold">{timeRemaining}</span>
+                  </div>
+                )}
+                {paymentConfirmed && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 text-green-700 dark:text-green-300">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="font-semibold">Pagamento Recebido</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -260,28 +341,51 @@ const PixPayment = () => {
           </Card>
 
           {/* Instruções */}
-          <Card className="border-accent/20 bg-accent/5">
+          <Card className={paymentConfirmed ? "border-green-500/20 bg-green-500/5" : "border-accent/20 bg-accent/5"}>
             <CardContent className="pt-6">
-              <div className="space-y-3 text-sm">
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                  <p>
-                    <strong>Pagamento instantâneo:</strong> Assim que você pagar, receberemos a confirmação automaticamente
-                  </p>
+              {paymentConfirmed ? (
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <p>
+                      <strong>Pagamento Confirmado:</strong> Recebemos seu pagamento com sucesso!
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <p>
+                      <strong>Próximos Passos:</strong> Seu pedido está sendo processado e você receberá atualizações por e-mail
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <p>
+                      <strong>Acompanhamento:</strong> Acesse "Meus Pedidos" para ver o status da entrega em tempo real
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                  <p>
-                    <strong>Notificação:</strong> Você receberá um e-mail confirmando o pagamento
-                  </p>
+              ) : (
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                    <p>
+                      <strong>Pagamento instantâneo:</strong> Assim que você pagar, receberemos a confirmação automaticamente
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                    <p>
+                      <strong>Notificação:</strong> Você receberá um e-mail confirmando o pagamento
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                    <p>
+                      <strong>Acompanhamento:</strong> Você pode acompanhar o status do seu pedido na área "Meus Pedidos"
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                  <p>
-                    <strong>Acompanhamento:</strong> Você pode acompanhar o status do seu pedido na área "Meus Pedidos"
-                  </p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 

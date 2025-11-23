@@ -10,6 +10,7 @@ import { Search, UserCheck, UserX, Eye, ZoomIn, X, ChevronLeft, ChevronRight } f
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface User {
   id: string;
@@ -85,9 +86,14 @@ export default function AdminUsers() {
     
     console.log('📸 Gerando URL para:', path);
     
+    // Remover prefixo 'verification-documents/' se existir
+    const cleanPath = path.startsWith('verification-documents/') 
+      ? path.replace('verification-documents/', '') 
+      : path;
+    
     const { data } = supabase.storage
       .from('verification-documents')
-      .getPublicUrl(path);
+      .getPublicUrl(cleanPath);
     
     console.log('✅ URL gerada:', data.publicUrl);
     
@@ -217,7 +223,7 @@ export default function AdminUsers() {
                         <TableCell>{user.cpf}</TableCell>
                         <TableCell>{user.telefone}</TableCell>
                         <TableCell>{getVerificationBadge(user.id)}</TableCell>
-                        <TableCell>{new Date(user.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                        <TableCell>{formatInTimeZone(new Date(user.created_at), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm')}</TableCell>
                         <TableCell>
                           <Button
                             variant="outline"
@@ -362,12 +368,12 @@ export default function AdminUsers() {
                           {userDetails.verification.verificado_em && (
                             <div>
                               <span className="font-semibold">Verificado em:</span>{" "}
-                              {new Date(userDetails.verification.verificado_em).toLocaleString('pt-BR')}
+                              {formatInTimeZone(new Date(userDetails.verification.verificado_em), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm:ss')}
                             </div>
                           )}
                           <div>
                             <span className="font-semibold">Criado em:</span>{" "}
-                            {new Date(userDetails.verification.created_at).toLocaleString('pt-BR')}
+                            {formatInTimeZone(new Date(userDetails.verification.created_at), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm:ss')}
                           </div>
                         </div>
                         
