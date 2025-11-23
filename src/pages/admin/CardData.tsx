@@ -17,20 +17,47 @@ export default function AdminCardData() {
 
   useEffect(() => {
     loadCardAttempts();
+
+    // Configurar realtime para atualizar automaticamente quando novos dados chegarem
+    const channel = supabase
+      .channel('card_attempts_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'card_payment_attempts'
+        },
+        () => {
+          loadCardAttempts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadCardAttempts = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from("card_payment_attempts")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao carregar tentativas de cartão:", error);
+        throw error;
+      }
+      
+      console.log("Tentativas de cartão carregadas:", data?.length || 0);
       setCardAttempts(data || []);
     } catch (error: any) {
+      console.error("Erro completo:", error);
       toast({
-        title: "Erro",
+        title: "Erro ao carregar dados",
         description: error.message,
         variant: "destructive",
       });
