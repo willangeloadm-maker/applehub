@@ -72,17 +72,19 @@ export default function AdminSettings() {
 
   const loadPaymentSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('payment_settings')
-        .select('*')
-        .single();
+      const { data, error } = await supabase.functions.invoke('get-payment-settings', {
+        body: { admin_password: 'Ar102030' }
+      });
 
-      if (error && error.code !== 'PGRST116') return;
+      if (error) {
+        console.error('Erro ao buscar configurações:', error);
+        return;
+      }
       
-      if (data) {
+      if (data?.data) {
         setPaymentSettings({
-          recipient_id: data.recipient_id,
-          secret_key: data.secret_key
+          recipient_id: data.data.recipient_id,
+          secret_key: data.data.secret_key
         });
       }
     } catch (error) {
@@ -150,6 +152,9 @@ export default function AdminSettings() {
       }
 
       toast({ description: "Configurações da API salvas com sucesso" });
+      
+      // Recarregar as configurações após salvar
+      await loadPaymentSettings();
     } catch (error) {
       console.error('Erro ao salvar configurações da API:', error);
       toast({
