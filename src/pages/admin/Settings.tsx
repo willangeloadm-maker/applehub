@@ -18,7 +18,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2 } from 'lucide-react';
+import { Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export default function AdminSettings() {
   const navigate = useNavigate();
@@ -36,11 +37,47 @@ export default function AdminSettings() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<{
+    status: 'connected' | 'disconnected' | 'not_configured' | 'checking';
+    recipientName?: string;
+  }>({ status: 'not_configured' });
 
   useEffect(() => {
     loadSettings();
     loadPaymentSettings();
   }, []);
+
+  const checkConnection = async () => {
+    if (!paymentSettings.recipient_id || !paymentSettings.secret_key) {
+      setConnectionStatus({ status: 'not_configured' });
+      return;
+    }
+
+    setConnectionStatus({ status: 'checking' });
+
+    try {
+      const response = await fetch(`https://api.pagar.me/core/v5/recipients/${paymentSettings.recipient_id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${btoa(paymentSettings.secret_key + ':')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setConnectionStatus({
+          status: 'connected',
+          recipientName: data.name || data.id
+        });
+      } else {
+        setConnectionStatus({ status: 'disconnected' });
+      }
+    } catch (error) {
+      console.error('Erro ao verificar conexão:', error);
+      setConnectionStatus({ status: 'disconnected' });
+    }
+  };
 
   const loadSettings = async () => {
     try {
@@ -86,6 +123,11 @@ export default function AdminSettings() {
           recipient_id: data.data.recipient_id,
           secret_key: data.data.secret_key
         });
+        
+        // Verificar conexão após carregar as configurações
+        setTimeout(() => {
+          checkConnection();
+        }, 500);
       }
     } catch (error) {
       console.error('Erro ao carregar configurações de pagamento:', error);
@@ -163,6 +205,11 @@ export default function AdminSettings() {
       
       // Recarregar as configurações após salvar
       await loadPaymentSettings();
+      
+      // Verificar conexão após salvar
+      setTimeout(() => {
+        checkConnection();
+      }, 500);
     } catch (error) {
       console.error('Erro ao salvar configurações da API:', error);
       toast({
@@ -228,7 +275,37 @@ export default function AdminSettings() {
           <>
             <Card>
               <CardHeader>
-                <CardTitle>Configurações Pagar.me</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Configurações Pagar.me</CardTitle>
+                  {connectionStatus.status === 'connected' && (
+                    <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Conectado
+                    </Badge>
+                  )}
+                  {connectionStatus.status === 'disconnected' && (
+                    <Badge variant="destructive">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Desconectado
+                    </Badge>
+                  )}
+                  {connectionStatus.status === 'checking' && (
+                    <Badge variant="secondary">
+                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      Verificando...
+                    </Badge>
+                  )}
+                  {connectionStatus.status === 'not_configured' && (
+                    <Badge variant="outline">
+                      Não configurado
+                    </Badge>
+                  )}
+                </div>
+                {connectionStatus.status === 'connected' && connectionStatus.recipientName && (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Recipient: <span className="font-medium">{connectionStatus.recipientName}</span>
+                  </p>
+                )}
               </CardHeader>
               <CardContent>
                 <form onSubmit={handlePaymentSubmit} className="space-y-6">
@@ -270,9 +347,27 @@ export default function AdminSettings() {
                     </p>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? 'Validando credenciais...' : 'Salvar Configurações'}
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={checkConnection}
+                      disabled={!paymentSettings.recipient_id || !paymentSettings.secret_key || connectionStatus.status === 'checking'}
+                      className="flex-1"
+                    >
+                      {connectionStatus.status === 'checking' ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Testando...
+                        </>
+                      ) : (
+                        'Testar Conexão'
+                      )}
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={loading}>
+                      {loading ? 'Validando credenciais...' : 'Salvar Configurações'}
+                    </Button>
+                  </div>
                 </form>
               </CardContent>
             </Card>
