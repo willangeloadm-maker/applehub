@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Truck, MapPin } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import { formatDateTimeBrasilia } from "@/lib/dateUtils";
 
 type Order = Tables<"orders"> & {
   order_items: (Tables<"order_items"> & {
@@ -100,16 +101,6 @@ const Orders = () => {
     }).format(price);
   };
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       em_analise: { label: "Em Análise", variant: "secondary" },
@@ -164,7 +155,7 @@ const Orders = () => {
             <div>
               <h1 className="text-2xl font-bold mb-2">Pedido #{selectedOrder.numero_pedido}</h1>
               <p className="text-sm text-muted-foreground">
-                Realizado em {formatDate(selectedOrder.created_at!)}
+                Realizado em {formatDateTimeBrasilia(selectedOrder.created_at!)}
               </p>
             </div>
 
@@ -179,7 +170,7 @@ const Orders = () => {
                   <div>
                     {getStatusBadge(selectedOrder.status)}
                     <p className="text-sm text-muted-foreground mt-1">
-                      Atualizado em {formatDate(selectedOrder.updated_at!)}
+                      Atualizado em {formatDateTimeBrasilia(selectedOrder.updated_at!)}
                     </p>
                   </div>
                 </div>
@@ -208,7 +199,7 @@ const Orders = () => {
                           {getStatusBadge(item.status)}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(item.created_at!)}
+                          {formatDateTimeBrasilia(item.created_at!)}
                         </p>
                         {item.observacao && (
                           <p className="text-sm mt-1">{item.observacao}</p>
@@ -340,7 +331,7 @@ const Orders = () => {
                       <div>
                         <p className="font-semibold">Pedido #{order.numero_pedido}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(order.created_at!)}
+                          {formatDateTimeBrasilia(order.created_at!)}
                         </p>
                       </div>
                       {getStatusBadge(order.status)}
