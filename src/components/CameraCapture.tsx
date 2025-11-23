@@ -204,15 +204,17 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
         ctx.drawImage(img, 0, 0);
         
-        // Validar qualidade da imagem
-        const qualityCheck = checkImageQuality(canvas);
-        if (!qualityCheck.isValid) {
-          toast({
-            title: "Qualidade da foto insuficiente",
-            description: qualityCheck.reason,
-            variant: "destructive",
-          });
-          return;
+        // Validar qualidade da imagem APENAS para documentos (não para selfie)
+        if (guideType === 'document') {
+          const qualityCheck = checkImageQuality(canvas);
+          if (!qualityCheck.isValid) {
+            toast({
+              title: "Qualidade da foto insuficiente",
+              description: qualityCheck.reason,
+              variant: "destructive",
+            });
+            return;
+          }
         }
         
         const { blob, quality } = await compressImage(canvas);
@@ -290,15 +292,17 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
         ctx.drawImage(img, 0, 0);
         
-        // Validar qualidade da imagem
-        const qualityCheck = checkImageQuality(canvas);
-        if (!qualityCheck.isValid) {
-          toast({
-            title: "Qualidade da foto insuficiente",
-            description: qualityCheck.reason,
-            variant: "destructive",
-          });
-          return;
+        // Validar qualidade da imagem APENAS para documentos (não para selfie)
+        if (guideType === 'document') {
+          const qualityCheck = checkImageQuality(canvas);
+          if (!qualityCheck.isValid) {
+            toast({
+              title: "Qualidade da foto insuficiente",
+              description: qualityCheck.reason,
+              variant: "destructive",
+            });
+            return;
+          }
         }
         
         const { blob } = await compressImage(canvas);
