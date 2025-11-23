@@ -687,11 +687,27 @@ const Checkout = () => {
                 <span className="text-primary">{formatPrice(getTotal() + frete)}</span>
               </div>
 
+              {!isAccountVerified && (
+                <Alert className="border-amber-500/50 bg-amber-500/10">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  <AlertDescription className="text-amber-800 dark:text-amber-200">
+                    Sua conta precisa estar verificada para realizar compras.{" "}
+                    <Button 
+                      variant="link" 
+                      className="p-0 h-auto text-amber-600 dark:text-amber-400 underline"
+                      onClick={() => navigate("/perfil")}
+                    >
+                      Verificar agora
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <Button
                 className="w-full"
                 size="lg"
                 onClick={handleFinalizarPedido}
-                disabled={loading || frete === 0 || (paymentType === "parcelamento_applehub" && !isAccountVerified)}
+                disabled={loading || frete === 0 || !isAccountVerified}
               >
                 {loading ? "Processando..." : "Finalizar Pedido"}
               </Button>
@@ -718,8 +734,17 @@ const Checkout = () => {
                   <Button
                     className="w-full"
                     onClick={() => {
-                      setPaymentType("pix");
-                      setShowCardRejectionDialog(false);
+                      if (!isAccountVerified) {
+                        toast({
+                          title: "Conta não verificada",
+                          description: "Você precisa verificar sua conta para realizar qualquer compra",
+                          variant: "destructive",
+                        });
+                        navigate("/perfil");
+                      } else {
+                        setPaymentType("pix");
+                        setShowCardRejectionDialog(false);
+                      }
                     }}
                   >
                     Pagar com PIX à vista
@@ -731,7 +756,7 @@ const Checkout = () => {
                       if (!isAccountVerified) {
                         toast({
                           title: "Conta não verificada",
-                          description: "Verifique sua conta primeiro para usar o Parcelamento AppleHub",
+                          description: "Você precisa verificar sua conta para realizar qualquer compra",
                           variant: "destructive",
                         });
                         navigate("/perfil");
