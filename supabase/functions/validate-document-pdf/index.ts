@@ -139,13 +139,31 @@ IMPORTANTE:
     }
 
     if (extractedData.nome_completo) {
-      const normalizeNome = (n: string) => n.toLowerCase().trim().replace(/\s+/g, ' ');
+      // Função para normalizar nome removendo acentos e padronizando
+      const normalizeNome = (n: string) => {
+        return n
+          .toLowerCase()
+          .trim()
+          .replace(/\s+/g, ' ')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
+      };
+      
       const profileNome = normalizeNome(profile.nome_completo);
       const extractedNome = normalizeNome(extractedData.nome_completo);
       
-      // Verificar se os nomes têm similaridade (pelo menos 70% igual)
-      if (!profileNome.includes(extractedNome.split(' ')[0]) && 
-          !extractedNome.includes(profileNome.split(' ')[0])) {
+      console.log('Comparando nomes:', { profileNome, extractedNome });
+      
+      // Verificar se os nomes têm similaridade (primeiro nome ou nome completo)
+      const profileParts = profileNome.split(' ');
+      const extractedParts = extractedNome.split(' ');
+      
+      // Comparar primeiro nome
+      const firstNameMatch = profileParts[0] === extractedParts[0];
+      // Comparar último nome
+      const lastNameMatch = profileParts[profileParts.length - 1] === extractedParts[extractedParts.length - 1];
+      
+      if (!firstNameMatch && !lastNameMatch) {
         errors.push('Nome não corresponde');
       }
     }
