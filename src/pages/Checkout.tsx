@@ -306,6 +306,16 @@ const Checkout = () => {
         return;
       }
 
+      // Se for parcelamento AppleHub, iniciar análise de crédito
+      if (paymentType === "parcelamento_applehub") {
+        // Limpar carrinho
+        await clearCart();
+
+        // Redirecionar para análise de crédito
+        navigate(`/analise-credito?orderId=${order.id}&total=${total}`);
+        return;
+      }
+
       // Limpar carrinho
       await clearCart();
 
@@ -327,7 +337,7 @@ const Checkout = () => {
   };
 
   const calcularValorParcela = (total: number, numeroParcelas: number) => {
-    const juros = installmentSettings?.juros_mensal || 2.5; // 2.5% padrão
+    const juros = 1.99; // Juros máximo de 1.99% ao mês
     const taxaJuros = juros / 100;
     
     // Fórmula de juros compostos: M = P * (1 + i)^n * i / ((1 + i)^n - 1)
@@ -549,7 +559,7 @@ const Checkout = () => {
                       ))}
                     </select>
                     <p className="text-xs text-yellow-600">
-                      * Juros de {installmentSettings?.juros_mensal || 2.5}% ao mês | Sujeito a análise de crédito
+                      * Juros de até 1.99% ao mês (quanto maior a entrada, menor o juros) | Sujeito a análise de crédito
                     </p>
                   </div>
                 </>

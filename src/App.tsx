@@ -25,6 +25,8 @@ import { AdminRoute } from "./components/AdminRoute";
 
 import ResetPassword from "./pages/ResetPassword";
 import PixPayment from "./pages/PixPayment";
+import CreditAnalysis from "./pages/CreditAnalysis";
+import CreditApproved from "./pages/CreditApproved";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +47,8 @@ const App = () => (
           <Route path="/perfil" element={<Profile />} />
           <Route path="/verificacao" element={<AccountVerification />} />
           <Route path="/pagamento-pix" element={<PixPayment />} />
+          <Route path="/analise-credito" element={<CreditAnalysis />} />
+          <Route path="/credito-aprovado" element={<CreditApproved />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/produtos" element={<AdminRoute><AdminProducts /></AdminRoute>} />
           <Route path="/admin/pedidos" element={<AdminRoute><AdminOrders /></AdminRoute>} />
