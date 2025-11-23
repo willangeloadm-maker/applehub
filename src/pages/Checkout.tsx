@@ -517,12 +517,12 @@ const Checkout = () => {
                   <div className="mt-4 space-y-2">
                     <Label>Número de Parcelas</Label>
                     <select
-                      className="w-full border rounded-md p-2"
+                      className="w-full border rounded-md p-2 bg-background text-foreground"
                       value={parcelas}
                       onChange={(e) => setParcelas(Number(e.target.value))}
                     >
                       {Array.from({ length: installmentSettings?.max_parcelas || 24 }, (_, i) => i + 1).map((n) => (
-                        <option key={n} value={n}>
+                        <option key={n} value={n} className="bg-background text-foreground">
                           {n}x de {formatPrice(calcularValorParcela(getTotal() + frete, n))} (com juros)
                         </option>
                       ))}
