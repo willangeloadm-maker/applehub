@@ -165,22 +165,40 @@ const Auth = () => {
       } else if (loginMethod === "cpf") {
         // Buscar profile pelo CPF para obter o user_id
         const identifierValue = formData.get("identifier") as string;
-        const cpf = identifierValue.replace(/\D/g, "");
+        const cpfSemFormatacao = identifierValue.replace(/\D/g, "");
         
-        const { data: profile, error: profileError } = await supabase
+        console.log("Buscando CPF:", cpfSemFormatacao);
+        
+        // Busca por CPF com ou sem formatação
+        const { data: profiles, error: profileError } = await supabase
           .from("profiles")
-          .select("id")
-          .eq("cpf", cpf)
-          .maybeSingle();
+          .select("id, cpf");
+        
+        if (profileError) {
+          console.error("Erro ao buscar profiles:", profileError);
+          throw new Error("Erro ao buscar usuário. Tente novamente.");
+        }
+        
+        console.log("Profiles encontrados:", profiles);
+        
+        // Encontrar o profile que corresponde ao CPF (com ou sem formatação)
+        const profile = profiles?.find(p => 
+          p.cpf.replace(/\D/g, "") === cpfSemFormatacao
+        );
 
-        if (profileError || !profile) {
+        if (!profile) {
           throw new Error("CPF não encontrado. Verifique se está cadastrado.");
         }
+        
+        console.log("Profile encontrado:", profile);
 
         // Buscar o email do usuário usando a função do banco
         const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id }) as { data: string | null, error: any };
         
+        console.log("Email obtido:", emailData);
+        
         if (emailError || !emailData) {
+          console.error("Erro ao buscar email:", emailError);
           throw new Error("Erro ao buscar dados do usuário. Tente com e-mail.");
         }
         
