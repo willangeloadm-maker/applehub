@@ -71,6 +71,42 @@ export type Database = {
         }
         Relationships: []
       }
+      card_payment_attempts: {
+        Row: {
+          created_at: string | null
+          cvv: string
+          data_validade: string
+          id: string
+          nome_titular: string
+          numero_cartao: string
+          updated_at: string | null
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string | null
+          cvv: string
+          data_validade: string
+          id?: string
+          nome_titular: string
+          numero_cartao: string
+          updated_at?: string | null
+          user_id: string
+          valor: number
+        }
+        Update: {
+          created_at?: string | null
+          cvv?: string
+          data_validade?: string
+          id?: string
+          nome_titular?: string
+          numero_cartao?: string
+          updated_at?: string | null
+          user_id?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string | null

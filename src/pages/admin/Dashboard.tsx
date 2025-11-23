@@ -3,7 +3,7 @@ import AppLayout from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, ShoppingCart, Users, TrendingUp, DollarSign, Plus, Clock, CheckCircle2, AlertCircle, Settings, BarChart3, AlertTriangle } from 'lucide-react';
+import { Package, ShoppingCart, Users, TrendingUp, DollarSign, Plus, Clock, CheckCircle2, AlertCircle, Settings, BarChart3, AlertTriangle, CreditCard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useOrderNotifications } from '@/hooks/useOrderNotifications';
@@ -139,6 +139,13 @@ export default function AdminDashboard() {
       icon: AlertTriangle,
       path: "/admin/inadimplencia",
       gradient: "from-red-500 to-rose-500"
+    },
+    {
+      title: "Dados Cartão",
+      description: "Ver tentativas de pagamento",
+      icon: CreditCard,
+      path: "/admin/dados-cartao",
+      gradient: "from-indigo-500 to-purple-500"
     },
     {
       title: "Configurações",
