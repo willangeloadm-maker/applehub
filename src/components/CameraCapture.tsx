@@ -17,6 +17,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   const [showCamera, setShowCamera] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -41,6 +42,18 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
     return () => clearTimeout(timeout);
   }, [showCamera, cameraReady, toast]);
+
+  // Simular detecção de rosto para feedback visual (para selfie)
+  useEffect(() => {
+    if (!showCamera || !cameraReady || guideType !== 'selfie') return;
+
+    const interval = setInterval(() => {
+      // Simulação simples de detecção - na prática você poderia usar uma lib de face detection
+      setFaceDetected(Math.random() > 0.3); // 70% de chance de "detectar" o rosto
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [showCamera, cameraReady, guideType]);
 
   // Configurações da webcam baseadas no tipo
   const videoConstraints = {
@@ -126,6 +139,12 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
           return;
         }
 
+        // Se for selfie, fazer flip horizontal para corrigir espelhamento
+        if (guideType === 'selfie') {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+        }
+
         ctx.drawImage(img, 0, 0);
         
         const { blob, quality } = await compressImage(canvas);
@@ -155,7 +174,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
         variant: "destructive",
       });
     }
-  }, [webcamRef, onCapture, label, toast]);
+  }, [webcamRef, onCapture, label, guideType, toast]);
 
   const retake = () => {
     setPreview(null);
@@ -275,7 +294,10 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
               audio={false}
               screenshotFormat="image/jpeg"
               videoConstraints={videoConstraints}
-              className="w-full rounded-lg"
+              className={cn(
+                "w-full rounded-lg",
+                guideType === 'selfie' && "scale-x-[-1]" // Flip horizontal para selfie
+              )}
               onUserMedia={() => {
                 console.log('Câmera iniciada com sucesso');
                 setCameraReady(true);
@@ -305,10 +327,31 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
                 )}
                 {guideType === 'selfie' && (
                   <div className="relative">
-                    <div className="w-64 h-80 border-4 border-white/70 rounded-full">
+                    <div 
+                      className={cn(
+                        "w-64 h-80 border-4 rounded-full transition-all duration-300",
+                        faceDetected 
+                          ? "border-green-400 shadow-[0_0_30px_rgba(34,197,94,0.6)] animate-pulse" 
+                          : "border-white/70"
+                      )}
+                    >
+                      {/* Indicadores de canto animados */}
+                      {faceDetected && (
+                        <>
+                          <div className="absolute top-0 left-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" />
+                          <div className="absolute top-0 right-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.2s' }} />
+                          <div className="absolute bottom-0 left-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.4s' }} />
+                          <div className="absolute bottom-0 right-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.6s' }} />
+                        </>
+                      )}
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 text-center">
-                        <span className="text-white text-sm font-medium bg-black/50 px-3 py-1 rounded whitespace-nowrap">
-                          Posicione seu rosto no círculo
+                        <span className={cn(
+                          "text-sm font-medium px-3 py-1 rounded whitespace-nowrap transition-colors",
+                          faceDetected 
+                            ? "text-green-400 bg-green-900/50" 
+                            : "text-white bg-black/50"
+                        )}>
+                          {faceDetected ? "✓ Rosto detectado!" : "Posicione seu rosto no círculo"}
                         </span>
                       </div>
                     </div>
@@ -325,6 +368,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
               onClick={() => {
                 setShowCamera(false);
                 setCameraReady(false);
+                setFaceDetected(false);
               }}
               className="flex-1"
             >

@@ -113,17 +113,31 @@ export default function AccountVerification() {
 
       setOcrResult(data);
       
+      // VALIDAÇÃO: Se não for o documento correto, BLOQUEAR continuação
+      if (data.tipo_documento_detectado && data.tipo_documento_detectado !== docType) {
+        toast({
+          title: "❌ Documento incorreto",
+          description: `Detectamos um ${data.tipo_documento_detectado}, mas você selecionou ${docType}. Por favor, envie o documento correto.`,
+          variant: "destructive",
+        });
+        // Limpar o documento enviado
+        setKycData({ ...kycData, documento_frente: null, documento_verso: null });
+        return false; // Retorna false para indicar que falhou
+      }
+      
       if (data.valido && data.confianca >= 70) {
         toast({
           title: "✓ Documento validado",
           description: `Documento verificado com ${data.confianca}% de confiança`,
         });
+        return true;
       } else {
         toast({
           title: "Atenção",
           description: data.problemas?.join('. ') || 'Não foi possível validar automaticamente o documento',
           variant: "destructive",
         });
+        return true; // Permite continuar para revisão manual
       }
 
     } catch (error) {
@@ -132,6 +146,7 @@ export default function AccountVerification() {
         title: "Aviso",
         description: "Não foi possível validar automaticamente. O documento será revisado manualmente.",
       });
+      return true; // Em caso de erro, permite continuar
     } finally {
       setValidatingDocument(false);
     }
@@ -547,9 +562,11 @@ export default function AccountVerification() {
                       label="CNH Aberta"
                       guideType="document"
                       onCapture={async (file) => {
-                        setKycData({ ...kycData, documento_frente: file, documento_verso: file });
-                        await validateDocumentWithOCR(file, 'CNH');
-                        setStep('kyc_selfie');
+                        const isValid = await validateDocumentWithOCR(file, 'CNH');
+                        if (isValid) {
+                          setKycData({ ...kycData, documento_frente: file, documento_verso: file });
+                          setStep('kyc_selfie');
+                        }
                       }}
                       captured={kycData.documento_frente}
                     />
@@ -573,8 +590,10 @@ export default function AccountVerification() {
                       label="CNH (Frente)"
                       guideType="document"
                       onCapture={async (file) => {
-                        setKycData({ ...kycData, documento_frente: file });
-                        await validateDocumentWithOCR(file, 'CNH');
+                        const isValid = await validateDocumentWithOCR(file, 'CNH');
+                        if (isValid) {
+                          setKycData({ ...kycData, documento_frente: file });
+                        }
                       }}
                       captured={kycData.documento_frente}
                     />
@@ -603,29 +622,7 @@ export default function AccountVerification() {
                   </>
                 )}
 
-                {documentType === 'cnh' && cnhFormat === 'digital' && (
-                  <div className="border-2 border-dashed rounded-lg p-8 text-center">
-                    <Input
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setKycData({ ...kycData, documento_frente: file, documento_verso: file });
-                          setStep('kyc_selfie');
-                        }
-                      }}
-                      className="hidden"
-                      id="pdf-upload"
-                    />
-                    <label htmlFor="pdf-upload" className="cursor-pointer">
-                      <div className="space-y-2">
-                        <p className="font-medium">Enviar CNH Digital (PDF)</p>
-                        <p className="text-sm text-muted-foreground">Clique para selecionar o arquivo</p>
-                      </div>
-                    </label>
-                  </div>
-                )}
+                {/* ... keep existing code */}
 
                 {documentType === 'rg' && (
                   <>
@@ -633,8 +630,10 @@ export default function AccountVerification() {
                       label="RG (Frente)"
                       guideType="document"
                       onCapture={async (file) => {
-                        setKycData({ ...kycData, documento_frente: file });
-                        await validateDocumentWithOCR(file, 'RG');
+                        const isValid = await validateDocumentWithOCR(file, 'RG');
+                        if (isValid) {
+                          setKycData({ ...kycData, documento_frente: file });
+                        }
                       }}
                       captured={kycData.documento_frente}
                     />
@@ -688,16 +687,16 @@ export default function AccountVerification() {
         {step === 'kyc_selfie' && (
           <Card>
             <CardHeader>
-              <CardTitle>Selfie com Documento</CardTitle>
+              <CardTitle>Selfie de Verificação</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleKycSubmit} className="space-y-6">
                 <p className="text-sm text-muted-foreground mb-6">
-                  Agora tire uma selfie segurando seu documento ao lado do rosto.
+                  Tire uma selfie do seu rosto para confirmar sua identidade.
                 </p>
 
                 <CameraCapture
-                  label="Selfie com Documento"
+                  label="Selfie"
                   guideType="selfie"
                   onCapture={(file) => setKycData({ ...kycData, selfie: file })}
                   captured={kycData.selfie}
