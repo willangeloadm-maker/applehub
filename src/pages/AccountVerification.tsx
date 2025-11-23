@@ -17,7 +17,7 @@ export default function AccountVerification() {
   const [user, setUser] = useState<any>(null);
   const [verification, setVerification] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<'check' | 'form' | 'validating' | 'kyc' | 'analyzing' | 'result'>('check');
+  const [step, setStep] = useState<'check' | 'form' | 'validating' | 'kyc_doc_type' | 'kyc_cnh_format' | 'kyc_capture' | 'kyc_selfie' | 'analyzing' | 'result'>('check');
   const [formData, setFormData] = useState({
     nome_completo: '',
     cpf: '',
@@ -28,6 +28,8 @@ export default function AccountVerification() {
     patrimonio: '',
     renda_mensal: ''
   });
+  const [documentType, setDocumentType] = useState<'cnh' | 'rg' | null>(null);
+  const [cnhFormat, setCnhFormat] = useState<'aberta' | 'fechada' | 'digital' | null>(null);
   const [kycData, setKycData] = useState({
     documento_frente: null as File | null,
     documento_verso: null as File | null,
@@ -78,7 +80,7 @@ export default function AccountVerification() {
     // Simular validação de 4 segundos
     setTimeout(() => {
       toast({ description: "Dados validados com sucesso!" });
-      setStep('kyc');
+      setStep('kyc_doc_type');
     }, 4000);
   };
 
@@ -172,7 +174,7 @@ export default function AccountVerification() {
         description: "Erro ao enviar documentos",
         variant: "destructive"
       });
-      setStep('kyc');
+      setStep('kyc_doc_type');
     }
   };
 
@@ -365,50 +367,254 @@ export default function AccountVerification() {
           </Card>
         )}
 
-        {step === 'kyc' && (
+        {step === 'kyc_doc_type' && (
           <Card>
             <CardHeader>
-              <CardTitle>Verificação de Identidade (KYC)</CardTitle>
+              <CardTitle>Escolha o Tipo de Documento</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Selecione o tipo de documento que você deseja enviar:
+              </p>
+              <Button
+                variant="outline"
+                className="w-full h-auto py-6"
+                onClick={() => {
+                  setDocumentType('cnh');
+                  setStep('kyc_cnh_format');
+                }}
+              >
+                <div className="text-left w-full">
+                  <p className="font-semibold mb-1">CNH - Carteira Nacional de Habilitação</p>
+                  <p className="text-xs text-muted-foreground">Versão aberta, fechada ou digital</p>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-auto py-6"
+                onClick={() => {
+                  setDocumentType('rg');
+                  setStep('kyc_capture');
+                }}
+              >
+                <div className="text-left w-full">
+                  <p className="font-semibold mb-1">RG - Registro Geral</p>
+                  <p className="text-xs text-muted-foreground">Envie frente e verso</p>
+                </div>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 'kyc_cnh_format' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Formato da CNH</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Como você deseja enviar sua CNH?
+              </p>
+              <Button
+                variant="outline"
+                className="w-full h-auto py-6"
+                onClick={() => {
+                  setCnhFormat('aberta');
+                  setStep('kyc_capture');
+                }}
+              >
+                <div className="text-left w-full">
+                  <p className="font-semibold mb-1">CNH Aberta</p>
+                  <p className="text-xs text-muted-foreground">Envie uma foto da CNH completamente aberta</p>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-auto py-6"
+                onClick={() => {
+                  setCnhFormat('fechada');
+                  setStep('kyc_capture');
+                }}
+              >
+                <div className="text-left w-full">
+                  <p className="font-semibold mb-1">CNH Fechada</p>
+                  <p className="text-xs text-muted-foreground">Envie foto da frente e do verso separadamente</p>
+                </div>
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-auto py-6"
+                onClick={() => {
+                  setCnhFormat('digital');
+                  setStep('kyc_capture');
+                }}
+              >
+                <div className="text-left w-full">
+                  <p className="font-semibold mb-1">CNH Digital</p>
+                  <p className="text-xs text-muted-foreground">Envie o arquivo PDF da CNH digital</p>
+                </div>
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full"
+                onClick={() => setStep('kyc_doc_type')}
+              >
+                Voltar
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 'kyc_capture' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Envio de Documentos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <p className="text-sm text-muted-foreground mb-6">
+                  Para sua segurança, precisamos verificar sua identidade. Use a câmera para fotografar seus documentos.
+                </p>
+
+                {documentType === 'cnh' && cnhFormat === 'aberta' && (
+                  <CameraCapture
+                    label="CNH Aberta"
+                    guideType="document"
+                    onCapture={(file) => {
+                      setKycData({ ...kycData, documento_frente: file, documento_verso: file });
+                      setStep('kyc_selfie');
+                    }}
+                    captured={kycData.documento_frente}
+                  />
+                )}
+
+                {documentType === 'cnh' && cnhFormat === 'fechada' && (
+                  <>
+                    <CameraCapture
+                      label="CNH (Frente)"
+                      guideType="document"
+                      onCapture={(file) => setKycData({ ...kycData, documento_frente: file })}
+                      captured={kycData.documento_frente}
+                    />
+                    {kycData.documento_frente && (
+                      <CameraCapture
+                        label="CNH (Verso)"
+                        guideType="document"
+                        onCapture={(file) => {
+                          setKycData({ ...kycData, documento_verso: file });
+                          setStep('kyc_selfie');
+                        }}
+                        captured={kycData.documento_verso}
+                      />
+                    )}
+                  </>
+                )}
+
+                {documentType === 'cnh' && cnhFormat === 'digital' && (
+                  <div className="border-2 border-dashed rounded-lg p-8 text-center">
+                    <Input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setKycData({ ...kycData, documento_frente: file, documento_verso: file });
+                          setStep('kyc_selfie');
+                        }
+                      }}
+                      className="hidden"
+                      id="pdf-upload"
+                    />
+                    <label htmlFor="pdf-upload" className="cursor-pointer">
+                      <div className="space-y-2">
+                        <p className="font-medium">Enviar CNH Digital (PDF)</p>
+                        <p className="text-sm text-muted-foreground">Clique para selecionar o arquivo</p>
+                      </div>
+                    </label>
+                  </div>
+                )}
+
+                {documentType === 'rg' && (
+                  <>
+                    <CameraCapture
+                      label="RG (Frente)"
+                      guideType="document"
+                      onCapture={(file) => setKycData({ ...kycData, documento_frente: file })}
+                      captured={kycData.documento_frente}
+                    />
+                    {kycData.documento_frente && (
+                      <CameraCapture
+                        label="RG (Verso)"
+                        guideType="document"
+                        onCapture={(file) => {
+                          setKycData({ ...kycData, documento_verso: file });
+                          setStep('kyc_selfie');
+                        }}
+                        captured={kycData.documento_verso}
+                      />
+                    )}
+                  </>
+                )}
+
+                <p className="text-xs text-muted-foreground text-center bg-muted/50 p-3 rounded-lg">
+                  💡 Dica: Certifique-se de estar em um ambiente bem iluminado e que os documentos estejam legíveis
+                </p>
+
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    if (documentType === 'cnh') {
+                      setStep('kyc_cnh_format');
+                    } else {
+                      setStep('kyc_doc_type');
+                    }
+                  }}
+                >
+                  Voltar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {step === 'kyc_selfie' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Selfie com Documento</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleKycSubmit} className="space-y-6">
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground mb-6">
-                    Para sua segurança, precisamos verificar sua identidade. Use a câmera para fotografar seus documentos.
-                  </p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Agora tire uma selfie segurando seu documento ao lado do rosto.
+                </p>
 
-                  <CameraCapture
-                    label="Documento (Frente)"
-                    guideType="document"
-                    onCapture={(file) => setKycData({ ...kycData, documento_frente: file })}
-                    captured={kycData.documento_frente}
-                  />
+                <CameraCapture
+                  label="Selfie com Documento"
+                  guideType="selfie"
+                  onCapture={(file) => setKycData({ ...kycData, selfie: file })}
+                  captured={kycData.selfie}
+                />
 
-                  <CameraCapture
-                    label="Documento (Verso)"
-                    guideType="document"
-                    onCapture={(file) => setKycData({ ...kycData, documento_verso: file })}
-                    captured={kycData.documento_verso}
-                  />
-
-                  <CameraCapture
-                    label="Selfie com Documento"
-                    guideType="selfie"
-                    onCapture={(file) => setKycData({ ...kycData, selfie: file })}
-                    captured={kycData.selfie}
-                  />
-
-                  <p className="text-xs text-muted-foreground text-center bg-muted/50 p-3 rounded-lg">
-                    💡 Dica: Certifique-se de estar em um ambiente bem iluminado e que os documentos estejam legíveis
-                  </p>
-                </div>
+                <p className="text-xs text-muted-foreground text-center bg-muted/50 p-3 rounded-lg">
+                  💡 Dica: Posicione o documento ao lado do rosto e certifique-se de que ambos estejam bem iluminados
+                </p>
 
                 <Button 
                   type="submit" 
                   className="w-full"
-                  disabled={!kycData.documento_frente || !kycData.documento_verso || !kycData.selfie}
+                  disabled={!kycData.selfie}
                 >
-                  Enviar Documentos
+                  Finalizar Verificação
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setStep('kyc_capture')}
+                >
+                  Voltar
                 </Button>
               </form>
             </CardContent>

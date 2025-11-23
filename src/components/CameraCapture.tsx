@@ -171,20 +171,43 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
         },
         audio: false
       });
+      
       setStream(mediaStream);
       setShowCamera(true);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
+        
+        // Usar múltiplos eventos para garantir que a câmera carregue
+        const handleCanPlay = () => {
+          console.log('Video can play');
+          videoRef.current?.play().then(() => {
+            console.log('Video playing');
+            setVideoReady(true);
+          }).catch(err => {
+            console.error('Error playing video:', err);
+          });
         };
-        videoRef.current.onplaying = () => {
-          setVideoReady(true);
-        };
+        
+        videoRef.current.onloadedmetadata = handleCanPlay;
+        videoRef.current.oncanplay = handleCanPlay;
+        
+        // Fallback: forçar play após 1 segundo se não carregar
+        setTimeout(() => {
+          if (!videoReady && videoRef.current) {
+            console.log('Forcing video play (fallback)');
+            videoRef.current.play().then(() => {
+              setVideoReady(true);
+            }).catch(err => {
+              console.error('Fallback play error:', err);
+            });
+          }
+        }, 1000);
       }
     } catch (error) {
       console.error('Erro ao acessar câmera:', error);
       alert('Não foi possível acessar a câmera. Verifique as permissões.');
+      setShowCamera(false);
     }
   };
 
