@@ -79,8 +79,23 @@ serve(async (req) => {
     
     // Formatar telefone removendo caracteres não numéricos
     const phoneNumbers = profile.telefone.replace(/\D/g, "");
+    console.log("📞 Telefone completo:", phoneNumbers);
+    
+    if (phoneNumbers.length !== 11) {
+      console.error("❌ Telefone inválido. Precisa ter 11 dígitos (DDD + 9 dígitos). Atual:", phoneNumbers.length);
+      return new Response(
+        JSON.stringify({ error: "Telefone do usuário está em formato inválido" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    
     const ddd = phoneNumbers.substring(0, 2);
     const number = phoneNumbers.substring(2);
+    
+    console.log("📱 DDD:", ddd, "Número:", number);
     
     const pagarmeResponse = await fetch("https://api.pagar.me/core/v5/orders", {
       method: "POST",

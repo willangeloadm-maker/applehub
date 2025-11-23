@@ -167,21 +167,26 @@ const Auth = () => {
         const identifierValue = formData.get("identifier") as string;
         const cpfSemFormatacao = identifierValue.replace(/\D/g, "");
         
-        // Buscar diretamente pelo CPF sem formatação (como está armazenado no banco)
-        const { data: profile, error: profileError } = await supabase
+        console.log("🔍 Buscando CPF:", cpfSemFormatacao);
+        
+        // Buscar pelo CPF formatado e sem formatação (para garantir compatibilidade)
+        const { data: profiles, error: profileError } = await supabase
           .from("profiles")
-          .select("id")
-          .eq("cpf", cpfSemFormatacao)
-          .maybeSingle();
+          .select("id, cpf")
+          .or(`cpf.eq.${cpfSemFormatacao},cpf.eq.${identifierValue}`);
 
         if (profileError) {
           console.error("Erro ao buscar profile:", profileError);
           throw new Error("Erro ao buscar usuário. Tente novamente.");
         }
 
-        if (!profile) {
+        console.log("📋 Profiles encontrados:", profiles);
+
+        if (!profiles || profiles.length === 0) {
           throw new Error("CPF não encontrado. Verifique se está cadastrado.");
         }
+        
+        const profile = profiles[0];
 
         // Buscar o email do usuário usando a função do banco
         const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id }) as { data: string | null, error: any };
