@@ -59,6 +59,7 @@ IMPORTANTE:
 - CPF deve conter apenas números
 - Data deve estar no formato YYYY-MM-DD`;
 
+    // Usar o modelo Gemini Pro que suporta PDF
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -66,12 +67,15 @@ IMPORTANTE:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-2.5-pro',
         messages: [
           {
             role: 'user',
             content: [
-              { type: 'text', text: prompt },
+              { 
+                type: 'text', 
+                text: prompt 
+              },
               {
                 type: 'image_url',
                 image_url: {
