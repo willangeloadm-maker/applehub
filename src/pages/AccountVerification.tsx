@@ -133,20 +133,23 @@ export default function AccountVerification() {
         return true;
       } else {
         toast({
-          title: "Atenção",
-          description: data.problemas?.join('. ') || 'Não foi possível validar automaticamente o documento',
+          title: "❌ Documento não validado",
+          description: data.problemas?.join('. ') || 'Os dados do documento não conferem com o cadastro. Envie um documento válido.',
           variant: "destructive",
         });
-        return true; // Permite continuar para revisão manual
+        // Limpar o documento enviado
+        setKycData({ ...kycData, documento_frente: null, documento_verso: null });
+        return false; // BLOQUEAR continuação
       }
 
     } catch (error) {
       console.error('Erro na validação OCR:', error);
       toast({
-        title: "Aviso",
-        description: "Não foi possível validar automaticamente. O documento será revisado manualmente.",
+        title: "❌ Erro na validação",
+        description: "Não foi possível validar o documento. Tente novamente ou envie outro documento.",
+        variant: "destructive",
       });
-      return true; // Em caso de erro, permite continuar
+      return false; // BLOQUEAR em caso de erro
     } finally {
       setValidatingDocument(false);
     }
