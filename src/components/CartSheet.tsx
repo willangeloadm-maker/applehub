@@ -44,7 +44,7 @@ export const CartSheet = () => {
             <div className="flex-1 flex flex-col items-center justify-center space-y-4">
               <ShoppingCart className="w-16 h-16 text-muted-foreground" />
               <p className="text-muted-foreground">Seu carrinho está vazio</p>
-              <Button onClick={() => navigate("/products")}>
+              <Button onClick={() => navigate("/produtos")}>
                 Ver produtos
               </Button>
             </div>
