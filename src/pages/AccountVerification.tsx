@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { CheckCircle2, Loader2, CheckCircle, XCircle } from 'lucide-react';
 import CameraCapture from '@/components/CameraCapture';
 import { formatCPF, formatPhone, formatCurrency, unformatCurrency, formatDate, validateCPF, validatePhone } from '@/lib/formatters';
+import { formatDateOnlyBrasilia } from '@/lib/dateUtils';
 
 export default function AccountVerification() {
   const navigate = useNavigate();
@@ -284,7 +285,7 @@ export default function AccountVerification() {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground mb-4">
-                Sua conta foi verificada em {new Date(verification.verificado_em).toLocaleDateString('pt-BR')}
+                Sua conta foi verificada em {formatDateOnlyBrasilia(verification.verificado_em)}
               </p>
               <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
                 <p className="text-sm text-green-800 dark:text-green-200">

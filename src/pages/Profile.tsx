@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkles, CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { useWishlist } from "@/hooks/useWishlist";
 import ProductCard from "@/components/ProductCard";
+import { formatDateOnlyBrasilia } from "@/lib/dateUtils";
 
 const Profile = () => {
   const [loading, setLoading] = useState(true);
@@ -159,7 +160,7 @@ const Profile = () => {
                       Conta Verificada
                     </p>
                     <p className="text-sm text-green-700 dark:text-green-300">
-                      Verificado em {new Date(verification.verificado_em).toLocaleDateString('pt-BR')}
+                      Verificado em {formatDateOnlyBrasilia(verification.verificado_em)}
                     </p>
                   </div>
                   <Badge variant="default" className="bg-green-600">Ativo</Badge>
