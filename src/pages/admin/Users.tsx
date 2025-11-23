@@ -65,8 +65,15 @@ export default function AdminUsers() {
       const verificationsMap: Record<string, Verification> = {};
       (data.verifications || []).forEach((v: any) => {
         verificationsMap[v.user_id] = {
+          id: v.id,
+          user_id: v.user_id,
           status: v.status,
-          verificado_em: v.verificado_em
+          verificado_em: v.verificado_em,
+          created_at: v.created_at,
+          updated_at: v.updated_at,
+          documento_frente: v.documento_frente,
+          documento_verso: v.documento_verso,
+          selfie: v.selfie
         };
       });
 
