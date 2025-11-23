@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.generate-pix]
 verify_jwt = true
 
+[functions.process-card-verification]
+verify_jwt = true
+
 [functions.pagarme-webhook]
 verify_jwt = false
 
