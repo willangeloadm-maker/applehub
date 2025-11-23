@@ -565,8 +565,10 @@ const Checkout = () => {
     if (!cupomAplicado) return 0;
     
     const subtotal = getTotal();
+    const totalComFrete = subtotal + frete; // Incluir frete no cálculo do desconto
+    
     if (cupomAplicado.discount_type === 'percentage') {
-      return (subtotal * Number(cupomAplicado.discount_value)) / 100;
+      return (totalComFrete * Number(cupomAplicado.discount_value)) / 100;
     }
     return Number(cupomAplicado.discount_value);
   };
