@@ -24,6 +24,7 @@ import AccountVerification from "./pages/AccountVerification";
 import { AdminRoute } from "./components/AdminRoute";
 
 import ResetPassword from "./pages/ResetPassword";
+import PixPayment from "./pages/PixPayment";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/pedidos" element={<Orders />} />
           <Route path="/perfil" element={<Profile />} />
           <Route path="/verificacao" element={<AccountVerification />} />
+          <Route path="/pagamento-pix" element={<PixPayment />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/produtos" element={<AdminRoute><AdminProducts /></AdminRoute>} />
           <Route path="/admin/pedidos" element={<AdminRoute><AdminOrders /></AdminRoute>} />

@@ -249,7 +249,7 @@ const Checkout = () => {
           parcelas: paymentType === "parcelamento_applehub" ? parcelas : null,
           valor_parcela: paymentType === "parcelamento_applehub" ? calcularValorParcela(total, parcelas) : null,
           endereco_entrega: endereco,
-          status: paymentType === "parcelamento_applehub" ? "em_analise" : "pagamento_confirmado",
+          status: paymentType === "parcelamento_applehub" ? "em_analise" : "em_analise",
         })
         .select()
         .single();
@@ -277,13 +277,34 @@ const Checkout = () => {
         .from("order_status_history")
         .insert({
           order_id: order.id,
-          status: paymentType === "parcelamento_applehub" ? "em_analise" : "pagamento_confirmado",
+          status: "em_analise",
           observacao: paymentType === "parcelamento_applehub" 
             ? "Pedido em análise de crédito"
-            : "Pagamento confirmado",
+            : "Aguardando pagamento PIX",
         });
 
       if (historyError) throw historyError;
+
+      // Se for PIX, gerar QR Code via Pagar.me
+      if (paymentType === "pix") {
+        const { data: pixData, error: pixError } = await supabase.functions.invoke("generate-pix", {
+          body: {
+            amount: total,
+            description: `Pedido ${numeroPedido} - AppleHub`,
+            user_id: user.id,
+            order_id: order.id,
+          },
+        });
+
+        if (pixError) throw pixError;
+
+        // Limpar carrinho
+        await clearCart();
+
+        // Redirecionar para tela de pagamento PIX
+        navigate(`/pagamento-pix?orderId=${order.id}`);
+        return;
+      }
 
       // Limpar carrinho
       await clearCart();
