@@ -2,7 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Camera, X, Check, RotateCcw, Sun, Focus } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Camera, X, Check, RotateCcw, Sun, Focus, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type QualityLevel = 'good' | 'warning' | 'error';
@@ -25,9 +27,13 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   const [preview, setPreview] = useState<string | null>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [qualityIndicators, setQualityIndicators] = useState<QualityIndicators | null>(null);
+  const [autoCapture, setAutoCapture] = useState(false);
+  const [autoCaptureProgress, setAutoCaptureProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const qualityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoCaptureTimerRef = useRef<number>(0);
+  const autoCaptureStartRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (captured) {
@@ -52,13 +58,15 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     if (videoReady && showCamera) {
       qualityCheckIntervalRef.current = setInterval(() => {
         checkQualityRealtime();
-      }, 500);
+      }, 100); // Reduzido para 100ms para melhor responsividade do modo automático
     } else {
       if (qualityCheckIntervalRef.current) {
         clearInterval(qualityCheckIntervalRef.current);
         qualityCheckIntervalRef.current = null;
       }
       setQualityIndicators(null);
+      setAutoCaptureProgress(0);
+      autoCaptureStartRef.current = null;
     }
 
     return () => {
@@ -67,6 +75,35 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       }
     };
   }, [videoReady, showCamera]);
+
+  useEffect(() => {
+    if (!autoCapture || !qualityIndicators) {
+      setAutoCaptureProgress(0);
+      autoCaptureStartRef.current = null;
+      return;
+    }
+
+    const allGood = qualityIndicators.brightness.level === 'good' && 
+                    qualityIndicators.sharpness.level === 'good';
+
+    if (allGood) {
+      if (autoCaptureStartRef.current === null) {
+        autoCaptureStartRef.current = Date.now();
+      }
+
+      const elapsed = Date.now() - autoCaptureStartRef.current;
+      const progress = Math.min((elapsed / 2000) * 100, 100);
+      setAutoCaptureProgress(progress);
+
+      if (elapsed >= 2000) {
+        // Capturar automaticamente
+        capturePhoto();
+      }
+    } else {
+      setAutoCaptureProgress(0);
+      autoCaptureStartRef.current = null;
+    }
+  }, [qualityIndicators, autoCapture]);
 
   const startCamera = async () => {
     try {
@@ -103,6 +140,9 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     }
     setShowCamera(false);
     setVideoReady(false);
+    setAutoCapture(false);
+    setAutoCaptureProgress(0);
+    autoCaptureStartRef.current = null;
   };
 
   const checkQualityRealtime = () => {
@@ -471,25 +511,63 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
             </div>
           )}
 
-          <div className="flex gap-2 mt-4">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={stopCamera}
-              className="flex-1"
-            >
-              <X className="w-4 h-4 mr-2" />
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={capturePhoto}
-              disabled={!videoReady}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
-            >
-              <Camera className="w-4 h-4 mr-2" />
-              {videoReady ? 'Capturar' : 'Aguarde...'}
-            </Button>
+          {/* Barra de progresso para captura automática */}
+          {autoCapture && autoCaptureProgress > 0 && (
+            <div className="absolute bottom-20 left-4 right-4 bg-black/70 rounded-lg p-3 animate-fade-in">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white text-xs font-medium flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-green-400" />
+                  Capturando automaticamente...
+                </span>
+                <span className="text-white text-xs">{Math.round(autoCaptureProgress)}%</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-green-500 h-full transition-all duration-100 ease-linear"
+                  style={{ width: `${autoCaptureProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3 mt-4">
+            {/* Toggle de captura automática */}
+            <div className="flex items-center justify-between bg-black/50 rounded-lg px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-primary" />
+                <Label htmlFor="auto-capture" className="text-white text-sm cursor-pointer">
+                  Captura Automática
+                </Label>
+              </div>
+              <Switch
+                id="auto-capture"
+                checked={autoCapture}
+                onCheckedChange={setAutoCapture}
+                disabled={!videoReady}
+              />
+            </div>
+
+            {/* Botões de ação */}
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={stopCamera}
+                className="flex-1"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={capturePhoto}
+                disabled={!videoReady || autoCapture}
+                className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50"
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                {autoCapture ? 'Modo Auto' : videoReady ? 'Capturar' : 'Aguarde...'}
+              </Button>
+            </div>
           </div>
         </div>
       </Card>
