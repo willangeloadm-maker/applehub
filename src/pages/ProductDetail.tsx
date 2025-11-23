@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
+import { ProductReviews } from "@/components/ProductReviews";
 import { ArrowLeft, Minus, Plus, ShoppingCart, Shield, Truck, CreditCard, Heart } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 
@@ -281,6 +282,11 @@ const ProductDetail = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Seção de Avaliações */}
+      <div className="max-w-6xl mx-auto p-4 lg:p-6">
+        <ProductReviews productId={id!} />
       </div>
     </AppLayout>
   );
