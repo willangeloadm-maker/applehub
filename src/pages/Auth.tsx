@@ -445,7 +445,7 @@ const Auth = () => {
                   {/* Campo de identificação */}
                   <div className="space-y-1.5 sm:space-y-2">
                     <Label htmlFor="identifier" className="text-white text-sm">
-                      {loginMethod === "cpf" && "CPF"}
+                      {loginMethod === "cpf" && "CPF (apenas números)"}
                       {loginMethod === "email" && "E-mail"}
                       {loginMethod === "telefone" && "Telefone"}
                     </Label>
@@ -453,15 +453,16 @@ const Auth = () => {
                       id="identifier"
                       name="identifier"
                       placeholder={
-                        loginMethod === "cpf" ? "000.000.000-00" :
+                        loginMethod === "cpf" ? "Digite apenas números" :
                         loginMethod === "email" ? "seu@email.com" :
                         "(00) 00000-0000"
                       }
                       required
-                      maxLength={loginMethod === "cpf" ? 14 : loginMethod === "telefone" ? 15 : undefined}
+                      maxLength={loginMethod === "cpf" ? 11 : loginMethod === "telefone" ? 15 : undefined}
                       onChange={(e) => {
                         if (loginMethod === "cpf") {
-                          e.target.value = formatCpf(e.target.value);
+                          // Remove tudo que não é número
+                          e.target.value = e.target.value.replace(/\D/g, "");
                         } else if (loginMethod === "telefone") {
                           e.target.value = formatTelefone(e.target.value);
                         }
