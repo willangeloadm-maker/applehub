@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       const pagarmeResponse = await fetch(`https://api.pagar.me/core/v5/recipients/${recipient_id}`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${secret_key}`,
+          'Authorization': `Basic ${btoa(secret_key + ':')}`,
           'Content-Type': 'application/json',
         },
       });
