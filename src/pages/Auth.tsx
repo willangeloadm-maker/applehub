@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { Apple, CheckCircle2, XCircle } from "lucide-react";
+import { Apple, CheckCircle2, XCircle, Mail } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const loginSchema = z.object({
   cpf: z.string().min(11, "CPF inválido"),
@@ -50,6 +51,9 @@ const Auth = () => {
   const [loadingCep, setLoadingCep] = useState(false);
   const [cpfValid, setCpfValid] = useState<boolean | null>(null);
   const [telefoneValid, setTelefoneValid] = useState<boolean | null>(null);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [loadingReset, setLoadingReset] = useState(false);
 
   const validateCpf = (cpf: string): boolean => {
     const numbers = cpf.replace(/\D/g, "");
@@ -225,6 +229,67 @@ const Auth = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (provider: 'google' | 'apple') => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Erro no login social",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!resetEmail) {
+      toast({
+        title: "Email obrigatório",
+        description: "Digite seu email para recuperar a senha",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingReset(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-password-reset', {
+        body: { 
+          email: resetEmail,
+          redirectTo: `${window.location.origin}/auth/reset-password`
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Email enviado!",
+        description: "Verifique sua caixa de entrada para redefinir sua senha",
+      });
+      
+      setShowForgotPassword(false);
+      setResetEmail("");
+    } catch (error: any) {
+      toast({
+        title: "Erro ao enviar email",
+        description: error.message || "Não foi possível enviar o email de recuperação",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingReset(false);
     }
   };
 
@@ -434,6 +499,100 @@ const Auth = () => {
                   >
                     {loading ? "Entrando..." : "Entrar"}
                   </Button>
+
+                  {/* Esqueci minha senha */}
+                  <div className="text-center">
+                    <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+                      <DialogTrigger asChild>
+                        <button
+                          type="button"
+                          className="text-xs sm:text-sm text-gray-300 hover:text-[#ff6b35] underline"
+                        >
+                          Esqueci minha senha
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="bg-[#1e3a52] border-white/20">
+                        <DialogHeader>
+                          <DialogTitle className="text-white">Recuperar senha</DialogTitle>
+                          <DialogDescription className="text-gray-300">
+                            Digite seu email para receber as instruções de recuperação
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 pt-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="reset-email" className="text-white">Email</Label>
+                            <Input
+                              id="reset-email"
+                              type="email"
+                              value={resetEmail}
+                              onChange={(e) => setResetEmail(e.target.value)}
+                              placeholder="seu@email.com"
+                              className="bg-white/5 border-white/20 text-white placeholder:text-gray-400"
+                            />
+                          </div>
+                          <Button
+                            onClick={handleForgotPassword}
+                            disabled={loadingReset}
+                            className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545]"
+                          >
+                            {loadingReset ? "Enviando..." : "Enviar email"}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
+                  {/* Divisor */}
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-white/20" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-transparent px-2 text-gray-400">ou continue com</span>
+                    </div>
+                  </div>
+
+                  {/* Botões de Login Social */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleSocialLogin('google')}
+                      disabled={loading}
+                      className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                    >
+                      <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                        <path
+                          fill="currentColor"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                        />
+                        <path
+                          fill="currentColor"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                        />
+                      </svg>
+                      Google
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleSocialLogin('apple')}
+                      disabled={loading}
+                      className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                    >
+                      <Apple className="mr-2 h-4 w-4" fill="currentColor" />
+                      Apple
+                    </Button>
+                  </div>
+
                   <p className="text-center text-xs sm:text-sm text-gray-300 pt-2">
                     Não tem uma conta?{" "}
                     <button
