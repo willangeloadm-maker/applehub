@@ -66,9 +66,14 @@ const Checkout = () => {
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      
+      if (!data) {
+        throw new Error("Perfil não encontrado. Por favor, complete seu cadastro.");
+      }
+      
       setProfile(data);
       setCepFrete(data.cep);
     } catch (error: any) {
