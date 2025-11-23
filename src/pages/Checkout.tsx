@@ -588,7 +588,8 @@ const Checkout = () => {
   const calcularTotalComDesconto = () => {
     const subtotal = getTotal();
     const desconto = calcularDesconto();
-    return subtotal - desconto + frete;
+    // O desconto já foi calculado sobre (subtotal + frete), então o total correto é:
+    return (subtotal + frete) - desconto;
   };
 
   const formatPrice = (price: number) => {
