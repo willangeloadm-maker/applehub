@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { CheckCircle2, XCircle, Mail, Apple } from "lucide-react";
+import { CheckCircle2, XCircle, Mail, Apple, Eye, EyeOff } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const loginSchema = z.object({
@@ -54,6 +54,9 @@ const Auth = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [loadingReset, setLoadingReset] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showSignupPassword, setShowSignupPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const validateCpf = (cpf: string): boolean => {
     const numbers = cpf.replace(/\D/g, "");
@@ -161,12 +164,18 @@ const Auth = () => {
         email = formData.get("identifier") as string;
       } else if (loginMethod === "cpf") {
         // Buscar profile pelo CPF para obter o user_id
-        const cpf = (formData.get("identifier") as string).replace(/\D/g, "");
+        const identifierValue = formData.get("identifier") as string;
+        const cpf = identifierValue.replace(/\D/g, "");
+        console.log("CPF digitado (formatado):", identifierValue);
+        console.log("CPF limpo:", cpf);
+        
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("id")
           .eq("cpf", cpf)
           .single();
+        
+        console.log("Profile encontrado:", profile);
 
         if (profileError || !profile) {
           throw new Error("CPF não encontrado no sistema");
@@ -182,7 +191,9 @@ const Auth = () => {
         email = emailData;
       } else if (loginMethod === "telefone") {
         // Buscar profile pelo telefone para obter o user_id
-        const telefone = (formData.get("identifier") as string).replace(/\D/g, "");
+        const identifierValue = formData.get("identifier") as string;
+        const telefone = identifierValue.replace(/\D/g, "");
+        
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("id")
@@ -461,14 +472,27 @@ const Auth = () => {
 
                   <div className="space-y-1.5 sm:space-y-2">
                     <Label htmlFor="login-password" className="text-white text-sm">Senha</Label>
-                    <Input
-                      id="login-password"
-                      name="password"
-                      type="password"
-                      placeholder="Digite sua senha"
-                      required
-                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="login-password"
+                        name="password"
+                        type={showLoginPassword ? "text" : "password"}
+                        placeholder="Digite sua senha"
+                        required
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPassword(!showLoginPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                      >
+                        {showLoginPassword ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <Button 
                     type="submit" 
@@ -570,25 +594,51 @@ const Auth = () => {
                   <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5 sm:space-y-2">
                       <Label htmlFor="signup-password" className="text-white text-sm">Senha *</Label>
-                      <Input
-                        id="signup-password"
-                        name="password"
-                        type="password"
-                        placeholder="••••••"
-                        required
-                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
-                      />
+                      <div className="relative">
+                        <Input
+                          id="signup-password"
+                          name="password"
+                          type={showSignupPassword ? "text" : "password"}
+                          placeholder="••••••"
+                          required
+                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSignupPassword(!showSignupPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                        >
+                          {showSignupPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-1.5 sm:space-y-2">
                       <Label htmlFor="confirmPassword" className="text-white text-sm">Confirmar *</Label>
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type="password"
-                        placeholder="••••••"
-                        required
-                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
-                      />
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          type={showConfirmPassword ? "text" : "password"}
+                          placeholder="••••••"
+                          required
+                          className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="w-5 h-5" />
+                          ) : (
+                            <Eye className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
