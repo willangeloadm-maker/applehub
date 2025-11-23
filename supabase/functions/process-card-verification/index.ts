@@ -104,6 +104,7 @@ serve(async (req) => {
         },
         items: [
           {
+            code: `VER-${Date.now()}`, // Código obrigatório
             amount: Math.round(amount * 100), // Converter para centavos
             description: "Verificação de cartão AppleHub",
             quantity: 1,

@@ -91,6 +91,7 @@ serve(async (req) => {
         },
         items: [
           {
+            code: `ITEM-${Date.now()}`, // Código obrigatório
             amount: Math.round(amount * 100), // Converter para centavos
             description,
             quantity: 1,
