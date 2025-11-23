@@ -40,6 +40,9 @@ const Checkout = () => {
   });
   const [showCardRejectionDialog, setShowCardRejectionDialog] = useState(false);
   const [installmentSettings, setInstallmentSettings] = useState<any>(null);
+  const [cupomCode, setCupomCode] = useState("");
+  const [cupomAplicado, setCupomAplicado] = useState<any>(null);
+  const [loadingCupom, setLoadingCupom] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -306,7 +309,8 @@ const Checkout = () => {
       if (!user) throw new Error("Usuário não autenticado");
 
       const subtotal = getTotal();
-      const total = subtotal + frete;
+      const desconto = calcularDesconto();
+      const total = subtotal - desconto + frete;
       const numeroPedido = `APH${Date.now()}`;
 
       const endereco = {
@@ -367,6 +371,28 @@ const Checkout = () => {
         });
 
       if (historyError) throw historyError;
+
+      // Registrar uso do cupom se aplicado
+      if (cupomAplicado) {
+        const { error: cupomError } = await supabase
+          .from("coupon_usage")
+          .insert({
+            coupon_id: cupomAplicado.id,
+            user_id: user.id,
+            order_id: order.id,
+            discount_applied: desconto,
+          });
+
+        if (cupomError) {
+          console.error("Erro ao registrar uso do cupom:", cupomError);
+        }
+
+        // Atualizar contador de usos
+        await supabase
+          .from("coupons")
+          .update({ used_count: cupomAplicado.used_count + 1 })
+          .eq("id", cupomAplicado.id);
+      }
 
       // Se for PIX, gerar QR Code via Pagar.me
       if (paymentType === "pix") {
@@ -441,6 +467,114 @@ const Checkout = () => {
     // Fórmula de juros compostos: M = P * (1 + i)^n * i / ((1 + i)^n - 1)
     const montante = total * Math.pow(1 + taxaJuros, numeroParcelas) * taxaJuros / (Math.pow(1 + taxaJuros, numeroParcelas) - 1);
     return montante;
+  };
+
+  const handleAplicarCupom = async () => {
+    if (!cupomCode.trim()) {
+      toast({
+        title: "Digite um cupom",
+        description: "Por favor, digite o código do cupom",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingCupom(true);
+    try {
+      const { data: cupom, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("code", cupomCode.toUpperCase())
+        .eq("active", true)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!cupom) {
+        toast({
+          title: "Cupom inválido",
+          description: "Este cupom não existe ou não está ativo",
+          variant: "destructive",
+        });
+        setLoadingCupom(false);
+        return;
+      }
+
+      // Verificar validade
+      const now = new Date();
+      if (cupom.valid_until && new Date(cupom.valid_until) < now) {
+        toast({
+          title: "Cupom expirado",
+          description: "Este cupom já expirou",
+          variant: "destructive",
+        });
+        setLoadingCupom(false);
+        return;
+      }
+
+      if (cupom.valid_from && new Date(cupom.valid_from) > now) {
+        toast({
+          title: "Cupom ainda não válido",
+          description: "Este cupom ainda não está disponível",
+          variant: "destructive",
+        });
+        setLoadingCupom(false);
+        return;
+      }
+
+      // Verificar limite de usos
+      if (cupom.max_uses && cupom.used_count >= cupom.max_uses) {
+        toast({
+          title: "Cupom esgotado",
+          description: "Este cupom já atingiu o limite de usos",
+          variant: "destructive",
+        });
+        setLoadingCupom(false);
+        return;
+      }
+
+      // Verificar valor mínimo
+      const subtotal = getTotal();
+      if (cupom.min_purchase_value && subtotal < Number(cupom.min_purchase_value)) {
+        toast({
+          title: "Valor mínimo não atingido",
+          description: `Este cupom requer compra mínima de ${formatPrice(Number(cupom.min_purchase_value))}`,
+          variant: "destructive",
+        });
+        setLoadingCupom(false);
+        return;
+      }
+
+      setCupomAplicado(cupom);
+      toast({
+        title: "Cupom aplicado!",
+        description: `Desconto de ${cupom.discount_type === 'percentage' ? cupom.discount_value + '%' : formatPrice(Number(cupom.discount_value))} aplicado`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao aplicar cupom",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCupom(false);
+    }
+  };
+
+  const calcularDesconto = () => {
+    if (!cupomAplicado) return 0;
+    
+    const subtotal = getTotal();
+    if (cupomAplicado.discount_type === 'percentage') {
+      return (subtotal * Number(cupomAplicado.discount_value)) / 100;
+    }
+    return Number(cupomAplicado.discount_value);
+  };
+
+  const calcularTotalComDesconto = () => {
+    const subtotal = getTotal();
+    const desconto = calcularDesconto();
+    return subtotal - desconto + frete;
   };
 
   const formatPrice = (price: number) => {
@@ -674,6 +808,55 @@ const Checkout = () => {
             </CardContent>
           </Card>
 
+          {/* Cupom de Desconto */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BadgePercent className="w-5 h-5" />
+                Cupom de Desconto
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  value={cupomCode}
+                  onChange={(e) => setCupomCode(e.target.value.toUpperCase())}
+                  placeholder="Digite o código do cupom"
+                  disabled={cupomAplicado !== null}
+                  className="flex-1"
+                />
+                {cupomAplicado ? (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setCupomAplicado(null);
+                      setCupomCode("");
+                    }}
+                  >
+                    Remover
+                  </Button>
+                ) : (
+                  <Button onClick={handleAplicarCupom} disabled={loadingCupom}>
+                    {loadingCupom ? "Verificando..." : "Aplicar"}
+                  </Button>
+                )}
+              </div>
+              {cupomAplicado && (
+                <Alert className="border-green-500 bg-green-50 dark:bg-green-950">
+                  <BadgePercent className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    Cupom <strong>{cupomAplicado.code}</strong> aplicado! 
+                    Desconto de <strong>
+                      {cupomAplicado.discount_type === 'percentage' 
+                        ? `${cupomAplicado.discount_value}%` 
+                        : formatPrice(Number(cupomAplicado.discount_value))}
+                    </strong>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Resumo do Pedido */}
           <Card>
             <CardHeader>
@@ -699,10 +882,16 @@ const Checkout = () => {
                 <span>Frete</span>
                 <span className="font-semibold">{frete > 0 ? formatPrice(frete) : "A calcular"}</span>
               </div>
+              {cupomAplicado && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Desconto ({cupomAplicado.code})</span>
+                  <span className="font-semibold">-{formatPrice(calcularDesconto())}</span>
+                </div>
+              )}
               <Separator />
               <div className="flex justify-between text-lg font-bold">
                 <span>Total</span>
-                <span className="text-primary">{formatPrice(getTotal() + frete)}</span>
+                <span className="text-primary">{formatPrice(calcularTotalComDesconto())}</span>
               </div>
 
               {!isAccountVerified && (
