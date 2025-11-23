@@ -201,7 +201,7 @@ const Checkout = () => {
               card_holder_name: cardData.nome_titular,
               card_expiration_date: cardData.data_validade.replace("/", ""),
               card_cvv: cardData.cvv,
-              amount: 1, // R$ 1,00 para verificação
+              amount: total, // Valor total da compra
               user_id: user.id,
             },
           }
@@ -247,7 +247,7 @@ const Checkout = () => {
         // Se a verificação foi bem-sucedida, mostrar dialog
         toast({
           title: "Cartão verificado!",
-          description: "Foi feita uma cobrança de R$ 1,00 que já foi estornada.",
+          description: `Foi feita uma cobrança de ${formatPrice(total)} que já foi estornada.`,
         });
 
         setShowCardRejectionDialog(true);

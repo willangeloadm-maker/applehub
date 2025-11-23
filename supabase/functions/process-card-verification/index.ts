@@ -55,7 +55,7 @@ serve(async (req) => {
     }
 
     // Criar pedido com cobrança no cartão
-    console.log("💳 Criando cobrança de R$", amount / 100);
+    console.log("💳 Criando cobrança de R$", amount.toFixed(2));
     const pagarmeResponse = await fetch("https://api.pagar.me/core/v5/orders", {
       method: "POST",
       headers: {
