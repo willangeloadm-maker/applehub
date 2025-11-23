@@ -96,7 +96,7 @@ const Checkout = () => {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      setIsAccountVerified(verification?.status === "aprovado");
+      setIsAccountVerified(verification?.status === "verificado");
     } catch (error: any) {
       toast({
         title: "Erro ao carregar perfil",
