@@ -5,7 +5,7 @@ import { ShoppingCart, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
-import { useState } from "react";
+import { useState, memo } from "react";
 
 interface ProductCardProps {
   id: string;
@@ -18,7 +18,7 @@ interface ProductCardProps {
   cor?: string;
 }
 
-const ProductCard = ({
+const ProductCard = memo(({
   id,
   nome,
   preco_vista,
@@ -56,6 +56,7 @@ const ProductCard = ({
       await addToWishlist(id);
     }
   };
+  
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -83,6 +84,7 @@ const ProductCard = ({
           <img
             src={imagens[0] || "/placeholder.svg"}
             alt={nome}
+            loading="lazy"
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
           <Button
@@ -143,6 +145,8 @@ const ProductCard = ({
       </CardFooter>
     </Card>
   );
-};
+});
+
+ProductCard.displayName = "ProductCard";
 
 export default ProductCard;

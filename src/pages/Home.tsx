@@ -34,10 +34,11 @@ const Home = () => {
     try {
       const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select("id, nome, preco_vista, imagens, estado, tags, capacidade, cor")
         .eq("ativo", true)
         .eq("destaque", true)
-        .limit(6);
+        .limit(4)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setFeaturedProducts(data || []);

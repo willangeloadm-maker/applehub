@@ -24,8 +24,22 @@ export const useCart = () => {
       const { data, error } = await supabase
         .from("cart_items")
         .select(`
-          *,
-          products (*)
+          id,
+          user_id,
+          product_id,
+          quantidade,
+          created_at,
+          updated_at,
+          products (
+            id,
+            nome,
+            preco_vista,
+            imagens,
+            estado,
+            estoque,
+            capacidade,
+            cor
+          )
         `)
         .eq("user_id", user.id);
 
@@ -211,7 +225,8 @@ export const useCart = () => {
   useEffect(() => {
     fetchCart();
     
-    // Atualizar carrinho em tempo real
+    // Atualizar carrinho em tempo real (com debounce)
+    let realtimeTimeout: NodeJS.Timeout;
     const setupRealtimeSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -227,12 +242,17 @@ export const useCart = () => {
             filter: `user_id=eq.${user.id}`
           },
           () => {
-            fetchCart();
+            // Debounce para evitar múltiplas chamadas
+            clearTimeout(realtimeTimeout);
+            realtimeTimeout = setTimeout(() => {
+              fetchCart();
+            }, 300);
           }
         )
         .subscribe();
       
       return () => {
+        clearTimeout(realtimeTimeout);
         supabase.removeChannel(channel);
       };
     };
