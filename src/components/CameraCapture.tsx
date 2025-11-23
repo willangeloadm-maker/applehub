@@ -76,6 +76,54 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     };
   }, [videoReady, showCamera]);
 
+  // Sistema de som
+  const playBeep = (frequency: number, duration: number) => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + duration);
+  };
+
+  const playCountdownBeep = () => {
+    playBeep(800, 0.1);
+  };
+
+  const playCaptureSound = () => {
+    // Som de clique da câmera (dois tons)
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator1 = audioContext.createOscillator();
+    const oscillator2 = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator1.connect(gainNode);
+    oscillator2.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator1.frequency.value = 1200;
+    oscillator2.frequency.value = 900;
+    oscillator1.type = 'sine';
+    oscillator2.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+    
+    oscillator1.start(audioContext.currentTime);
+    oscillator2.start(audioContext.currentTime + 0.05);
+    oscillator1.stop(audioContext.currentTime + 0.15);
+    oscillator2.stop(audioContext.currentTime + 0.2);
+  };
+
   useEffect(() => {
     if (!autoCapture || !qualityIndicators) {
       setAutoCaptureProgress(0);
@@ -94,6 +142,13 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       const elapsed = Date.now() - autoCaptureStartRef.current;
       const progress = Math.min((elapsed / 2000) * 100, 100);
       setAutoCaptureProgress(progress);
+
+      // Tocar beep de contagem nos últimos 3 segundos (a cada segundo)
+      if (elapsed >= 1000 && elapsed < 1100) {
+        playCountdownBeep();
+      } else if (elapsed >= 2000 && elapsed < 2100) {
+        playCountdownBeep();
+      }
 
       if (elapsed >= 2000) {
         // Capturar automaticamente
@@ -378,6 +433,9 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     }
 
     try {
+      // Tocar som de captura
+      playCaptureSound();
+
       // Comprimir imagem
       const { blob, quality } = await compressImage(canvas);
       
