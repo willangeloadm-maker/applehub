@@ -358,6 +358,12 @@ const Checkout = () => {
 
       // Se for PIX, gerar QR Code via Pagar.me
       if (paymentType === "pix") {
+        // Mostrar loading
+        toast({
+          title: "Processando pagamento...",
+          description: "Estamos gerando seu código PIX",
+        });
+
         const { data: pixData, error: pixError } = await supabase.functions.invoke("generate-pix", {
           body: {
             amount: total,
@@ -369,11 +375,20 @@ const Checkout = () => {
 
         if (pixError) throw pixError;
 
-        // Limpar carrinho
+        // Limpar carrinho antes de navegar
         await clearCart();
 
-        // Redirecionar para tela de pagamento PIX
-        navigate(`/pagamento-pix?orderId=${order.id}`);
+        // Feedback de sucesso antes de navegar
+        toast({
+          title: "✓ Pedido criado!",
+          description: "Redirecionando para pagamento...",
+          duration: 1500,
+        });
+
+        // Pequeno delay para suavizar a transição
+        setTimeout(() => {
+          navigate(`/pagamento-pix?orderId=${order.id}`);
+        }, 300);
         return;
       }
 

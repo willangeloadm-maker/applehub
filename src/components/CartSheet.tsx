@@ -37,8 +37,17 @@ export const CartSheet = () => {
 
         <div className="flex flex-col h-full mt-6">
           {loading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-muted-foreground">Carregando...</p>
+            <div className="flex-1 space-y-4 pr-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex gap-4 border rounded-lg p-3 animate-pulse">
+                  <div className="w-20 h-20 bg-secondary rounded"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 bg-secondary rounded w-3/4"></div>
+                    <div className="h-4 bg-secondary rounded w-1/2"></div>
+                    <div className="h-7 bg-secondary rounded w-32"></div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : cartItems.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center space-y-4">
@@ -50,9 +59,9 @@ export const CartSheet = () => {
             </div>
           ) : (
             <>
-              <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+              <div className="flex-1 overflow-y-auto space-y-4 pr-2 scroll-smooth">
                 {cartItems.map((item) => (
-                  <div key={item.id} className="flex gap-4 border rounded-lg p-3">
+                  <div key={item.id} className="flex gap-4 border rounded-lg p-3 transition-all hover:shadow-md">
                     <img
                       src={item.products.imagens[0] || "/placeholder.svg"}
                       alt={item.products.nome}
@@ -67,7 +76,7 @@ export const CartSheet = () => {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-7 w-7 transition-transform active:scale-90"
                           onClick={() => updateQuantity(item.id, item.quantidade - 1)}
                         >
                           <Minus className="w-3 h-3" />
@@ -76,7 +85,7 @@ export const CartSheet = () => {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-7 w-7"
+                          className="h-7 w-7 transition-transform active:scale-90"
                           onClick={() => updateQuantity(item.id, item.quantidade + 1)}
                           disabled={item.quantidade >= item.products.estoque}
                         >
@@ -85,7 +94,7 @@ export const CartSheet = () => {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 ml-auto"
+                          className="h-7 w-7 ml-auto transition-transform active:scale-90"
                           onClick={() => removeFromCart(item.id)}
                         >
                           <Trash2 className="w-4 h-4 text-destructive" />
@@ -111,7 +120,7 @@ export const CartSheet = () => {
                   </span>
                 </div>
                 <Button 
-                  className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white font-bold shadow-lg" 
+                  className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white font-bold shadow-lg transition-all active:scale-95" 
                   size="lg" 
                   onClick={handleCheckout}
                 >
