@@ -72,7 +72,114 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     setVideoReady(false);
   };
 
-  const capturePhoto = () => {
+  const validateImageQuality = (imageData: ImageData): { isValid: boolean; message: string } => {
+    const data = imageData.data;
+    let totalBrightness = 0;
+    let pixelCount = 0;
+
+    // Calcular brilho médio
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const brightness = (r + g + b) / 3;
+      totalBrightness += brightness;
+      pixelCount++;
+    }
+
+    const avgBrightness = totalBrightness / pixelCount;
+
+    // Verificar iluminação (muito escura ou muito clara)
+    if (avgBrightness < 50) {
+      return { isValid: false, message: 'Foto muito escura. Por favor, melhore a iluminação.' };
+    }
+    if (avgBrightness > 220) {
+      return { isValid: false, message: 'Foto muito clara. Por favor, reduza a iluminação.' };
+    }
+
+    // Detecção simples de blur usando variância de Laplaciano
+    const width = imageData.width;
+    const height = imageData.height;
+    let laplacianSum = 0;
+    let laplacianCount = 0;
+
+    for (let y = 1; y < height - 1; y++) {
+      for (let x = 1; x < width - 1; x++) {
+        const idx = (y * width + x) * 4;
+        const center = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        
+        const top = (data[idx - width * 4] + data[idx - width * 4 + 1] + data[idx - width * 4 + 2]) / 3;
+        const bottom = (data[idx + width * 4] + data[idx + width * 4 + 1] + data[idx + width * 4 + 2]) / 3;
+        const left = (data[idx - 4] + data[idx - 3] + data[idx - 2]) / 3;
+        const right = (data[idx + 4] + data[idx + 5] + data[idx + 6]) / 3;
+
+        const laplacian = Math.abs(4 * center - top - bottom - left - right);
+        laplacianSum += laplacian;
+        laplacianCount++;
+      }
+    }
+
+    const laplacianVariance = laplacianSum / laplacianCount;
+
+    // Se a variância for muito baixa, a imagem está desfocada
+    if (laplacianVariance < 10) {
+      return { isValid: false, message: 'Foto desfocada. Por favor, mantenha a câmera estável e tente novamente.' };
+    }
+
+    return { isValid: true, message: 'Qualidade OK' };
+  };
+
+  const compressImage = async (canvas: HTMLCanvasElement): Promise<{ blob: Blob; quality: number }> => {
+    const MAX_WIDTH = 1920;
+    const MAX_HEIGHT = 1920;
+    const TARGET_SIZE_KB = 500; // Tamanho alvo em KB
+
+    let width = canvas.width;
+    let height = canvas.height;
+
+    // Redimensionar se necessário
+    if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+      if (width > height) {
+        height = Math.round((height * MAX_WIDTH) / width);
+        width = MAX_WIDTH;
+      } else {
+        width = Math.round((width * MAX_HEIGHT) / height);
+        height = MAX_HEIGHT;
+      }
+
+      const resizeCanvas = document.createElement('canvas');
+      resizeCanvas.width = width;
+      resizeCanvas.height = height;
+      const resizeCtx = resizeCanvas.getContext('2d');
+      if (resizeCtx) {
+        resizeCtx.drawImage(canvas, 0, 0, width, height);
+        canvas = resizeCanvas;
+      }
+    }
+
+    // Comprimir progressivamente até atingir o tamanho alvo
+    let quality = 0.9;
+    let blob: Blob | null = null;
+
+    while (quality > 0.5) {
+      blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((b) => resolve(b), 'image/jpeg', quality);
+      });
+
+      if (!blob) break;
+
+      const sizeKB = blob.size / 1024;
+      if (sizeKB <= TARGET_SIZE_KB || quality <= 0.5) {
+        break;
+      }
+
+      quality -= 0.1;
+    }
+
+    return { blob: blob!, quality };
+  };
+
+  const capturePhoto = async () => {
     if (!videoRef.current || !canvasRef.current) {
       alert('Câmera não está pronta. Aguarde um momento.');
       return;
@@ -97,17 +204,35 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
     ctx.drawImage(video, 0, 0);
 
-    canvas.toBlob((blob) => {
+    // Validar qualidade da imagem
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const validation = validateImageQuality(imageData);
+
+    if (!validation.isValid) {
+      alert(validation.message);
+      return;
+    }
+
+    try {
+      // Comprimir imagem
+      const { blob, quality } = await compressImage(canvas);
+      
       if (!blob) {
-        alert('Erro ao capturar foto. Tente novamente.');
+        alert('Erro ao processar foto. Tente novamente.');
         return;
       }
+
+      console.log(`Imagem comprimida com qualidade ${(quality * 100).toFixed(0)}%, tamanho: ${(blob.size / 1024).toFixed(2)}KB`);
+
       const file = new File([blob], `${label.replace(/\s+/g, '_')}.jpg`, { type: 'image/jpeg' });
-      const previewUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const previewUrl = canvas.toDataURL('image/jpeg', quality);
       onCapture(file);
       setPreview(previewUrl);
       stopCamera();
-    }, 'image/jpeg', 0.95);
+    } catch (error) {
+      console.error('Erro ao capturar foto:', error);
+      alert('Erro ao capturar foto. Tente novamente.');
+    }
   };
 
   const retake = () => {
