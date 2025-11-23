@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.get-users]
 verify_jwt = true
+
+[functions.clear-all-data]
+verify_jwt = true
+
+[functions.validate-document-ocr]
+verify_jwt = true
+
+[functions.save-payment-settings]
+verify_jwt = true

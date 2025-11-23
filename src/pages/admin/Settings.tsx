@@ -7,6 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Trash2 } from 'lucide-react';
 
 export default function AdminSettings() {
   const navigate = useNavigate();
@@ -21,6 +33,9 @@ export default function AdminSettings() {
     recipient_id: '',
     secret_key: ''
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -142,6 +157,48 @@ export default function AdminSettings() {
         description: error instanceof Error ? error.message : "Erro ao salvar configurações da API",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleDeleteAllData = async () => {
+    if (confirmText !== 'LIMPAR TUDO') {
+      toast({
+        title: "Erro",
+        description: "Digite 'LIMPAR TUDO' para confirmar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('clear-all-data', {
+        body: { admin_password: 'Ar102030' }
+      });
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Todos os dados foram apagados com sucesso"
+      });
+
+      setDeleteDialogOpen(false);
+      setConfirmText('');
+    } catch (error) {
+      console.error('Erro ao apagar dados:', error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao apagar dados",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -272,6 +329,78 @@ export default function AdminSettings() {
                     Salvar Regras de Parcelamento
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+
+            <Card className="border-destructive">
+              <CardHeader>
+                <CardTitle className="text-destructive flex items-center gap-2">
+                  <Trash2 className="h-5 w-5" />
+                  Zona de Perigo
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Esta ação é irreversível e apagará todos os dados de usuários, pedidos, transações, análises de crédito, verificações e tentativas de pagamento. 
+                  <strong> Os produtos serão mantidos.</strong>
+                </p>
+                
+                <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Apagar Todos os Dados
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-4">
+                        <p>
+                          Esta ação irá apagar <strong>permanentemente</strong>:
+                        </p>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                          <li>Todos os usuários e perfis</li>
+                          <li>Todos os pedidos e itens de pedido</li>
+                          <li>Todas as transações e pagamentos</li>
+                          <li>Todas as análises de crédito</li>
+                          <li>Todas as verificações de conta</li>
+                          <li>Todas as tentativas de pagamento com cartão</li>
+                          <li>Todos os itens do carrinho</li>
+                          <li>Todos os favoritos</li>
+                          <li>Todo o histórico de status de pedidos</li>
+                        </ul>
+                        <p className="font-bold text-destructive">
+                          Os produtos NÃO serão apagados.
+                        </p>
+                        <div className="mt-4">
+                          <Label htmlFor="confirm">
+                            Digite <strong>LIMPAR TUDO</strong> para confirmar:
+                          </Label>
+                          <Input
+                            id="confirm"
+                            value={confirmText}
+                            onChange={(e) => setConfirmText(e.target.value)}
+                            placeholder="LIMPAR TUDO"
+                            className="mt-2"
+                          />
+                        </div>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setConfirmText('')}>
+                        Cancelar
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteAllData}
+                        disabled={isDeleting || confirmText !== 'LIMPAR TUDO'}
+                        className="bg-destructive hover:bg-destructive/90"
+                      >
+                        {isDeleting ? 'Apagando...' : 'Sim, apagar tudo'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           </>
