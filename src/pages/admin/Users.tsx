@@ -230,62 +230,86 @@ export default function AdminUsers() {
                 </Card>
 
                 {/* Verificação e Fotos */}
-                {userDetails.verification && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        Verificação de Conta
-                        {getVerificationBadge(selectedUser!.id)}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      Verificação de Conta
+                      {selectedUser && getVerificationBadge(selectedUser.id)}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!userDetails.verification ? (
+                      <p className="text-center text-muted-foreground py-4">
+                        Usuário ainda não iniciou o processo de verificação
+                      </p>
+                    ) : (
                       <div className="space-y-4">
-                        {userDetails.verification.verificado_em && (
-                          <div className="text-sm">
-                            <span className="font-semibold">Verificado em:</span>{" "}
-                            {new Date(userDetails.verification.verificado_em).toLocaleString('pt-BR')}
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="font-semibold">Status:</span> {userDetails.verification.status}
                           </div>
-                        )}
+                          {userDetails.verification.verificado_em && (
+                            <div>
+                              <span className="font-semibold">Verificado em:</span>{" "}
+                              {new Date(userDetails.verification.verificado_em).toLocaleString('pt-BR')}
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-semibold">Criado em:</span>{" "}
+                            {new Date(userDetails.verification.created_at).toLocaleString('pt-BR')}
+                          </div>
+                        </div>
                         
                         <div>
                           <h4 className="font-semibold mb-3">Documentos Enviados</h4>
-                          <div className="grid grid-cols-3 gap-4">
-                            {userDetails.verification.documento_frente && (
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-2">Documento (Frente)</p>
-                                <img 
-                                  src={userDetails.verification.documento_frente} 
-                                  alt="Documento Frente"
-                                  className="w-full h-40 object-cover rounded border"
-                                />
-                              </div>
-                            )}
-                            {userDetails.verification.documento_verso && (
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-2">Documento (Verso)</p>
-                                <img 
-                                  src={userDetails.verification.documento_verso} 
-                                  alt="Documento Verso"
-                                  className="w-full h-40 object-cover rounded border"
-                                />
-                              </div>
-                            )}
-                            {userDetails.verification.selfie && (
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-2">Selfie</p>
-                                <img 
-                                  src={userDetails.verification.selfie} 
-                                  alt="Selfie"
-                                  className="w-full h-40 object-cover rounded border"
-                                />
-                              </div>
-                            )}
-                          </div>
+                          {!userDetails.verification.documento_frente && 
+                           !userDetails.verification.documento_verso && 
+                           !userDetails.verification.selfie ? (
+                            <p className="text-center text-muted-foreground py-4 bg-secondary/30 rounded">
+                              Nenhum documento enviado ainda
+                            </p>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {userDetails.verification.documento_frente && (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-muted-foreground">Documento (Frente)</p>
+                                  <img 
+                                    src={userDetails.verification.documento_frente} 
+                                    alt="Documento Frente"
+                                    className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
+                                    onClick={() => window.open(userDetails.verification.documento_frente, '_blank')}
+                                  />
+                                </div>
+                              )}
+                              {userDetails.verification.documento_verso && (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-muted-foreground">Documento (Verso)</p>
+                                  <img 
+                                    src={userDetails.verification.documento_verso} 
+                                    alt="Documento Verso"
+                                    className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
+                                    onClick={() => window.open(userDetails.verification.documento_verso, '_blank')}
+                                  />
+                                </div>
+                              )}
+                              {userDetails.verification.selfie && (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-semibold text-muted-foreground">Selfie</p>
+                                  <img 
+                                    src={userDetails.verification.selfie} 
+                                    alt="Selfie"
+                                    className="w-full h-48 object-cover rounded-lg border-2 border-border hover:border-primary transition-colors cursor-pointer"
+                                    onClick={() => window.open(userDetails.verification.selfie, '_blank')}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                    )}
+                  </CardContent>
+                </Card>
 
                 {/* Análises de Crédito */}
                 {userDetails.creditAnalyses && userDetails.creditAnalyses.length > 0 && (
