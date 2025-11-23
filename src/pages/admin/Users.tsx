@@ -6,9 +6,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Search, UserCheck, UserX, Eye, ZoomIn, X } from 'lucide-react';
+import { Search, UserCheck, UserX, Eye, ZoomIn, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
 
 interface User {
   id: string;
@@ -32,6 +33,8 @@ export default function AdminUsers() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userDetails, setUserDetails] = useState<any>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   useEffect(() => {
     loadUsers();
@@ -129,6 +132,17 @@ export default function AdminUsers() {
     user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Calcular paginação
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+  // Reset para primeira página quando filtro mudar
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   const getVerificationBadge = (userId: string) => {
     const verification = verifications[userId];
     if (!verification) {
@@ -159,7 +173,12 @@ export default function AdminUsers() {
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>Usuários Cadastrados</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Usuários Cadastrados</CardTitle>
+                <div className="text-sm text-muted-foreground">
+                  Total: {filteredUsers.length} usuário{filteredUsers.length !== 1 ? 's' : ''}
+                </div>
+              </div>
               <div className="relative mt-4">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -184,14 +203,14 @@ export default function AdminUsers() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.length === 0 ? (
+                  {paginatedUsers.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Nenhum usuário encontrado
+                        {searchTerm ? 'Nenhum usuário encontrado' : 'Nenhum usuário cadastrado'}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredUsers.map((user) => (
+                    paginatedUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>{user.nome_completo}</TableCell>
                         <TableCell>{user.email || 'N/A'}</TableCell>
@@ -213,6 +232,74 @@ export default function AdminUsers() {
                   )}
                 </TableBody>
               </Table>
+
+              {/* Paginação */}
+              {filteredUsers.length > itemsPerPage && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Mostrando {startIndex + 1} a {Math.min(endIndex, filteredUsers.length)} de {filteredUsers.length}
+                  </div>
+                  
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-1" />
+                          Anterior
+                        </Button>
+                      </PaginationItem>
+
+                      <PaginationItem>
+                        <div className="flex items-center gap-2 px-3">
+                          {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter(page => {
+                              // Mostrar primeira, última, atual e páginas adjacentes
+                              if (page === 1 || page === totalPages) return true;
+                              if (Math.abs(page - currentPage) <= 1) return true;
+                              return false;
+                            })
+                            .map((page, index, array) => {
+                              // Adicionar ellipsis se houver gap
+                              const prevPage = array[index - 1];
+                              const showEllipsis = prevPage && page - prevPage > 1;
+                              
+                              return (
+                                <div key={page} className="flex items-center gap-2">
+                                  {showEllipsis && <span className="text-muted-foreground">...</span>}
+                                  <Button
+                                    variant={currentPage === page ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(page)}
+                                    className="min-w-[40px]"
+                                  >
+                                    {page}
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </PaginationItem>
+
+                      <PaginationItem>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Próximo
+                          <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
