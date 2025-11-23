@@ -62,6 +62,14 @@ const Checkout = () => {
     }
   }, [cartItems, cartLoading]);
 
+  // Calcular frete automaticamente quando CEP estiver completo
+  useEffect(() => {
+    const cepLimpo = cepFrete.replace(/\D/g, "");
+    if (cepLimpo.length === 8 && !loadingCep && frete === 0) {
+      handleSimularFrete();
+    }
+  }, [cepFrete]);
+
   const loadProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -88,7 +96,11 @@ const Checkout = () => {
       }
       
       setProfile(data);
-      setCepFrete(data.cep);
+      
+      // Pré-preencher CEP do cadastro
+      if (data.cep) {
+        setCepFrete(data.cep);
+      }
 
       // Verificar status de verificação da conta
       const { data: verification } = await supabase
@@ -477,7 +489,13 @@ const Checkout = () => {
                 <div className="flex gap-2">
                   <Input
                     value={cepFrete}
-                    onChange={(e) => setCepFrete(e.target.value)}
+                    onChange={(e) => {
+                      let valor = e.target.value.replace(/\D/g, "");
+                      if (valor.length > 5) {
+                        valor = valor.slice(0, 5) + "-" + valor.slice(5, 8);
+                      }
+                      setCepFrete(valor);
+                    }}
                     placeholder="00000-000"
                     maxLength={9}
                   />
