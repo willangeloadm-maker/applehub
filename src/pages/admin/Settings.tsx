@@ -209,8 +209,11 @@ export default function AdminSettings() {
         description: "Credenciais validadas e salvas com sucesso",
       });
       
-      // Recarregar as configurações e verificar conexão
-      await loadPaymentSettings();
+      // Verificar conexão imediatamente com as credenciais salvas
+      await checkConnection(paymentSettings.recipient_id, paymentSettings.secret_key);
+      
+      // Recarregar as configurações em background
+      loadPaymentSettings();
     } catch (error) {
       console.error('Erro ao salvar configurações da API:', error);
       toast({
