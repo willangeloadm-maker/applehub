@@ -26,13 +26,16 @@ serve(async (req) => {
 
     const { amount, description, user_id, order_id }: PixRequest = await req.json();
 
+    console.log("📌 Gerando PIX para usuário:", user_id, "valor:", amount);
+
     // Buscar configurações da Pagar.me
     const { data: settings, error: settingsError } = await supabase
       .from("payment_settings")
       .select("*")
-      .single();
+      .maybeSingle();
 
     if (settingsError || !settings) {
+      console.error("❌ Erro ao buscar configurações:", settingsError);
       return new Response(
         JSON.stringify({ error: "Configurações de pagamento não encontradas" }),
         {
@@ -41,6 +44,29 @@ serve(async (req) => {
         }
       );
     }
+
+    // Buscar dados do perfil do usuário (obrigatório para PSP)
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("nome_completo, cpf, telefone")
+      .eq("id", user_id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      console.error("❌ Erro ao buscar perfil:", profileError);
+      return new Response(
+        JSON.stringify({ error: "Perfil do usuário não encontrado" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Formatar telefone
+    const phoneNumbers = profile.telefone.replace(/\D/g, "");
+    const ddd = phoneNumbers.substring(0, 2);
+    const number = phoneNumbers.substring(2);
 
     // Chamar API da Pagar.me para gerar PIX
     const pagarmeResponse = await fetch("https://api.pagar.me/core/v5/orders", {
@@ -51,7 +77,17 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         customer: {
-          name: "Cliente AppleHub",
+          name: profile.nome_completo,
+          type: "individual",
+          document: profile.cpf.replace(/\D/g, ""),
+          document_type: "CPF",
+          phones: {
+            mobile_phone: {
+              country_code: "55",
+              area_code: ddd,
+              number: number,
+            }
+          }
         },
         items: [
           {
