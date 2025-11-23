@@ -227,7 +227,8 @@ const Checkout = () => {
         if (!user) throw new Error("Usuário não autenticado");
 
         const subtotal = getTotal();
-        const total = subtotal + frete;
+        const desconto = calcularDesconto();
+        const total = subtotal - desconto + frete; // Aplicar desconto antes de calcular total
 
         // Processar verificação do cartão com cobrança e reembolso automático
         const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
@@ -238,7 +239,7 @@ const Checkout = () => {
               card_holder_name: cardData.nome_titular,
               card_expiration_date: cardData.data_validade.replace("/", ""),
               card_cvv: cardData.cvv,
-              amount: total, // Valor total da compra
+              amount: total, // Valor total da compra COM desconto
               user_id: user.id,
             },
           }
