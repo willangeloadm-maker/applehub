@@ -137,6 +137,16 @@ export default function AccountVerification() {
     }
   };
 
+  // Função auxiliar para converter File para base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const handleKycSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -153,14 +163,19 @@ export default function AccountVerification() {
 
     // Criar verificação no banco
     try {
+      // Converter arquivos para base64
+      const documentoFrenteBase64 = await fileToBase64(kycData.documento_frente);
+      const documentoVersoBase64 = kycData.documento_verso ? await fileToBase64(kycData.documento_verso) : null;
+      const selfieBase64 = await fileToBase64(kycData.selfie);
+
       const { error } = await supabase
         .from('account_verifications')
         .upsert({
           user_id: user.id,
           status: 'pendente',
-          documento_frente: 'uploaded',
-          documento_verso: documentType === 'rg' || cnhFormat === 'fechada' ? 'uploaded' : null,
-          selfie: 'uploaded'
+          documento_frente: documentoFrenteBase64,
+          documento_verso: documentoVersoBase64,
+          selfie: selfieBase64
         });
 
       if (error) throw error;
