@@ -727,7 +727,7 @@ export default function AccountVerification() {
               </div>
 
               <Button 
-                onClick={() => navigate('/products')}
+                onClick={() => navigate('/produtos')}
                 className="w-full"
               >
                 Ver Produtos

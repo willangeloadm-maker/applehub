@@ -54,7 +54,7 @@ const Checkout = () => {
           description: "Adicione produtos ao carrinho antes de fazer o checkout",
           variant: "destructive",
         });
-        navigate("/products");
+        navigate("/produtos");
       }, 500);
       
       return () => clearTimeout(timer);
