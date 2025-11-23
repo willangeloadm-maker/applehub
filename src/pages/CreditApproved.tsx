@@ -22,9 +22,9 @@ const CreditApproved = () => {
   const [parcelas, setParcelas] = useState(12);
   const [loading, setLoading] = useState(false);
 
-  const valorRestante = valorTotal - valorAprovado;
-  const valorEntrada = (valorRestante * entradaPercent) / 100;
-  const valorFinanciado = valorRestante - valorEntrada;
+  const valorMinEntrada = valorTotal - valorAprovado; // Valor mínimo que precisa dar de entrada
+  const valorEntrada = (valorTotal * entradaPercent) / 100; // Entrada escolhida sobre o valor total
+  const valorFinanciado = valorTotal - valorEntrada; // Quanto vai financiar
 
   // Cálculo de juros inversamente proporcional à entrada
   // 10% entrada = 1.99% juros
@@ -149,7 +149,7 @@ const CreditApproved = () => {
                 <Separator />
                 <div className="flex justify-between text-base">
                   <span className="font-medium">Valor a financiar</span>
-                  <span className="font-bold text-primary">{formatPrice(valorRestante)}</span>
+                  <span className="font-bold text-primary">{formatPrice(valorAprovado)}</span>
                 </div>
               </div>
             </CardContent>
@@ -169,7 +169,7 @@ const CreditApproved = () => {
                 onValueChange={(v) => setEntradaPercent(Number(v))}
               >
                 {[10, 15, 20, 25].map((percent) => {
-                  const entrada = (valorRestante * percent) / 100;
+                  const entrada = (valorTotal * percent) / 100;
                   const juros = calcularJuros(percent);
                   return (
                     <div 
