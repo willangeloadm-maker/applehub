@@ -137,14 +137,24 @@ export default function AccountVerification() {
     }
   };
 
-  // Função auxiliar para converter File para base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
+  // Função auxiliar para fazer upload de arquivo para o storage
+  const uploadFileToStorage = async (file: File, fileName: string): Promise<string> => {
+    const filePath = `${user.id}/${fileName}`;
+    
+    const { error: uploadError } = await supabase.storage
+      .from('verification-documents')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('verification-documents')
+      .getPublicUrl(filePath);
+
+    return filePath;
   };
 
   const handleKycSubmit = async (e: React.FormEvent) => {
@@ -163,19 +173,29 @@ export default function AccountVerification() {
 
     // Criar verificação no banco
     try {
-      // Converter arquivos para base64
-      const documentoFrenteBase64 = await fileToBase64(kycData.documento_frente);
-      const documentoVersoBase64 = kycData.documento_verso ? await fileToBase64(kycData.documento_verso) : null;
-      const selfieBase64 = await fileToBase64(kycData.selfie);
+      // Upload dos arquivos para o storage
+      const documentoFrentePath = await uploadFileToStorage(
+        kycData.documento_frente, 
+        `documento_frente_${Date.now()}.jpg`
+      );
+      
+      const documentoVersoPath = kycData.documento_verso 
+        ? await uploadFileToStorage(kycData.documento_verso, `documento_verso_${Date.now()}.jpg`)
+        : null;
+      
+      const selfiePath = await uploadFileToStorage(
+        kycData.selfie, 
+        `selfie_${Date.now()}.jpg`
+      );
 
       const { error } = await supabase
         .from('account_verifications')
         .upsert({
           user_id: user.id,
           status: 'pendente',
-          documento_frente: documentoFrenteBase64,
-          documento_verso: documentoVersoBase64,
-          selfie: selfieBase64
+          documento_frente: documentoFrentePath,
+          documento_verso: documentoVersoPath,
+          selfie: selfiePath
         });
 
       if (error) throw error;
