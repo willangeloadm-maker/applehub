@@ -48,10 +48,10 @@ Deno.serve(async (req) => {
       email: emailMap.get(profile.id) || null
     }));
 
-    // Buscar verificações
+    // Buscar verificações com todos os dados
     const { data: verificationsData } = await supabaseAdmin
       .from('account_verifications')
-      .select('user_id, status, verificado_em');
+      .select('*');
 
     return new Response(
       JSON.stringify({

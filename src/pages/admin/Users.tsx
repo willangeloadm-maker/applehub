@@ -22,8 +22,15 @@ interface User {
 }
 
 interface Verification {
+  id?: string;
+  user_id?: string;
   status: string;
   verificado_em: string | null;
+  created_at?: string;
+  updated_at?: string;
+  documento_frente?: string | null;
+  documento_verso?: string | null;
+  selfie?: string | null;
 }
 
 export default function AdminUsers() {
@@ -104,21 +111,23 @@ export default function AdminUsers() {
     try {
       console.log('🔍 Buscando detalhes do usuário:', user.id);
       
-      const [profileData, ordersData, verificationsData, creditAnalyses, transactions] = await Promise.all([
+      // Buscar verificação dos dados já carregados pelo edge function
+      const existingVerification = verifications[user.id];
+      
+      const [profileData, ordersData, creditAnalyses, transactions] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('orders').select('*').eq('user_id', user.id),
-        supabase.from('account_verifications').select('*').eq('user_id', user.id).single(),
         supabase.from('credit_analyses').select('*').eq('user_id', user.id),
         supabase.from('transactions').select('*').eq('user_id', user.id)
       ]);
 
-      console.log('📄 Dados de verificação:', verificationsData.data);
+      console.log('📄 Dados de verificação existentes:', existingVerification);
 
       setSelectedUser(user);
       setUserDetails({
         profile: profileData.data,
         orders: ordersData.data || [],
-        verification: verificationsData.data,
+        verification: existingVerification || null,
         creditAnalyses: creditAnalyses.data || [],
         transactions: transactions.data || []
       });
