@@ -62,6 +62,63 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     height: { ideal: 1080 }
   };
 
+  const checkImageQuality = (canvas: HTMLCanvasElement): { isValid: boolean; reason?: string } => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return { isValid: false, reason: 'Erro ao processar imagem' };
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    // Verificar iluminação (brightness)
+    let totalBrightness = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const brightness = (r + g + b) / 3;
+      totalBrightness += brightness;
+    }
+    const avgBrightness = totalBrightness / (data.length / 4);
+
+    // Muito escura ou muito clara
+    if (avgBrightness < 40) {
+      return { isValid: false, reason: 'Foto muito escura. Melhore a iluminação e tente novamente.' };
+    }
+    if (avgBrightness > 220) {
+      return { isValid: false, reason: 'Foto muito clara. Reduza a iluminação e tente novamente.' };
+    }
+
+    // Verificar nitidez usando variação de Laplaciano simplificado
+    let sharpness = 0;
+    const width = canvas.width;
+    const step = 4; // Processar a cada 4 pixels para performance
+
+    for (let y = step; y < canvas.height - step; y += step) {
+      for (let x = step; x < canvas.width - step; x += step) {
+        const i = (y * width + x) * 4;
+        const center = (data[i] + data[i + 1] + data[i + 2]) / 3;
+        
+        const top = ((data[i - width * 4] + data[i - width * 4 + 1] + data[i - width * 4 + 2]) / 3);
+        const bottom = ((data[i + width * 4] + data[i + width * 4 + 1] + data[i + width * 4 + 2]) / 3);
+        const left = ((data[i - 4] + data[i - 3] + data[i - 2]) / 3);
+        const right = ((data[i + 4] + data[i + 5] + data[i + 6]) / 3);
+        
+        const laplacian = Math.abs(4 * center - top - bottom - left - right);
+        sharpness += laplacian;
+      }
+    }
+
+    const samplesCount = ((canvas.height - 2 * step) / step) * ((canvas.width - 2 * step) / step);
+    const avgSharpness = sharpness / samplesCount;
+
+    // Threshold de nitidez (valores baixos = imagem borrada)
+    if (avgSharpness < 15) {
+      return { isValid: false, reason: 'Foto está desfocada. Segure o celular firme e tente novamente.' };
+    }
+
+    return { isValid: true };
+  };
+
   const compressImage = async (canvas: HTMLCanvasElement): Promise<{ blob: Blob; quality: number }> => {
     const MAX_WIDTH = 1920;
     const MAX_HEIGHT = 1920;
@@ -147,6 +204,17 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
         ctx.drawImage(img, 0, 0);
         
+        // Validar qualidade da imagem
+        const qualityCheck = checkImageQuality(canvas);
+        if (!qualityCheck.isValid) {
+          toast({
+            title: "Qualidade da foto insuficiente",
+            description: qualityCheck.reason,
+            variant: "destructive",
+          });
+          return;
+        }
+        
         const { blob, quality } = await compressImage(canvas);
         if (!blob) {
           toast({
@@ -221,6 +289,17 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
         }
 
         ctx.drawImage(img, 0, 0);
+        
+        // Validar qualidade da imagem
+        const qualityCheck = checkImageQuality(canvas);
+        if (!qualityCheck.isValid) {
+          toast({
+            title: "Qualidade da foto insuficiente",
+            description: qualityCheck.reason,
+            variant: "destructive",
+          });
+          return;
+        }
         
         const { blob } = await compressImage(canvas);
         if (!blob) {
