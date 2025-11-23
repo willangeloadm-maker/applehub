@@ -463,25 +463,49 @@ const Auth = () => {
                       {loginMethod === "email" && "E-mail"}
                       {loginMethod === "telefone" && "Telefone"}
                     </Label>
-                    <Input
-                      id="identifier"
-                      name="identifier"
-                      placeholder={
-                        loginMethod === "cpf" ? "000.000.000-00" :
-                        loginMethod === "email" ? "seu@email.com" :
-                        "(00) 00000-0000"
-                      }
-                      required
-                      maxLength={loginMethod === "cpf" ? 14 : loginMethod === "telefone" ? 15 : undefined}
-                      onChange={(e) => {
-                        if (loginMethod === "cpf") {
-                          e.target.value = formatCpf(e.target.value);
-                        } else if (loginMethod === "telefone") {
-                          e.target.value = formatTelefone(e.target.value);
+                    <div className="relative">
+                      <Input
+                        id="identifier"
+                        name="identifier"
+                        placeholder={
+                          loginMethod === "cpf" ? "000.000.000-00" :
+                          loginMethod === "email" ? "seu@email.com" :
+                          "(00) 00000-0000"
                         }
-                      }}
-                      className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11"
-                    />
+                        required
+                        maxLength={loginMethod === "cpf" ? 14 : loginMethod === "telefone" ? 15 : undefined}
+                        onChange={(e) => {
+                          if (loginMethod === "cpf") {
+                            e.target.value = formatCpf(e.target.value);
+                            const isValid = validateCpf(e.target.value);
+                            setCpfValid(e.target.value.replace(/\D/g, "").length === 11 ? isValid : null);
+                          } else if (loginMethod === "telefone") {
+                            e.target.value = formatTelefone(e.target.value);
+                            const isValid = validateTelefone(e.target.value);
+                            setTelefoneValid(e.target.value.replace(/\D/g, "").length === 11 ? isValid : null);
+                          }
+                        }}
+                        className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 pr-10"
+                      />
+                      {loginMethod === "cpf" && cpfValid !== null && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {cpfValid ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-500" />
+                          )}
+                        </div>
+                      )}
+                      {loginMethod === "telefone" && telefoneValid !== null && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {telefoneValid ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-500" />
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-1.5 sm:space-y-2">
