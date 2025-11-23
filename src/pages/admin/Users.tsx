@@ -74,17 +74,21 @@ export default function AdminUsers() {
 
   const viewUserDetails = async (user: User) => {
     try {
-      const [profileData, ordersData, verificationsData] = await Promise.all([
+      const [profileData, ordersData, verificationsData, creditAnalyses, transactions] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('orders').select('*').eq('user_id', user.id),
-        supabase.from('account_verifications').select('*').eq('user_id', user.id).single()
+        supabase.from('account_verifications').select('*').eq('user_id', user.id).single(),
+        supabase.from('credit_analyses').select('*').eq('user_id', user.id),
+        supabase.from('transactions').select('*').eq('user_id', user.id)
       ]);
 
       setSelectedUser(user);
       setUserDetails({
         profile: profileData.data,
         orders: ordersData.data || [],
-        verification: verificationsData.data
+        verification: verificationsData.data,
+        creditAnalyses: creditAnalyses.data || [],
+        transactions: transactions.data || []
       });
     } catch (error) {
       toast({
@@ -190,31 +194,179 @@ export default function AdminUsers() {
         )}
 
         <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Detalhes do Usuário</DialogTitle>
             </DialogHeader>
             {userDetails && (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2">Informações Pessoais</h3>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>Nome: {userDetails.profile?.nome_completo}</div>
-                    <div>CPF: {userDetails.profile?.cpf}</div>
-                    <div>Telefone: {userDetails.profile?.telefone}</div>
-                    <div>Email: {selectedUser?.email}</div>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-2">Pedidos: {userDetails.orders.length}</h3>
-                </div>
-                {userDetails.verification && (
-                  <div>
-                    <h3 className="font-semibold mb-2">Verificação</h3>
-                    <div className="text-sm">
-                      Status: {getVerificationBadge(selectedUser!.id)}
+              <div className="space-y-6">
+                {/* Informações Pessoais */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Informações Pessoais</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-semibold">Nome:</span> {userDetails.profile?.nome_completo}
+                      </div>
+                      <div>
+                        <span className="font-semibold">CPF:</span> {userDetails.profile?.cpf}
+                      </div>
+                      <div>
+                        <span className="font-semibold">Telefone:</span> {userDetails.profile?.telefone}
+                      </div>
+                      <div>
+                        <span className="font-semibold">Email:</span> {selectedUser?.email}
+                      </div>
+                      <div>
+                        <span className="font-semibold">Data Nascimento:</span> {userDetails.profile?.data_nascimento}
+                      </div>
+                      <div className="col-span-2">
+                        <span className="font-semibold">Endereço:</span> {userDetails.profile?.rua}, {userDetails.profile?.numero} - {userDetails.profile?.bairro}, {userDetails.profile?.cidade}/{userDetails.profile?.estado}
+                      </div>
                     </div>
-                  </div>
+                  </CardContent>
+                </Card>
+
+                {/* Verificação e Fotos */}
+                {userDetails.verification && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        Verificação de Conta
+                        {getVerificationBadge(selectedUser!.id)}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {userDetails.verification.verificado_em && (
+                          <div className="text-sm">
+                            <span className="font-semibold">Verificado em:</span>{" "}
+                            {new Date(userDetails.verification.verificado_em).toLocaleString('pt-BR')}
+                          </div>
+                        )}
+                        
+                        <div>
+                          <h4 className="font-semibold mb-3">Documentos Enviados</h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            {userDetails.verification.documento_frente && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-2">Documento (Frente)</p>
+                                <img 
+                                  src={userDetails.verification.documento_frente} 
+                                  alt="Documento Frente"
+                                  className="w-full h-40 object-cover rounded border"
+                                />
+                              </div>
+                            )}
+                            {userDetails.verification.documento_verso && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-2">Documento (Verso)</p>
+                                <img 
+                                  src={userDetails.verification.documento_verso} 
+                                  alt="Documento Verso"
+                                  className="w-full h-40 object-cover rounded border"
+                                />
+                              </div>
+                            )}
+                            {userDetails.verification.selfie && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-2">Selfie</p>
+                                <img 
+                                  src={userDetails.verification.selfie} 
+                                  alt="Selfie"
+                                  className="w-full h-40 object-cover rounded border"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Análises de Crédito */}
+                {userDetails.creditAnalyses && userDetails.creditAnalyses.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Análises de Crédito</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {userDetails.creditAnalyses.map((analysis: any) => (
+                          <div key={analysis.id} className="flex justify-between items-center p-3 bg-secondary/30 rounded">
+                            <div className="text-sm">
+                              <div><span className="font-semibold">Solicitado:</span> R$ {analysis.valor_solicitado.toFixed(2)}</div>
+                              <div><span className="font-semibold">Aprovado:</span> R$ {analysis.valor_aprovado.toFixed(2)} ({analysis.percentual_aprovado}%)</div>
+                            </div>
+                            <Badge variant={analysis.status === 'aprovado' ? 'default' : 'destructive'}>
+                              {analysis.status}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Pedidos */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pedidos ({userDetails.orders.length})</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {userDetails.orders.length > 0 ? (
+                      <div className="space-y-2">
+                        {userDetails.orders.map((order: any) => (
+                          <div key={order.id} className="flex justify-between items-center p-3 bg-secondary/30 rounded text-sm">
+                            <div>
+                              <div className="font-semibold">{order.numero_pedido}</div>
+                              <div className="text-muted-foreground">
+                                {new Date(order.created_at).toLocaleDateString('pt-BR')}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-primary">R$ {order.total.toFixed(2)}</div>
+                              <Badge variant="outline">{order.payment_type}</Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-center text-muted-foreground py-4">Nenhum pedido realizado</p>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Transações */}
+                {userDetails.transactions && userDetails.transactions.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Transações ({userDetails.transactions.length})</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {userDetails.transactions.map((transaction: any) => (
+                          <div key={transaction.id} className="flex justify-between items-center p-3 bg-secondary/30 rounded text-sm">
+                            <div>
+                              <div className="font-semibold">{transaction.tipo}</div>
+                              <div className="text-muted-foreground text-xs">
+                                {new Date(transaction.created_at).toLocaleDateString('pt-BR')}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold">R$ {transaction.valor.toFixed(2)}</div>
+                              <Badge variant={transaction.status === 'pago' ? 'default' : 'secondary'}>
+                                {transaction.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             )}

