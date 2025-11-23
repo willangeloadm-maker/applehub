@@ -490,6 +490,69 @@ export type Database = {
         }
         Relationships: []
       }
+      pagarme_api_logs: {
+        Row: {
+          created_at: string | null
+          duration_ms: number | null
+          endpoint: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          method: string
+          order_id: string | null
+          request_body: Json | null
+          response_body: Json | null
+          response_status: number | null
+          transaction_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms?: number | null
+          endpoint: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          method: string
+          order_id?: string | null
+          request_body?: Json | null
+          response_body?: Json | null
+          response_status?: number | null
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number | null
+          endpoint?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          method?: string
+          order_id?: string | null
+          request_body?: Json | null
+          response_body?: Json | null
+          response_status?: number | null
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagarme_api_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagarme_api_logs_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_settings: {
         Row: {
           created_at: string | null

@@ -12,6 +12,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -179,6 +181,27 @@ serve(async (req) => {
       console.log("Pagamento confirmado com sucesso");
     }
 
+    const duration = Date.now() - startTime;
+    
+    // Registrar log do webhook
+    await supabase.from("pagarme_api_logs").insert({
+      endpoint: "/webhook",
+      method: "POST",
+      request_body: webhookData,
+      response_status: 200,
+      response_body: { success: true },
+      user_id: webhookData.data?.customer?.id || null,
+      order_id: webhookData.data?.id || null,
+      duration_ms: duration,
+      metadata: { 
+        type: "webhook_received", 
+        event: webhookData.type || "unknown",
+        signature_valid: !!signature
+      }
+    });
+
+    console.log(`✅ Webhook processado com sucesso em ${duration}ms`);
+
     return new Response(
       JSON.stringify({ success: true, message: "Webhook processado" }),
       {
@@ -188,6 +211,23 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error("Erro no webhook:", error);
+    
+    const duration = Date.now() - startTime;
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+    
+    // Registrar log de erro
+    await supabase.from("pagarme_api_logs").insert({
+      endpoint: "/webhook",
+      method: "POST",
+      response_status: 500,
+      error_message: error instanceof Error ? error.message : "Erro desconhecido",
+      duration_ms: duration,
+      metadata: { type: "webhook_error" }
+    });
+    
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
       {

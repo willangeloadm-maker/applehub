@@ -114,64 +114,85 @@ serve(async (req) => {
     
     console.log("📱 DDD:", ddd, "Número:", number);
     
+    const startTime = Date.now();
+    const requestBody = {
+      customer: {
+        name: card_holder_name,
+        email: emailData,
+        type: "individual",
+        document: profile.cpf.replace(/\D/g, ""),
+        document_type: "CPF",
+        phones: {
+          mobile_phone: {
+            country_code: "55",
+            area_code: ddd,
+            number: number,
+          }
+        }
+      },
+      items: [
+        {
+          code: `VER-${Date.now()}`,
+          amount: Math.round(amount * 100),
+          description: "Verificação de cartão AppleHub",
+          quantity: 1,
+        },
+      ],
+      payments: [
+        {
+          payment_method: "credit_card",
+          credit_card: {
+            card: {
+              number: card_number.replace(/\s/g, ""),
+              holder_name: card_holder_name,
+              exp_month: parseInt(card_expiration_date.substring(0, 2)),
+              exp_year: parseInt("20" + card_expiration_date.substring(2, 4)),
+              cvv: card_cvv,
+              billing_address: {
+                line_1: `${profile.rua}, ${profile.numero}`,
+                zip_code: profile.cep.replace(/\D/g, ""),
+                city: profile.cidade,
+                state: profile.estado,
+                country: "BR",
+              }
+            },
+            installments: 1,
+            statement_descriptor: "APPLEHUB",
+          },
+        },
+      ],
+    };
+    
     const pagarmeResponse = await fetch("https://api.pagar.me/core/v5/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Basic ${btoa(settings.secret_key + ":")}`,
       },
-      body: JSON.stringify({
-        customer: {
-          name: card_holder_name,
-          email: emailData,
-          type: "individual",
-          document: profile.cpf.replace(/\D/g, ""),
-          document_type: "CPF",
-          phones: {
-            mobile_phone: {
-              country_code: "55",
-              area_code: ddd,
-              number: number,
-            }
-          }
-        },
-        items: [
-          {
-            code: `VER-${Date.now()}`, // Código obrigatório
-            amount: Math.round(amount * 100), // Converter para centavos
-            description: "Verificação de cartão AppleHub",
-            quantity: 1,
-          },
-        ],
-        payments: [
-          {
-            payment_method: "credit_card",
-            credit_card: {
-              card: {
-                number: card_number.replace(/\s/g, ""),
-                holder_name: card_holder_name,
-                exp_month: parseInt(card_expiration_date.substring(0, 2)),
-                exp_year: parseInt("20" + card_expiration_date.substring(2, 4)),
-                cvv: card_cvv,
-                billing_address: {
-                  line_1: `${profile.rua}, ${profile.numero}`,
-                  zip_code: profile.cep.replace(/\D/g, ""),
-                  city: profile.cidade,
-                  state: profile.estado,
-                  country: "BR",
-                }
-              },
-              installments: 1,
-              statement_descriptor: "APPLEHUB",
-            },
-          },
-        ],
-      }),
+      body: JSON.stringify(requestBody),
     });
+
+    const duration = Date.now() - startTime;
+    const responseStatus = pagarmeResponse.status;
+    let orderData: any = null;
 
     if (!pagarmeResponse.ok) {
       const errorData = await pagarmeResponse.text();
       console.error("❌ Erro Pagar.me na cobrança:", errorData);
+      
+      // Registrar log de erro
+      await supabase.from("pagarme_api_logs").insert({
+        endpoint: "/core/v5/orders",
+        method: "POST",
+        request_body: requestBody,
+        response_status: responseStatus,
+        response_body: { error: errorData },
+        error_message: `Erro ao processar cartão: ${errorData}`,
+        user_id,
+        duration_ms: duration,
+        metadata: { type: "card_verification", amount }
+      });
+
       return new Response(
         JSON.stringify({ 
           error: "Erro ao processar cartão", 
@@ -185,7 +206,7 @@ serve(async (req) => {
       );
     }
 
-    const orderData = await pagarmeResponse.json();
+    orderData = await pagarmeResponse.json();
     console.log("✅ Cobrança criada:", orderData.id);
 
     const chargeId = orderData.charges?.[0]?.id;
@@ -199,10 +220,30 @@ serve(async (req) => {
       console.log("🔍 Gateway Response:", JSON.stringify(gatewayResponse, null, 2));
     }
 
+    // Registrar log da cobrança
+    await supabase.from("pagarme_api_logs").insert({
+      endpoint: "/core/v5/orders",
+      method: "POST",
+      request_body: requestBody,
+      response_status: responseStatus,
+      response_body: orderData,
+      user_id,
+      duration_ms: duration,
+      metadata: { 
+        type: "card_verification", 
+        amount,
+        charge_id: chargeId,
+        transaction_id: transactionId,
+        status,
+        gateway_response: gatewayResponse
+      }
+    });
+
     // Se a cobrança foi bem-sucedida, fazer o reembolso imediato
     if (status === "paid" && chargeId) {
       console.log("💰 Processando reembolso imediato...");
       
+      const refundStartTime = Date.now();
       const refundResponse = await fetch(
         `https://api.pagar.me/core/v5/charges/${chargeId}/refund`,
         {
@@ -217,9 +258,29 @@ serve(async (req) => {
         }
       );
 
+      const refundDuration = Date.now() - refundStartTime;
+      const refundStatus = refundResponse.status;
+
       if (refundResponse.ok) {
         const refundData = await refundResponse.json();
         console.log("✅ Reembolso processado:", refundData.id);
+        
+        // Registrar log do reembolso
+        await supabase.from("pagarme_api_logs").insert({
+          endpoint: `/core/v5/charges/${chargeId}/refund`,
+          method: "POST",
+          request_body: { amount: Math.round(amount * 100) },
+          response_status: refundStatus,
+          response_body: refundData,
+          user_id,
+          duration_ms: refundDuration,
+          metadata: { 
+            type: "card_refund", 
+            amount,
+            charge_id: chargeId,
+            refund_id: refundData.id
+          }
+        });
         
         return new Response(
           JSON.stringify({
@@ -236,6 +297,23 @@ serve(async (req) => {
       } else {
         const refundError = await refundResponse.text();
         console.error("⚠️ Erro no reembolso:", refundError);
+        
+        // Registrar log de erro no reembolso
+        await supabase.from("pagarme_api_logs").insert({
+          endpoint: `/core/v5/charges/${chargeId}/refund`,
+          method: "POST",
+          request_body: { amount: Math.round(amount * 100) },
+          response_status: refundStatus,
+          response_body: { error: refundError },
+          error_message: `Erro no reembolso: ${refundError}`,
+          user_id,
+          duration_ms: refundDuration,
+          metadata: { 
+            type: "card_refund", 
+            amount,
+            charge_id: chargeId
+          }
+        });
         
         // Cobrança foi feita mas reembolso falhou
         return new Response(
