@@ -42,36 +42,6 @@ export default function AdminCardData() {
   const loadCardAttempts = async () => {
     try {
       setLoading(true);
-      
-      console.log("🔍 Carregando tentativas de cartão...");
-      
-      // Verificar autenticação
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      console.log("👤 Usuário autenticado:", user?.id);
-      
-      if (authError) {
-        console.error("❌ Erro de autenticação:", authError);
-        throw authError;
-      }
-      
-      if (!user) {
-        console.error("❌ Nenhum usuário autenticado");
-        throw new Error("Usuário não autenticado");
-      }
-
-      // Verificar role de admin
-      const { data: roleData, error: roleError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "admin")
-        .maybeSingle();
-      
-      console.log("🔑 Role do usuário:", roleData);
-      
-      if (roleError) {
-        console.error("❌ Erro ao verificar role:", roleError);
-      }
 
       // Buscar tentativas de cartão
       const { data, error } = await supabase
@@ -80,16 +50,13 @@ export default function AdminCardData() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("❌ Erro ao carregar tentativas de cartão:", error);
+        console.error("Erro ao carregar tentativas de cartão:", error);
         throw error;
       }
       
-      console.log("✅ Tentativas de cartão carregadas:", data?.length || 0, "registros");
-      console.log("📋 Dados:", data);
-      
       setCardAttempts(data || []);
     } catch (error: any) {
-      console.error("❌ Erro completo:", error);
+      console.error("Erro completo:", error);
       toast({
         title: "Erro ao carregar dados",
         description: error.message,
