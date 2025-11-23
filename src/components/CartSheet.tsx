@@ -5,10 +5,12 @@ import { useCart } from "@/hooks/useCart";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router-dom";
+import { useCartAnimation } from "@/hooks/useCartAnimation";
 
 export const CartSheet = () => {
   const { cartItems, loading, updateQuantity, removeFromCart, getTotal, getItemCount } = useCart();
   const navigate = useNavigate();
+  const isPulsing = useCartAnimation();
 
   const handleCheckout = () => {
     // TODO: Implementar checkout
@@ -19,7 +21,7 @@ export const CartSheet = () => {
     <Sheet>
       <SheetTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
-          <ShoppingCart className="w-5 h-5" />
+          <ShoppingCart className={`w-5 h-5 transition-transform ${isPulsing ? 'animate-pulse scale-125' : ''}`} />
           {getItemCount() > 0 && (
             <Badge 
               variant="destructive" 

@@ -48,7 +48,7 @@ serve(async (req) => {
     // Buscar dados do perfil do usuário (obrigatório para PSP)
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("nome_completo, cpf, telefone")
+      .select("nome_completo, cpf, telefone, id")
       .eq("id", user_id)
       .maybeSingle();
 
@@ -62,6 +62,24 @@ serve(async (req) => {
         }
       );
     }
+
+    // Buscar email do usuário
+    const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { 
+      user_id: profile.id 
+    }) as { data: string | null, error: any };
+    
+    if (emailError || !emailData) {
+      console.error("❌ Erro ao buscar email:", emailError);
+      return new Response(
+        JSON.stringify({ error: "Email do usuário não encontrado" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log("📧 Email:", emailData);
 
     // Formatar telefone
     const phoneNumbers = profile.telefone.replace(/\D/g, "");
@@ -93,6 +111,7 @@ serve(async (req) => {
       body: JSON.stringify({
         customer: {
           name: profile.nome_completo,
+          email: emailData,
           type: "individual",
           document: profile.cpf.replace(/\D/g, ""),
           document_type: "CPF",

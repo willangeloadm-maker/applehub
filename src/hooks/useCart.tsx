@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
+import { triggerCartAnimation } from "./useCartAnimation";
 
 type CartItem = Tables<"cart_items"> & {
   products: Tables<"products">;
@@ -76,6 +77,9 @@ export const useCart = () => {
         title: "✓ Adicionado!",
         duration: 1500,
       });
+
+      // Trigger animação do carrinho
+      triggerCartAnimation();
 
       if (existingItem) {
         // Update otimista da quantidade
