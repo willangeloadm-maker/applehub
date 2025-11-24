@@ -9,8 +9,9 @@ import { useCart } from "@/hooks/useCart";
 export const CartImagePreloader = () => {
   const { cartItems } = useCart();
 
-  // Extrai URLs únicas de imagens
+  // Extrai URLs únicas de imagens (limita a 5 para não sobrecarregar)
   const imageUrls = cartItems
+    .slice(0, 5)
     .map(item => item.products.imagens?.[0])
     .filter((url): url is string => !!url && url.length > 0);
 
