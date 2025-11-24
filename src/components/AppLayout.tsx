@@ -21,18 +21,15 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { getItemCount } = useCart();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Check localStorage for cached session to avoid async call
+    const cachedSession = localStorage.getItem('sb-slwpupadtakrnaqzluqc-auth-token');
+    return !!cachedSession;
+  });
   
   const isAdminPage = location.pathname.startsWith('/admin');
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
-    };
-    
-    checkAuth();
-    
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(!!session);
     });
