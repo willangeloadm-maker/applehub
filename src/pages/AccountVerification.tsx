@@ -82,25 +82,38 @@ export default function AccountVerification() {
     }, 4000);
   };
 
-  const validateDocumentWithOCR = async (file: File, docType: 'RG' | 'CNH') => {
+  // Valida documentos - agora aceita frente e verso para validação completa
+  const validateDocumentWithOCR = async (frente: File, verso: File | null, docType: 'RG' | 'CNH') => {
     setValidatingDocument(true);
     setOcrResult(null);
 
     try {
-      // Converter arquivo para base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      // Converter frente para base64
+      const reader1 = new FileReader();
+      const base64Promise1 = new Promise<string>((resolve, reject) => {
+        reader1.onload = () => resolve(reader1.result as string);
+        reader1.onerror = reject;
+        reader1.readAsDataURL(frente);
       });
+      const frenteBase64 = await base64Promise1;
 
-      const imageBase64 = await base64Promise;
+      // Converter verso para base64 se existir
+      let versoBase64 = null;
+      if (verso) {
+        const reader2 = new FileReader();
+        const base64Promise2 = new Promise<string>((resolve, reject) => {
+          reader2.onload = () => resolve(reader2.result as string);
+          reader2.onerror = reject;
+          reader2.readAsDataURL(verso);
+        });
+        versoBase64 = await base64Promise2;
+      }
 
-      // Chamar a edge function de validação OCR
+      // Chamar a edge function de validação OCR com ambas as imagens
       const { data, error } = await supabase.functions.invoke('validate-document-ocr', {
         body: {
-          imageBase64,
+          imageBase64: frenteBase64,
+          imageBase64Verso: versoBase64, // Envia o verso também
           documentType: docType,
           userData: {
             nome_completo: formData.nome_completo,
@@ -566,7 +579,7 @@ export default function AccountVerification() {
                       label="CNH Aberta"
                       guideType="document"
                       onCapture={async (file) => {
-                        const isValid = await validateDocumentWithOCR(file, 'CNH');
+                        const isValid = await validateDocumentWithOCR(file, null, 'CNH');
                         if (isValid) {
                           setKycData({ ...kycData, documento_frente: file, documento_verso: file });
                           setStep('kyc_selfie');
@@ -593,35 +606,36 @@ export default function AccountVerification() {
                     <CameraCapture
                       label="CNH (Frente)"
                       guideType="document"
-                      onCapture={async (file) => {
-                        const isValid = await validateDocumentWithOCR(file, 'CNH');
-                        if (isValid) {
-                          setKycData({ ...kycData, documento_frente: file });
-                        }
+                      onCapture={(file) => {
+                        setKycData({ ...kycData, documento_frente: file });
+                        toast({ description: "Frente capturada! Agora envie o verso." });
                       }}
                       captured={kycData.documento_frente}
                     />
-                    {validatingDocument && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Validando documento automaticamente...
-                      </div>
-                    )}
-                    {ocrResult && kycData.documento_frente && (
-                      <div className={`p-3 rounded-lg text-sm ${ocrResult.valido ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-yellow-50 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200'}`}>
-                        {ocrResult.valido ? '✓ Documento validado automaticamente' : '⚠ Documento será revisado manualmente'}
-                      </div>
-                    )}
                     {kycData.documento_frente && (
                       <CameraCapture
                         label="CNH (Verso)"
                         guideType="document"
-                        onCapture={(file) => {
-                          setKycData({ ...kycData, documento_verso: file });
-                          setStep('kyc_selfie');
+                        onCapture={async (file) => {
+                          const isValid = await validateDocumentWithOCR(kycData.documento_frente!, file, 'CNH');
+                          if (isValid) {
+                            setKycData({ ...kycData, documento_verso: file });
+                            setStep('kyc_selfie');
+                          }
                         }}
                         captured={kycData.documento_verso}
                       />
+                    )}
+                    {validatingDocument && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Validando documentos (frente e verso)...
+                      </div>
+                    )}
+                    {ocrResult && kycData.documento_verso && (
+                      <div className={`p-3 rounded-lg text-sm ${ocrResult.valido ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-yellow-50 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200'}`}>
+                        {ocrResult.valido ? '✓ Documentos validados automaticamente' : '⚠ Documentos serão revisados manualmente'}
+                      </div>
                     )}
                   </>
                 )}
@@ -715,35 +729,36 @@ export default function AccountVerification() {
                     <CameraCapture
                       label="RG (Frente)"
                       guideType="document"
-                      onCapture={async (file) => {
-                        const isValid = await validateDocumentWithOCR(file, 'RG');
-                        if (isValid) {
-                          setKycData({ ...kycData, documento_frente: file });
-                        }
+                      onCapture={(file) => {
+                        setKycData({ ...kycData, documento_frente: file });
+                        toast({ description: "Frente capturada! Agora envie o verso com o CPF." });
                       }}
                       captured={kycData.documento_frente}
                     />
-                    {validatingDocument && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Validando documento automaticamente...
-                      </div>
-                    )}
-                    {ocrResult && kycData.documento_frente && (
-                      <div className={`p-3 rounded-lg text-sm ${ocrResult.valido ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-yellow-50 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200'}`}>
-                        {ocrResult.valido ? '✓ Documento validado automaticamente' : '⚠ Documento será revisado manualmente'}
-                      </div>
-                    )}
                     {kycData.documento_frente && (
                       <CameraCapture
                         label="RG (Verso)"
                         guideType="document"
-                        onCapture={(file) => {
-                          setKycData({ ...kycData, documento_verso: file });
-                          setStep('kyc_selfie');
+                        onCapture={async (file) => {
+                          const isValid = await validateDocumentWithOCR(kycData.documento_frente!, file, 'RG');
+                          if (isValid) {
+                            setKycData({ ...kycData, documento_verso: file });
+                            setStep('kyc_selfie');
+                          }
                         }}
                         captured={kycData.documento_verso}
                       />
+                    )}
+                    {validatingDocument && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Validando documentos (frente e verso)...
+                      </div>
+                    )}
+                    {ocrResult && kycData.documento_verso && (
+                      <div className={`p-3 rounded-lg text-sm ${ocrResult.valido ? 'bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200' : 'bg-yellow-50 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200'}`}>
+                        {ocrResult.valido ? '✓ Documentos validados automaticamente' : '⚠ Documentos serão revisados manualmente'}
+                      </div>
                     )}
                   </>
                 )}
