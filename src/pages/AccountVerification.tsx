@@ -2,13 +2,25 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { 
+  CheckCircle2, 
+  Loader2, 
+  CheckCircle, 
+  XCircle, 
+  Shield, 
+  User, 
+  FileText, 
+  Camera, 
+  Sparkles,
+  ArrowRight,
+  Check
+} from 'lucide-react';
 import CameraCapture from '@/components/CameraCapture';
 import { formatCPF, formatPhone, formatCurrency, unformatCurrency, formatDate, validateCPF, validatePhone } from '@/lib/formatters';
 import { formatDateOnlyBrasilia } from '@/lib/dateUtils';
@@ -38,6 +50,30 @@ export default function AccountVerification() {
   });
   const [validatingDocument, setValidatingDocument] = useState(false);
   const [ocrResult, setOcrResult] = useState<any>(null);
+
+  // Progress steps para visual feedback
+  const getStepNumber = () => {
+    const steps = {
+      'check': 0,
+      'form': 1,
+      'validating': 1,
+      'kyc_doc_type': 2,
+      'kyc_cnh_format': 2,
+      'kyc_capture': 2,
+      'kyc_selfie': 3,
+      'analyzing': 4,
+      'result': 5
+    };
+    return steps[step] || 0;
+  };
+
+  const progressSteps = [
+    { icon: Shield, label: 'Início', complete: getStepNumber() > 0 },
+    { icon: User, label: 'Dados', complete: getStepNumber() > 1 },
+    { icon: FileText, label: 'Documentos', complete: getStepNumber() > 2 },
+    { icon: Camera, label: 'Selfie', complete: getStepNumber() > 3 },
+    { icon: Sparkles, label: 'Análise', complete: getStepNumber() > 4 }
+  ];
 
   useEffect(() => {
     checkUser();
@@ -278,8 +314,14 @@ export default function AccountVerification() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin" />
+        <div className="min-h-[80vh] flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20">
+          <div className="text-center space-y-4 animate-fade-in">
+            <div className="relative">
+              <div className="w-16 h-16 mx-auto rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse" />
+              <Loader2 className="w-8 h-8 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" />
+            </div>
+            <p className="text-muted-foreground">Carregando...</p>
+          </div>
         </div>
       </AppLayout>
     );
@@ -287,185 +329,312 @@ export default function AccountVerification() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto p-4 sm:p-6 max-w-2xl">
-        {step === 'check' && verification?.status === 'verificado' && (
-          <Card className="border-green-500">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-600">
-                <CheckCircle2 className="w-6 h-6" />
-                Conta Verificada
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Sua conta foi verificada em {formatDateOnlyBrasilia(verification.verificado_em)}
-              </p>
-              <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                <p className="text-sm text-green-800 dark:text-green-200">
-                  ✓ Documentos verificados
-                  <br />
-                  ✓ Identidade confirmada
-                  <br />
-                  ✓ Análise de crédito aprovada
-                </p>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          {/* Progress Indicator */}
+          {step !== 'check' && step !== 'result' && (
+            <div className="mb-8 animate-fade-in">
+              <div className="flex items-center justify-between relative">
+                {/* Progress Line */}
+                <div className="absolute top-5 left-0 right-0 h-0.5 bg-border -z-10">
+                  <div 
+                    className="h-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] transition-all duration-500"
+                    style={{ width: `${(getStepNumber() / (progressSteps.length - 1)) * 100}%` }}
+                  />
+                </div>
+                
+                {progressSteps.map((item, idx) => {
+                  const Icon = item.icon;
+                  const isActive = idx === getStepNumber();
+                  const isComplete = item.complete;
+                  
+                  return (
+                    <div key={idx} className="flex flex-col items-center gap-2 bg-background z-10">
+                      <div className={`
+                        w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
+                        ${isComplete ? 'bg-gradient-to-r from-[#ff6b35] to-[#ff4757] text-white scale-110' : 
+                          isActive ? 'bg-primary/10 text-primary ring-4 ring-primary/20' : 
+                          'bg-muted text-muted-foreground'}
+                      `}>
+                        {isComplete ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                      </div>
+                      <span className={`text-xs font-medium hidden sm:block ${
+                        isActive ? 'text-primary' : 'text-muted-foreground'
+                      }`}>
+                        {item.label}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-              <Button onClick={() => navigate('/')} className="w-full mt-4">
-                Voltar para Home
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          )}
 
-        {step === 'check' && (!verification || verification.status !== 'verificado') && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Verificação de Conta</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">
-                Para utilizar o parcelamento AppleHub em até 24x, você precisa verificar sua conta.
-              </p>
-              <Button onClick={() => setStep('form')} className="w-full">
-                Iniciar Verificação
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+          {/* Conta Verificada */}
+          {step === 'check' && verification?.status === 'verificado' && (
+            <div className="animate-fade-in-up">
+              <Card className="border-2 border-green-500/20 bg-gradient-to-br from-green-50/50 to-background dark:from-green-950/20 shadow-2xl overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-500/10 to-transparent rounded-full blur-3xl" />
+                <CardHeader className="text-center relative z-10 pb-4">
+                  <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center mb-4 shadow-lg animate-scale-in">
+                    <CheckCircle2 className="w-10 h-10 text-white" />
+                  </div>
+                  <CardTitle className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                    Conta Verificada!
+                  </CardTitle>
+                  <CardDescription className="text-base mt-2">
+                    Verificada em {formatDateOnlyBrasilia(verification.verificado_em)}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="relative z-10 space-y-6">
+                  <div className="grid gap-3">
+                    {[
+                      '✓ Documentos verificados e aprovados',
+                      '✓ Identidade confirmada com sucesso',
+                      '✓ Análise de crédito completa',
+                      '✓ Pronto para parcelar em até 24x'
+                    ].map((text, idx) => (
+                      <div 
+                        key={idx}
+                        className="flex items-center gap-3 p-3 rounded-lg bg-green-500/5 border border-green-500/10 animate-fade-in"
+                        style={{ animationDelay: `${idx * 100}ms` }}
+                      >
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-sm text-foreground/80">{text}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button 
+                    onClick={() => navigate('/')} 
+                    size="lg"
+                    className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg"
+                  >
+                    Voltar para Home
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-        {step === 'form' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Dados Pessoais</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleFormSubmit} className="space-y-4">
-                <div>
-                  <Label>Nome Completo</Label>
-                  <Input
-                    value={formData.nome_completo}
-                    onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
-                    placeholder="Nome completo"
-                    required
-                  />
+          {/* Iniciar Verificação */}
+          {step === 'check' && (!verification || verification.status !== 'verificado') && (
+            <div className="animate-fade-in-up">
+              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background shadow-2xl overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-3xl" />
+                <CardHeader className="text-center relative z-10 pb-4">
+                  <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] flex items-center justify-center mb-4 shadow-lg animate-scale-in">
+                    <Shield className="w-10 h-10 text-white" />
+                  </div>
+                  <CardTitle className="text-3xl font-bold">Verificação de Conta</CardTitle>
+                  <CardDescription className="text-base mt-2">
+                    Desbloqueie o parcelamento em até 24x
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="relative z-10 space-y-6">
+                  <div className="space-y-3">
+                    {[
+                      { icon: FileText, text: 'Envio rápido de documentos' },
+                      { icon: Camera, text: 'Verificação facial por selfie' },
+                      { icon: Sparkles, text: 'Análise automatizada em segundos' },
+                      { icon: CheckCircle2, text: 'Aprove crédito instantaneamente' }
+                    ].map((item, idx) => (
+                      <div 
+                        key={idx}
+                        className="flex items-center gap-4 p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-all duration-200 animate-fade-in hover:scale-[1.02]"
+                        style={{ animationDelay: `${idx * 100}ms` }}
+                      >
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#ff6b35]/20 to-[#ff4757]/20 flex items-center justify-center shrink-0">
+                          <item.icon className="w-5 h-5 text-primary" />
+                        </div>
+                        <span className="text-sm font-medium">{item.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Button 
+                    onClick={() => setStep('form')} 
+                    size="lg"
+                    className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg"
+                  >
+                    Iniciar Verificação
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Formulário de Dados */}
+          {step === 'form' && (
+            <div className="animate-fade-in-up">
+              <Card className="shadow-2xl border-2 border-border/50">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] flex items-center justify-center">
+                      <User className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-2xl">Dados Pessoais</CardTitle>
+                      <CardDescription>Preencha suas informações com atenção</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <form onSubmit={handleFormSubmit} className="space-y-5">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        Nome Completo
+                      </Label>
+                      <Input
+                        value={formData.nome_completo}
+                        onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
+                        placeholder="Seu nome completo"
+                        className="h-12 text-base"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold flex items-center gap-2">
+                        CPF
+                        {formData.cpf && (
+                          validateCPF(formData.cpf) ? (
+                            <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
+                          )
+                        )}
+                      </Label>
+                      <Input
+                        value={formData.cpf}
+                        onChange={(e) => setFormData({ ...formData, cpf: formatCPF(e.target.value) })}
+                        placeholder="000.000.000-00"
+                        maxLength={14}
+                        className="h-12 text-base"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Data de Nascimento</Label>
+                        <Input
+                          value={formData.data_nascimento}
+                          onChange={(e) => setFormData({ ...formData, data_nascimento: formatDate(e.target.value) })}
+                          placeholder="DD/MM/AAAA"
+                          maxLength={10}
+                          className="h-12 text-base"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          Telefone
+                          {formData.telefone && (
+                            validatePhone(formData.telefone) ? (
+                              <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
+                            )
+                          )}
+                        </Label>
+                        <Input
+                          value={formData.telefone}
+                          onChange={(e) => setFormData({ ...formData, telefone: formatPhone(e.target.value) })}
+                          placeholder="(00) 00000-0000"
+                          maxLength={15}
+                          className="h-12 text-base"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Nome da Mãe</Label>
+                      <Input
+                        value={formData.nome_mae}
+                        onChange={(e) => setFormData({ ...formData, nome_mae: e.target.value })}
+                        placeholder="Nome completo da mãe"
+                        className="h-12 text-base"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Profissão</Label>
+                      <Input
+                        value={formData.profissao}
+                        onChange={(e) => setFormData({ ...formData, profissao: e.target.value })}
+                        placeholder="Sua profissão"
+                        className="h-12 text-base"
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Patrimônio</Label>
+                        <Input
+                          value={formData.patrimonio}
+                          onChange={(e) => {
+                            const formatted = formatCurrency(e.target.value);
+                            setFormData({ ...formData, patrimonio: formatted });
+                          }}
+                          placeholder="R$ 0,00"
+                          className="h-12 text-base"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Renda Mensal</Label>
+                        <Input
+                          value={formData.renda_mensal}
+                          onChange={(e) => {
+                            const formatted = formatCurrency(e.target.value);
+                            setFormData({ ...formData, renda_mensal: formatted });
+                          }}
+                          placeholder="R$ 0,00"
+                          className="h-12 text-base"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <Button 
+                      type="submit" 
+                      size="lg"
+                      className="w-full mt-6 bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg h-12"
+                    >
+                      Continuar
+                      <ArrowRight className="ml-2 w-5 h-5" />
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Validando */}
+          {step === 'validating' && (
+            <Card className="shadow-2xl animate-fade-in">
+              <CardContent className="flex flex-col items-center justify-center py-16 space-y-6">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse" />
+                  <Loader2 className="w-12 h-12 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" />
                 </div>
-
-                <div>
-                  <Label className="flex items-center gap-2">
-                    CPF
-                    {formData.cpf && (
-                      validateCPF(formData.cpf) ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-red-500" />
-                      )
-                    )}
-                  </Label>
-                  <Input
-                    value={formData.cpf}
-                    onChange={(e) => setFormData({ ...formData, cpf: formatCPF(e.target.value) })}
-                    placeholder="000.000.000-00"
-                    maxLength={14}
-                    required
-                  />
+                <div className="text-center space-y-2">
+                  <p className="text-xl font-semibold">Validando seus dados...</p>
+                  <p className="text-sm text-muted-foreground">Isso levará apenas alguns segundos</p>
                 </div>
+              </CardContent>
+            </Card>
+          )}
 
-                <div>
-                  <Label>Data de Nascimento</Label>
-                  <Input
-                    value={formData.data_nascimento}
-                    onChange={(e) => setFormData({ ...formData, data_nascimento: formatDate(e.target.value) })}
-                    placeholder="DD/MM/AAAA"
-                    maxLength={10}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label className="flex items-center gap-2">
-                    Telefone
-                    {formData.telefone && (
-                      validatePhone(formData.telefone) ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-red-500" />
-                      )
-                    )}
-                  </Label>
-                  <Input
-                    value={formData.telefone}
-                    onChange={(e) => setFormData({ ...formData, telefone: formatPhone(e.target.value) })}
-                    placeholder="(00) 00000-0000"
-                    maxLength={15}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Nome da Mãe</Label>
-                  <Input
-                    value={formData.nome_mae}
-                    onChange={(e) => setFormData({ ...formData, nome_mae: e.target.value })}
-                    placeholder="Nome completo da mãe"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Profissão</Label>
-                  <Input
-                    value={formData.profissao}
-                    onChange={(e) => setFormData({ ...formData, profissao: e.target.value })}
-                    placeholder="Sua profissão"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Patrimônio</Label>
-                  <Input
-                    value={formData.patrimonio}
-                    onChange={(e) => {
-                      const formatted = formatCurrency(e.target.value);
-                      setFormData({ ...formData, patrimonio: formatted });
-                    }}
-                    placeholder="R$ 0,00"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Renda Mensal</Label>
-                  <Input
-                    value={formData.renda_mensal}
-                    onChange={(e) => {
-                      const formatted = formatCurrency(e.target.value);
-                      setFormData({ ...formData, renda_mensal: formatted });
-                    }}
-                    placeholder="R$ 0,00"
-                    required
-                  />
-                </div>
-
-                <Button type="submit" className="w-full">
-                  Continuar
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-
-        {step === 'validating' && (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-              <p className="text-lg font-medium">Validando dados...</p>
-              <p className="text-sm text-muted-foreground">Aguarde um momento</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {step === 'kyc_doc_type' && (
-          <Card>
+          {/* Tipo de Documento */}
+          {step === 'kyc_doc_type' && (
+            <Card>
             <CardHeader>
               <CardTitle>Escolha o Tipo de Documento</CardTitle>
             </CardHeader>
@@ -501,7 +670,7 @@ export default function AccountVerification() {
               </Button>
             </CardContent>
           </Card>
-        )}
+          )}
 
         {step === 'kyc_cnh_format' && (
           <Card>
@@ -878,6 +1047,7 @@ export default function AccountVerification() {
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
     </AppLayout>
   );
