@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
@@ -10,6 +10,9 @@ type CartItem = Tables<"cart_items"> & {
 
 const CART_CACHE_KEY = "applehub_cart_cache";
 const OFFLINE_QUEUE_KEY = "applehub_cart_offline_queue";
+
+// Cache de userId para evitar múltiplas chamadas getUser()
+let cachedUserId: string | null = null;
 
 type OfflineOperation = {
   id: string;
@@ -91,29 +94,46 @@ const clearCartCache = () => {
 };
 
 export const useCart = () => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    // Carrega cache imediatamente no estado inicial
+    const session = localStorage.getItem('sb-slwpupadtakrnaqzluqc-auth-token');
+    if (!session) return [];
+    
+    try {
+      const parsed = JSON.parse(session);
+      const userId = parsed?.user?.id;
+      if (userId) {
+        cachedUserId = userId;
+        return loadCartFromCache(userId) || [];
+      }
+    } catch {}
+    return [];
+  });
+  const [loading, setLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { toast } = useToast();
+  const syncTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const fetchCart = async () => {
+  // Pega userId do cache ou session
+  const getUserId = useCallback(async () => {
+    if (cachedUserId) return cachedUserId;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) cachedUserId = user.id;
+    return cachedUserId;
+  }, []);
+
+  const fetchCart = useCallback(async (silent = false) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!silent) setLoading(true);
+      
+      const userId = await getUserId();
+      if (!userId) {
         setCartItems([]);
-        setLoading(false);
         clearCartCache();
         return;
       }
 
-      // Carrega do cache primeiro para UI instantânea
-      const cachedItems = loadCartFromCache(user.id);
-      if (cachedItems && cachedItems.length > 0) {
-        setCartItems(cachedItems);
-        setLoading(false);
-      }
-
-      // Busca dados atualizados do Supabase
       const { data, error } = await supabase
         .from("cart_items")
         .select(`
@@ -134,30 +154,24 @@ export const useCart = () => {
             cor
           )
         `)
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
 
       if (error) throw error;
       
       const freshItems = data as CartItem[];
       setCartItems(freshItems);
-      
-      // Salva no cache
-      saveCartToCache(freshItems, user.id);
+      saveCartToCache(freshItems, userId);
     } catch (error: any) {
-      toast({
-        title: "Erro ao carregar carrinho",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error("Erro ao carregar carrinho:", error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, [getUserId]);
 
-  const addToCart = async (productId: string, quantidade: number = 1) => {
+  const addToCart = useCallback(async (productId: string, quantidade: number = 1) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const userId = await getUserId();
+      if (!userId) {
         toast({
           title: "Faça login",
           description: "Você precisa estar logado para adicionar ao carrinho",
@@ -166,19 +180,11 @@ export const useCart = () => {
         return false;
       }
 
-      // Verifica se já existe no carrinho
       const existingItem = cartItems.find(item => item.product_id === productId);
 
-      // Update otimista - atualiza UI imediatamente
-      toast({
-        title: isOnline ? "✓ Adicionado!" : "✓ Adicionado (offline)",
-        duration: 1500,
-      });
-
-      // Trigger animação do carrinho
+      toast({ title: "✓ Adicionado!", duration: 1000 });
       triggerCartAnimation();
 
-      // Se offline, salva na fila e retorna
       if (!isOnline) {
         saveOfflineOperation({
           id: `${Date.now()}-add`,
@@ -190,28 +196,21 @@ export const useCart = () => {
       }
 
       if (existingItem) {
-        // Update otimista da quantidade
+        const newQty = existingItem.quantidade + quantidade;
         setCartItems(prev => 
           prev.map(item => 
-            item.id === existingItem.id 
-              ? { ...item, quantidade: item.quantidade + quantidade }
-              : item
+            item.id === existingItem.id ? { ...item, quantidade: newQty } : item
           )
         );
 
-        // Atualiza no banco em background
         supabase
           .from("cart_items")
-          .update({ quantidade: existingItem.quantidade + quantidade })
+          .update({ quantidade: newQty })
           .eq("id", existingItem.id)
           .then(({ error }) => {
-            if (error) {
-              console.error("Erro ao atualizar:", error);
-              fetchCart(); // Reverte em caso de erro
-            }
+            if (error) fetchCart(true);
           });
       } else {
-        // Buscar produto para update otimista
         const { data: product } = await supabase
           .from("products")
           .select("id, nome, preco_vista, imagens, estado, estoque, capacidade, cor")
@@ -219,10 +218,9 @@ export const useCart = () => {
           .single();
 
         if (product) {
-          // Update otimista - adiciona imediatamente na UI
           const tempItem: CartItem = {
             id: `temp-${Date.now()}`,
-            user_id: user.id,
+            user_id: userId,
             product_id: productId,
             quantidade,
             created_at: new Date().toISOString(),
@@ -232,26 +230,17 @@ export const useCart = () => {
           
           setCartItems(prev => [...prev, tempItem]);
 
-          // Inserir no banco em background
           supabase
             .from("cart_items")
-            .insert({
-              user_id: user.id,
-              product_id: productId,
-              quantidade,
-            })
+            .insert({ user_id: userId, product_id: productId, quantidade })
             .select()
             .single()
             .then(({ data, error }) => {
               if (error) {
-                console.error("Erro ao inserir:", error);
-                fetchCart(); // Reverte em caso de erro
+                fetchCart(true);
               } else if (data) {
-                // Substituir item temporário pelo item real
                 setCartItems(prev => 
-                  prev.map(item => 
-                    item.id === tempItem.id ? { ...item, id: data.id } : item
-                  )
+                  prev.map(item => item.id === tempItem.id ? { ...item, id: data.id } : item)
                 );
               }
             });
@@ -260,141 +249,106 @@ export const useCart = () => {
       
       return true;
     } catch (error: any) {
-      // Recarregar em caso de erro
-      await fetchCart();
-      
+      await fetchCart(true);
       toast({
         title: "Erro ao adicionar",
         description: error.message,
         variant: "destructive",
       });
-      
       return false;
     }
-  };
+  }, [cartItems, getUserId, isOnline, toast, fetchCart]);
 
-  const updateQuantity = async (cartItemId: string, newQuantidade: number) => {
-    try {
-      if (newQuantidade <= 0) {
-        await removeFromCart(cartItemId);
-        return;
-      }
+  const updateQuantity = useCallback(async (cartItemId: string, newQuantidade: number) => {
+    if (newQuantidade <= 0) {
+      await removeFromCart(cartItemId);
+      return;
+    }
 
-      // Update otimista
-      setCartItems(prev =>
-        prev.map(item =>
-          item.id === cartItemId ? { ...item, quantidade: newQuantidade } : item
-        )
-      );
+    setCartItems(prev =>
+      prev.map(item =>
+        item.id === cartItemId ? { ...item, quantidade: newQuantidade } : item
+      )
+    );
 
-      // Se offline, salva na fila
-      if (!isOnline) {
-        saveOfflineOperation({
-          id: `${Date.now()}-update`,
-          type: 'update',
-          data: { cartItemId, newQuantidade },
-          timestamp: Date.now(),
-        });
-        return;
-      }
+    if (!isOnline) {
+      saveOfflineOperation({
+        id: `${Date.now()}-update`,
+        type: 'update',
+        data: { cartItemId, newQuantidade },
+        timestamp: Date.now(),
+      });
+      return;
+    }
 
-      // Atualiza no banco
+    // Debounce: aguarda 500ms antes de salvar no banco
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+    
+    syncTimeoutRef.current = setTimeout(async () => {
       const { error } = await supabase
         .from("cart_items")
         .update({ quantidade: newQuantidade })
         .eq("id", cartItemId);
 
-      if (error) throw error;
-    } catch (error: any) {
-      // Reverte em caso de erro
-      await fetchCart();
-      
-      toast({
-        title: "Erro ao atualizar",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const removeFromCart = async (cartItemId: string) => {
-    try {
-      // Update otimista
-      setCartItems(prev => prev.filter(item => item.id !== cartItemId));
-
-      toast({
-        title: "✓ Removido",
-        duration: 2000,
-      });
-
-      // Se offline, salva na fila
-      if (!isOnline) {
-        saveOfflineOperation({
-          id: `${Date.now()}-remove`,
-          type: 'remove',
-          data: { cartItemId },
-          timestamp: Date.now(),
-        });
-        return;
+      if (error) {
+        console.error("Erro ao atualizar:", error);
+        fetchCart(true);
       }
+    }, 500);
+  }, [isOnline, fetchCart]);
 
-      // Remove no banco
-      const { error } = await supabase
-        .from("cart_items")
-        .delete()
-        .eq("id", cartItemId);
+  const removeFromCart = useCallback(async (cartItemId: string) => {
+    setCartItems(prev => prev.filter(item => item.id !== cartItemId));
+    toast({ title: "✓ Removido", duration: 1000 });
 
-      if (error) throw error;
-    } catch (error: any) {
-      // Reverte em caso de erro
-      await fetchCart();
-      
-      toast({
-        title: "Erro ao remover",
-        description: error.message,
-        variant: "destructive",
+    if (!isOnline) {
+      saveOfflineOperation({
+        id: `${Date.now()}-remove`,
+        type: 'remove',
+        data: { cartItemId },
+        timestamp: Date.now(),
       });
+      return;
     }
-  };
 
-  const clearCart = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      setCartItems([]);
-      clearCartCache();
-
-      // Se offline, salva na fila
-      if (!isOnline) {
-        saveOfflineOperation({
-          id: `${Date.now()}-clear`,
-          type: 'clear',
-          data: { userId: user.id },
-          timestamp: Date.now(),
-        });
-        return;
-      }
-
-      const { error } = await supabase
-        .from("cart_items")
-        .delete()
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-      
-      toast({
-        title: "Carrinho limpo",
-        description: "Todos os produtos foram removidos",
+    supabase
+      .from("cart_items")
+      .delete()
+      .eq("id", cartItemId)
+      .then(({ error }) => {
+        if (error) {
+          console.error("Erro ao remover:", error);
+          fetchCart(true);
+        }
       });
-    } catch (error: any) {
-      toast({
-        title: "Erro ao limpar carrinho",
-        description: error.message,
-        variant: "destructive",
+  }, [isOnline, toast, fetchCart]);
+
+  const clearCart = useCallback(async () => {
+    const userId = await getUserId();
+    if (!userId) return;
+
+    setCartItems([]);
+    clearCartCache();
+
+    if (!isOnline) {
+      saveOfflineOperation({
+        id: `${Date.now()}-clear`,
+        type: 'clear',
+        data: { userId },
+        timestamp: Date.now(),
       });
+      return;
     }
-  };
+
+    supabase
+      .from("cart_items")
+      .delete()
+      .eq("user_id", userId)
+      .then(({ error }) => {
+        if (error) console.error("Erro ao limpar:", error);
+        else toast({ title: "Carrinho limpo" });
+      });
+  }, [getUserId, isOnline, toast]);
 
   const getTotal = () => {
     return cartItems.reduce((total, item) => {
@@ -407,7 +361,7 @@ export const useCart = () => {
   };
 
   // Processa fila de operações offline
-  const processOfflineQueue = async () => {
+  const processOfflineQueue = useCallback(async () => {
     const queue = getOfflineQueue();
     if (queue.length === 0) return;
 
@@ -435,14 +389,14 @@ export const useCart = () => {
     }
 
     clearOfflineQueue();
-    await fetchCart();
+    await fetchCart(true);
     
     toast({
       title: "✓ Carrinho sincronizado",
       description: "Suas alterações offline foram salvas",
       duration: 3000,
     });
-  };
+  }, [addToCart, updateQuantity, removeFromCart, clearCart, fetchCart, toast]);
 
   // Monitora conexão online/offline
   useEffect(() => {
@@ -467,97 +421,26 @@ export const useCart = () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [processOfflineQueue, toast]);
 
+  // Fetch inicial e sync entre abas
   useEffect(() => {
     fetchCart();
-    
-    // Realtime apenas para sync entre dispositivos (não para updates otimistas)
-    const setupRealtimeSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-      
-      const channel = supabase
-        .channel('cart-sync')
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'cart_items',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            setCartItems(prev => 
-              prev.map(item => 
-                item.id === payload.new.id 
-                  ? { ...item, quantidade: payload.new.quantidade }
-                  : item
-              )
-            );
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'DELETE',
-            schema: 'public',
-            table: 'cart_items',
-            filter: `user_id=eq.${user.id}`
-          },
-          (payload) => {
-            setCartItems(prev => prev.filter(item => item.id !== payload.old.id));
-          }
-        )
-        .subscribe();
-      
-      return channel;
-    };
-    
-    let channelCleanup: any = null;
-    setupRealtimeSubscription().then(channel => {
-      channelCleanup = channel;
-    });
-    
-    return () => {
-      if (channelCleanup) {
-        supabase.removeChannel(channelCleanup);
-      }
-    };
-  }, []);
 
-  // Salva no cache sempre que o carrinho mudar
-  useEffect(() => {
-    const saveCache = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && cartItems.length >= 0) {
-        saveCartToCache(cartItems, user.id);
-      }
-    };
-    
-    saveCache();
-  }, [cartItems]);
-
-  // Sincroniza entre abas/janelas
-  useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === CART_CACHE_KEY && e.newValue) {
-        try {
-          const cacheData = JSON.parse(e.newValue);
-          supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user && cacheData.userId === user.id) {
-              setCartItems(cacheData.items);
-            }
-          });
-        } catch (error) {
-          console.error("Erro ao sincronizar carrinho entre abas:", error);
-        }
-      }
+      if (e.key === CART_CACHE_KEY) fetchCart(true);
     };
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [fetchCart]);
+
+  // Salva cache quando cartItems mudar
+  useEffect(() => {
+    if (cachedUserId && cartItems.length >= 0) {
+      saveCartToCache(cartItems, cachedUserId);
+    }
+  }, [cartItems]);
 
   return {
     cartItems,
