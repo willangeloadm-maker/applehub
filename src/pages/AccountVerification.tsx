@@ -41,11 +41,7 @@ export default function AccountVerification() {
     nome_completo: '',
     cpf: '',
     data_nascimento: '',
-    telefone: '',
-    nome_mae: '',
-    profissao: '',
-    patrimonio: '',
-    renda_mensal: ''
+    telefone: ''
   });
   const [documentType, setDocumentType] = useState<'cnh' | 'rg' | null>(null);
   const [cnhFormat, setCnhFormat] = useState<'aberta' | 'fechada' | 'digital' | null>(null);
@@ -224,29 +220,11 @@ export default function AccountVerification() {
           dataNascimentoFormatada = `${day}/${month}/${year}`;
         }
         
-        // Carregar dados salvos do localStorage
-        const savedData = localStorage.getItem('verification_form_data');
-        let savedFields = { nome_mae: '', profissao: '', patrimonio: '', renda_mensal: '' };
-        if (savedData) {
-          try {
-            const parsed = JSON.parse(savedData);
-            savedFields = {
-              nome_mae: parsed.nome_mae || '',
-              profissao: parsed.profissao || '',
-              patrimonio: parsed.patrimonio || '',
-              renda_mensal: parsed.renda_mensal || ''
-            };
-          } catch (e) {
-            console.error('Erro ao carregar dados salvos:', e);
-          }
-        }
-        
         setFormData({
           nome_completo: profileData.nome_completo || '',
           cpf: formatCPF(profileData.cpf || ''),
           data_nascimento: dataNascimentoFormatada,
-          telefone: formatPhone(profileData.telefone || ''),
-          ...savedFields
+          telefone: formatPhone(profileData.telefone || '')
         });
       }
 
@@ -791,55 +769,6 @@ export default function AccountVerification() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-semibold">Nome da Mãe</Label>
-                          <StableInput
-                            value={formData.nome_mae}
-                            onValueChange={(value) => handleFieldChange('nome_mae', value)}
-                            placeholder="Nome completo da mãe"
-                            className="h-12 text-base"
-                            required
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-sm font-semibold">Profissão</Label>
-                          <StableInput
-                            value={formData.profissao}
-                            onValueChange={(value) => handleFieldChange('profissao', value)}
-                            placeholder="Sua profissão"
-                            className="h-12 text-base"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-semibold">Patrimônio</Label>
-                          <StableInput
-                            value={formData.patrimonio}
-                            onValueChange={(value) => handleFieldChange('patrimonio', value)}
-                            formatter={formatCurrency}
-                            placeholder="R$ 0,00"
-                            className="h-12 text-base"
-                            required
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-sm font-semibold">Renda Mensal</Label>
-                          <StableInput
-                            value={formData.renda_mensal}
-                            onValueChange={(value) => handleFieldChange('renda_mensal', value)}
-                            formatter={formatCurrency}
-                            placeholder="R$ 0,00"
-                            className="h-12 text-base"
-                            required
-                          />
-                        </div>
-                      </div>
 
                       <Button 
                         type="submit" 
