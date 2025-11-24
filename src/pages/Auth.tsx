@@ -167,57 +167,99 @@ const Auth = () => {
         const identifierValue = formData.get("identifier") as string;
         const cpfSemFormatacao = identifierValue.replace(/\D/g, "");
         
-        console.log("🔍 Buscando CPF:", cpfSemFormatacao);
+        console.log("🔍 [LOGIN CPF] Valor digitado:", identifierValue);
+        console.log("🔍 [LOGIN CPF] CPF sem formatação:", cpfSemFormatacao);
+        console.log("🔍 [LOGIN CPF] Tamanho do CPF:", cpfSemFormatacao.length);
+        
+        if (cpfSemFormatacao.length !== 11) {
+          throw new Error("CPF deve ter 11 dígitos");
+        }
         
         // Buscar pelo CPF sem formatação (como é armazenado no banco)
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("id, cpf")
+          .select("id, cpf, nome_completo")
           .eq("cpf", cpfSemFormatacao)
           .maybeSingle();
 
+        console.log("📋 [LOGIN CPF] Profile response:", { profile, error: profileError });
+
         if (profileError) {
-          console.error("Erro ao buscar profile:", profileError);
+          console.error("❌ [LOGIN CPF] Erro ao buscar profile:", profileError);
           throw new Error("Erro ao buscar usuário. Tente novamente.");
         }
 
-        console.log("📋 Profile encontrado:", profile);
-
         if (!profile) {
+          console.error("❌ [LOGIN CPF] CPF não encontrado no banco");
           throw new Error("CPF não encontrado. Verifique se está cadastrado.");
         }
 
+        console.log("✅ [LOGIN CPF] Profile encontrado:", profile.nome_completo);
+        console.log("🔍 [LOGIN CPF] Buscando email para user_id:", profile.id);
+
         // Buscar o email do usuário usando a função do banco
-        const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id }) as { data: string | null, error: any };
+        const { data: emailData, error: emailError } = await supabase
+          .rpc('get_user_email_by_id', { user_id: profile.id });
         
-        if (emailError || !emailData) {
-          console.error("Erro ao buscar email:", emailError);
-          throw new Error("Erro ao buscar dados do usuário. Tente com e-mail.");
+        console.log("📧 [LOGIN CPF] Email response:", { emailData, error: emailError });
+        
+        if (emailError) {
+          console.error("❌ [LOGIN CPF] Erro ao buscar email:", emailError);
+          throw new Error("Erro ao buscar e-mail do usuário.");
         }
         
-        email = emailData;
+        if (!emailData) {
+          console.error("❌ [LOGIN CPF] Email não retornado pela função");
+          throw new Error("E-mail não encontrado para este CPF.");
+        }
+        
+        console.log("✅ [LOGIN CPF] Email encontrado:", emailData);
+        email = emailData as string;
       } else if (loginMethod === "telefone") {
         // Buscar profile pelo telefone para obter o user_id
         const identifierValue = formData.get("identifier") as string;
-        const telefone = identifierValue.replace(/\D/g, "");
+        const telefoneSemFormatacao = identifierValue.replace(/\D/g, "");
+        
+        console.log("🔍 [LOGIN TELEFONE] Valor digitado:", identifierValue);
+        console.log("🔍 [LOGIN TELEFONE] Telefone sem formatação:", telefoneSemFormatacao);
         
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("id")
-          .eq("telefone", telefone)
+          .select("id, nome_completo")
+          .eq("telefone", telefoneSemFormatacao)
           .maybeSingle();
 
-        if (profileError || !profile) {
+        console.log("📋 [LOGIN TELEFONE] Profile response:", { profile, error: profileError });
+
+        if (profileError) {
+          console.error("❌ [LOGIN TELEFONE] Erro ao buscar profile:", profileError);
+          throw new Error("Erro ao buscar usuário.");
+        }
+        
+        if (!profile) {
+          console.error("❌ [LOGIN TELEFONE] Telefone não encontrado");
           throw new Error("Telefone não encontrado. Verifique se está cadastrado.");
         }
 
-        const { data: emailData, error: emailError } = await supabase.rpc('get_user_email_by_id', { user_id: profile.id }) as { data: string | null, error: any };
+        console.log("✅ [LOGIN TELEFONE] Profile encontrado:", profile.nome_completo);
+
+        const { data: emailData, error: emailError } = await supabase
+          .rpc('get_user_email_by_id', { user_id: profile.id });
         
-        if (emailError || !emailData) {
-          throw new Error("Erro ao buscar dados do usuário. Tente com e-mail.");
+        console.log("📧 [LOGIN TELEFONE] Email response:", { emailData, error: emailError });
+        
+        if (emailError) {
+          console.error("❌ [LOGIN TELEFONE] Erro ao buscar email:", emailError);
+          throw new Error("Erro ao buscar e-mail do usuário.");
         }
         
-        email = emailData;
+        if (!emailData) {
+          console.error("❌ [LOGIN TELEFONE] Email não retornado");
+          throw new Error("E-mail não encontrado para este telefone.");
+        }
+        
+        console.log("✅ [LOGIN TELEFONE] Email encontrado:", emailData);
+        email = emailData as string;
       }
 
       const { error } = await supabase.auth.signInWithPassword({
@@ -225,12 +267,17 @@ const Auth = () => {
         password,
       });
 
+      console.log("🔐 [LOGIN] Tentando autenticação com email:", email);
+
       if (error) {
+        console.error("❌ [LOGIN] Erro na autenticação:", error);
         if (error.message.includes("Invalid login credentials")) {
           throw new Error("Credenciais inválidas. Verifique sua senha.");
         }
         throw error;
       }
+
+      console.log("✅ [LOGIN] Autenticação bem-sucedida");
 
       toast({
         title: "Login realizado!",
