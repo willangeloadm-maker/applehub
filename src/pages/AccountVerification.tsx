@@ -19,11 +19,13 @@ import {
   Camera, 
   Sparkles,
   ArrowRight,
-  Check
+  Check,
+  HelpCircle
 } from 'lucide-react';
 import CameraCapture from '@/components/CameraCapture';
 import { formatCPF, formatPhone, formatCurrency, unformatCurrency, formatDate, validateCPF, validatePhone } from '@/lib/formatters';
 import { formatDateOnlyBrasilia } from '@/lib/dateUtils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function AccountVerification() {
   const navigate = useNavigate();
@@ -87,6 +89,38 @@ export default function AccountVerification() {
   useEffect(() => {
     checkUser();
   }, []);
+
+  // Carregar dados salvos do localStorage
+  useEffect(() => {
+    const savedData = localStorage.getItem('verification_form_data');
+    if (savedData) {
+      try {
+        const parsed = JSON.parse(savedData);
+        // Só carrega se tiver dados não vazios dos campos extras (nome_mae, profissao, etc)
+        if (parsed.nome_mae || parsed.profissao || parsed.patrimonio || parsed.renda_mensal) {
+          setFormData(prev => ({
+            ...prev,
+            nome_mae: parsed.nome_mae || prev.nome_mae,
+            profissao: parsed.profissao || prev.profissao,
+            patrimonio: parsed.patrimonio || prev.patrimonio,
+            renda_mensal: parsed.renda_mensal || prev.renda_mensal
+          }));
+          toast({
+            description: "Dados salvos carregados! Continue de onde parou.",
+          });
+        }
+      } catch (e) {
+        console.error('Erro ao carregar dados salvos:', e);
+      }
+    }
+  }, [user]);
+
+  // Salvar automaticamente no localStorage quando formData mudar
+  useEffect(() => {
+    if (step === 'form' && user) {
+      localStorage.setItem('verification_form_data', JSON.stringify(formData));
+    }
+  }, [formData, step, user]);
 
   const checkUser = async () => {
     try {
@@ -328,6 +362,9 @@ export default function AccountVerification() {
           description: "Sua conta foi verificada com sucesso."
         });
 
+        // Limpar dados salvos do localStorage após verificação concluída
+        localStorage.removeItem('verification_form_data');
+
         setStep('result');
       }, 10000);
     } catch (error) {
@@ -538,141 +575,217 @@ export default function AccountVerification() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 lg:px-8 lg:pb-8">
-                  <form onSubmit={handleFormSubmit} className="space-y-5">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold flex items-center gap-2">
-                          Nome Completo
-                        </Label>
-                        <Input
-                          value={formData.nome_completo}
-                          onChange={(e) => setFormData(prev => ({ ...prev, nome_completo: e.target.value }))}
-                          placeholder="Seu nome completo"
-                          className="h-12 text-base"
-                          required
-                        />
+                  <TooltipProvider>
+                    <form onSubmit={handleFormSubmit} className="space-y-5">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            Nome Completo
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Digite seu nome completo como consta nos seus documentos oficiais</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </Label>
+                          <Input
+                            value={formData.nome_completo}
+                            onChange={(e) => setFormData(prev => ({ ...prev, nome_completo: e.target.value }))}
+                            placeholder="Seu nome completo"
+                            className="h-12 text-base"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            CPF
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Informe seu CPF no formato: 000.000.000-00</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            {formData.cpf && (
+                              validateCPF(formData.cpf) ? (
+                                <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
+                              )
+                            )}
+                          </Label>
+                          <Input
+                            value={formData.cpf}
+                            onChange={(e) => setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }))}
+                            placeholder="000.000.000-00"
+                            maxLength={14}
+                            className="h-12 text-base"
+                            required
+                          />
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold flex items-center gap-2">
-                          CPF
-                          {formData.cpf && (
-                            validateCPF(formData.cpf) ? (
-                              <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
-                            ) : (
-                              <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
-                            )
-                          )}
-                        </Label>
-                        <Input
-                          value={formData.cpf}
-                          onChange={(e) => setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }))}
-                          placeholder="000.000.000-00"
-                          maxLength={14}
-                          className="h-12 text-base"
-                          required
-                        />
-                      </div>
-                    </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            Data de Nascimento
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Digite sua data de nascimento no formato: DD/MM/AAAA</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </Label>
+                          <Input
+                            value={formData.data_nascimento}
+                            onChange={(e) => setFormData(prev => ({ ...prev, data_nascimento: formatDate(e.target.value) }))}
+                            placeholder="DD/MM/AAAA"
+                            maxLength={10}
+                            className="h-12 text-base"
+                            required
+                          />
+                        </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Data de Nascimento</Label>
-                        <Input
-                          value={formData.data_nascimento}
-                          onChange={(e) => setFormData(prev => ({ ...prev, data_nascimento: formatDate(e.target.value) }))}
-                          placeholder="DD/MM/AAAA"
-                          maxLength={10}
-                          className="h-12 text-base"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold flex items-center gap-2">
-                          Telefone
-                          {formData.telefone && (
-                            validatePhone(formData.telefone) ? (
-                              <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
-                            ) : (
-                              <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
-                            )
-                          )}
-                        </Label>
-                        <Input
-                          value={formData.telefone}
-                          onChange={(e) => setFormData(prev => ({ ...prev, telefone: formatPhone(e.target.value) }))}
-                          placeholder="(00) 00000-0000"
-                          maxLength={15}
-                          className="h-12 text-base"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Nome da Mãe</Label>
-                        <Input
-                          value={formData.nome_mae}
-                          onChange={(e) => setFormData(prev => ({ ...prev, nome_mae: e.target.value }))}
-                          placeholder="Nome completo da mãe"
-                          className="h-12 text-base"
-                          required
-                        />
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            Telefone
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Celular com DDD no formato: (00) 00000-0000</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            {formData.telefone && (
+                              validatePhone(formData.telefone) ? (
+                                <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
+                              )
+                            )}
+                          </Label>
+                          <Input
+                            value={formData.telefone}
+                            onChange={(e) => setFormData(prev => ({ ...prev, telefone: formatPhone(e.target.value) }))}
+                            placeholder="(00) 00000-0000"
+                            maxLength={15}
+                            className="h-12 text-base"
+                            required
+                          />
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Profissão</Label>
-                        <Input
-                          value={formData.profissao}
-                          onChange={(e) => setFormData(prev => ({ ...prev, profissao: e.target.value }))}
-                          placeholder="Sua profissão"
-                          className="h-12 text-base"
-                          required
-                        />
-                      </div>
-                    </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            Nome da Mãe
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Nome completo da sua mãe para validação adicional</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </Label>
+                          <Input
+                            value={formData.nome_mae}
+                            onChange={(e) => setFormData(prev => ({ ...prev, nome_mae: e.target.value }))}
+                            placeholder="Nome completo da mãe"
+                            className="h-12 text-base"
+                            required
+                          />
+                        </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Patrimônio</Label>
-                        <Input
-                          value={formData.patrimonio}
-                          onChange={(e) => {
-                            const formatted = formatCurrency(e.target.value);
-                            setFormData(prev => ({ ...prev, patrimonio: formatted }));
-                          }}
-                          placeholder="R$ 0,00"
-                          className="h-12 text-base"
-                          required
-                        />
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            Profissão
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Sua ocupação profissional atual</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </Label>
+                          <Input
+                            value={formData.profissao}
+                            onChange={(e) => setFormData(prev => ({ ...prev, profissao: e.target.value }))}
+                            placeholder="Sua profissão"
+                            className="h-12 text-base"
+                            required
+                          />
+                        </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-sm font-semibold">Renda Mensal</Label>
-                        <Input
-                          value={formData.renda_mensal}
-                          onChange={(e) => {
-                            const formatted = formatCurrency(e.target.value);
-                            setFormData(prev => ({ ...prev, renda_mensal: formatted }));
-                          }}
-                          placeholder="R$ 0,00"
-                          className="h-12 text-base"
-                          required
-                        />
-                      </div>
-                    </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            Patrimônio
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Valor estimado dos seus bens (imóveis, veículos, investimentos)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </Label>
+                          <Input
+                            value={formData.patrimonio}
+                            onChange={(e) => {
+                              const formatted = formatCurrency(e.target.value);
+                              setFormData(prev => ({ ...prev, patrimonio: formatted }));
+                            }}
+                            placeholder="R$ 0,00"
+                            className="h-12 text-base"
+                            required
+                          />
+                        </div>
 
-                    <Button 
-                      type="submit" 
-                      size="lg"
-                      className="w-full lg:w-auto lg:min-w-80 lg:mx-auto lg:block mt-8 bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg h-12 lg:h-14 text-base lg:text-lg"
-                    >
-                      Continuar
-                      <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                  </form>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold flex items-center gap-2">
+                            Renda Mensal
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-4 h-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Sua renda mensal líquida (valor que recebe após descontos)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </Label>
+                          <Input
+                            value={formData.renda_mensal}
+                            onChange={(e) => {
+                              const formatted = formatCurrency(e.target.value);
+                              setFormData(prev => ({ ...prev, renda_mensal: formatted }));
+                            }}
+                            placeholder="R$ 0,00"
+                            className="h-12 text-base"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <Button 
+                        type="submit" 
+                        size="lg"
+                        className="w-full lg:w-auto lg:min-w-80 lg:mx-auto lg:block mt-8 bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg h-12 lg:h-14 text-base lg:text-lg"
+                      >
+                        Continuar
+                        <ArrowRight className="ml-2 w-5 h-5" />
+                      </Button>
+                    </form>
+                  </TooltipProvider>
                 </CardContent>
               </Card>
             </StepTransition>
