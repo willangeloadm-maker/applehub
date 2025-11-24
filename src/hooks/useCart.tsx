@@ -132,13 +132,19 @@ export const useCart = () => {
               product_id: productId,
               quantidade,
             })
-            .then(({ error }) => {
+            .select()
+            .single()
+            .then(({ data, error }) => {
               if (error) {
                 console.error("Erro ao inserir:", error);
                 fetchCart(); // Reverte em caso de erro
-              } else {
-                // Atualizar com ID real do banco
-                fetchCart();
+              } else if (data) {
+                // Substituir item temporário pelo item real
+                setCartItems(prev => 
+                  prev.map(item => 
+                    item.id === tempItem.id ? { ...item, id: data.id } : item
+                  )
+                );
               }
             });
         }
@@ -260,43 +266,13 @@ export const useCart = () => {
   useEffect(() => {
     fetchCart();
     
-    // Atualizar carrinho em tempo real (sync eficiente)
+    // Realtime apenas para sync entre dispositivos (não para updates otimistas)
     const setupRealtimeSubscription = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
       
       const channel = supabase
-        .channel('cart-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'cart_items',
-            filter: `user_id=eq.${user.id}`
-          },
-          async (payload) => {
-            console.log('Novo item adicionado:', payload.new);
-            // Buscar dados completos do produto para o novo item
-            const { data: newItem } = await supabase
-              .from("cart_items")
-              .select(`
-                id,
-                user_id,
-                product_id,
-                quantidade,
-                created_at,
-                updated_at,
-                products (*)
-              `)
-              .eq("id", payload.new.id)
-              .single();
-            
-            if (newItem) {
-              setCartItems(prev => [...prev, newItem as CartItem]);
-            }
-          }
-        )
+        .channel('cart-sync')
         .on(
           'postgres_changes',
           {
@@ -306,7 +282,6 @@ export const useCart = () => {
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            console.log('Item atualizado:', payload.new);
             setCartItems(prev => 
               prev.map(item => 
                 item.id === payload.new.id 
@@ -325,7 +300,6 @@ export const useCart = () => {
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            console.log('Item removido:', payload.old);
             setCartItems(prev => prev.filter(item => item.id !== payload.old.id));
           }
         )
