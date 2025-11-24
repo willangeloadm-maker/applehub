@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Home, Search, ShoppingCart, User, Package, Apple, LogOut } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { CartSheet } from "@/components/CartSheet";
 import { CartImagePreloader } from "@/components/CartImagePreloader";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -20,14 +21,39 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { getItemCount } = useCart();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   const isAdminPage = location.pathname.startsWith('/admin');
 
-  const handleLogout = () => {
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
+    };
+    
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleAdminLogout = () => {
     localStorage.removeItem("admin_authenticated");
     toast({
       title: "Logout realizado",
       description: "Você saiu do painel administrativo",
+    });
+    navigate("/");
+  };
+
+  const handleUserLogout = async () => {
+    await supabase.auth.signOut();
+    toast({
+      title: "Logout realizado",
+      description: "Você saiu da sua conta",
     });
     navigate("/");
   };
@@ -62,18 +88,32 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             </Link>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {isAdminPage && (
+            {isAdminPage ? (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleLogout}
+                onClick={handleAdminLogout}
                 className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Sair</span>
               </Button>
+            ) : (
+              <>
+                {isAuthenticated && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleUserLogout}
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden sm:inline text-xs">Sair</span>
+                  </Button>
+                )}
+                <CartSheet />
+              </>
             )}
-            {!isAdminPage && <CartSheet />}
           </div>
         </header>
 
