@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Camera, X, Check, RotateCcw, Upload, Loader2 } from 'lucide-react';
+import { Camera, X, Check, RotateCcw, Upload, Loader2, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,7 +22,6 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Timeout para caso a câmera não carregue
   useEffect(() => {
     if (!showCamera) {
       setCameraReady(false);
@@ -38,24 +37,21 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
         });
         setShowCamera(false);
       }
-    }, 10000); // 10 segundos de timeout
+    }, 10000);
 
     return () => clearTimeout(timeout);
   }, [showCamera, cameraReady, toast]);
 
-  // Simular detecção de rosto para feedback visual (para selfie)
   useEffect(() => {
     if (!showCamera || !cameraReady || guideType !== 'selfie') return;
 
     const interval = setInterval(() => {
-      // Simulação simples de detecção - na prática você poderia usar uma lib de face detection
-      setFaceDetected(Math.random() > 0.3); // 70% de chance de "detectar" o rosto
+      setFaceDetected(Math.random() > 0.3);
     }, 500);
 
     return () => clearInterval(interval);
   }, [showCamera, cameraReady, guideType]);
 
-  // Configurações da webcam baseadas no tipo
   const videoConstraints = {
     facingMode: guideType === 'selfie' ? 'user' : 'environment',
     width: { ideal: 1920 },
@@ -69,7 +65,6 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
 
-    // Verificar iluminação (brightness)
     let totalBrightness = 0;
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -80,7 +75,6 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     }
     const avgBrightness = totalBrightness / (data.length / 4);
 
-    // Muito escura ou muito clara
     if (avgBrightness < 40) {
       return { isValid: false, reason: 'Foto muito escura. Melhore a iluminação e tente novamente.' };
     }
@@ -88,10 +82,9 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       return { isValid: false, reason: 'Foto muito clara. Reduza a iluminação e tente novamente.' };
     }
 
-    // Verificar nitidez usando variação de Laplaciano simplificado
     let sharpness = 0;
     const width = canvas.width;
-    const step = 4; // Processar a cada 4 pixels para performance
+    const step = 4;
 
     for (let y = step; y < canvas.height - step; y += step) {
       for (let x = step; x < canvas.width - step; x += step) {
@@ -111,7 +104,6 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     const samplesCount = ((canvas.height - 2 * step) / step) * ((canvas.width - 2 * step) / step);
     const avgSharpness = sharpness / samplesCount;
 
-    // Threshold de nitidez (valores baixos = imagem borrada)
     if (avgSharpness < 15) {
       return { isValid: false, reason: 'Foto está desfocada. Segure o celular firme e tente novamente.' };
     }
@@ -179,7 +171,6 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     }
 
     try {
-      // Converter base64 para blob
       const img = new Image();
       img.onload = async () => {
         const canvas = document.createElement('canvas');
@@ -196,7 +187,6 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
           return;
         }
 
-        // Se for selfie, fazer flip horizontal para corrigir espelhamento
         if (guideType === 'selfie') {
           ctx.translate(canvas.width, 0);
           ctx.scale(-1, 1);
@@ -204,7 +194,6 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
         ctx.drawImage(img, 0, 0);
         
-        // Validar qualidade da imagem APENAS para documentos (não para selfie)
         if (guideType === 'document') {
           const qualityCheck = checkImageQuality(canvas);
           if (!qualityCheck.isValid) {
@@ -264,14 +253,12 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       return;
     }
 
-    // Para PDFs, criar o File diretamente
     if (file.type === 'application/pdf') {
       onCapture(file);
       setPreview('pdf');
       return;
     }
 
-    // Para imagens, processar e validar
     const reader = new FileReader();
     reader.onload = async (e) => {
       const img = new Image();
@@ -292,7 +279,6 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
         ctx.drawImage(img, 0, 0);
         
-        // Validar qualidade da imagem APENAS para documentos (não para selfie)
         if (guideType === 'document') {
           const qualityCheck = checkImageQuality(canvas);
           if (!qualityCheck.isValid) {
@@ -331,28 +317,41 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   // Preview da foto capturada
   if (preview) {
     return (
-      <Card className="p-4 bg-muted/30">
-        <div className="space-y-3">
+      <Card className="overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-muted/50 to-background backdrop-blur-sm shadow-xl animate-scale-in">
+        <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium flex items-center gap-2">
-              <Check className="w-4 h-4 text-green-500" />
-              {label}
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 flex items-center justify-center animate-pulse-glow">
+                <Check className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-sm font-semibold text-foreground">{label}</span>
+            </div>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={retake}
+              className="hover:bg-primary/10 hover:text-primary transition-colors"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Refazer
             </Button>
           </div>
           {preview === 'pdf' ? (
-            <div className="w-full h-40 rounded-lg bg-muted flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">PDF carregado</p>
+            <div className="w-full h-48 rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 flex flex-col items-center justify-center border-2 border-dashed border-primary/30">
+              <FileText className="w-12 h-12 text-primary mb-2" />
+              <p className="text-sm font-medium text-foreground">PDF carregado com sucesso</p>
+              <p className="text-xs text-muted-foreground mt-1">Documento pronto para análise</p>
             </div>
           ) : (
-            <img src={preview} alt={label} className="w-full rounded-lg" />
+            <div className="relative group">
+              <img 
+                src={preview} 
+                alt={label} 
+                className="w-full rounded-xl shadow-lg border-2 border-primary/20 transition-transform group-hover:scale-[1.02]" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+            </div>
           )}
         </div>
       </Card>
@@ -362,15 +361,17 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   // Interface da câmera em tela cheia
   if (showCamera) {
     return (
-      <div className="fixed inset-0 z-50 bg-black">
+      <div className="fixed inset-0 z-50 bg-black animate-fade-in">
         <div className="relative w-full h-full flex flex-col">
-          {/* Área da câmera - ocupa todo o espaço disponível */}
           <div className="flex-1 relative overflow-hidden">
             {!cameraReady && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
-                <Loader2 className="w-12 h-12 text-white animate-spin mb-4" />
-                <p className="text-white text-sm">Iniciando câmera...</p>
-                <p className="text-white/60 text-xs mt-2">Aguarde alguns segundos</p>
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-black via-background/90 to-black z-10 animate-fade-in">
+                <div className="relative">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse-glow" />
+                  <Loader2 className="w-10 h-10 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" />
+                </div>
+                <p className="text-white text-base font-medium mt-6">Iniciando câmera...</p>
+                <p className="text-white/60 text-sm mt-2">Aguarde alguns segundos</p>
               </div>
             )}
             <Webcam
@@ -380,7 +381,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
               videoConstraints={videoConstraints}
               className={cn(
                 "w-full h-full object-cover",
-                guideType === 'selfie' && "scale-x-[-1]" // Flip horizontal para selfie
+                guideType === 'selfie' && "scale-x-[-1]"
               )}
               onUserMedia={() => {
                 console.log('Câmera iniciada com sucesso');
@@ -397,45 +398,59 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
               }}
             />
             
-            {/* Guia visual - só mostra quando a câmera está pronta */}
             {cameraReady && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none animate-fade-in">
                 {guideType === 'document' && (
-                  <div className="w-[90%] max-w-lg h-[60%] border-4 border-white/70 rounded-lg shadow-lg">
-                    <div className="absolute -top-12 left-0 right-0 text-center">
-                      <span className="text-white text-base font-medium bg-black/70 px-4 py-2 rounded-lg inline-block">
-                        Posicione o documento dentro do quadro
-                      </span>
+                  <div className="relative">
+                    <div className="w-[90%] max-w-lg h-[60vh] border-4 border-white/80 rounded-2xl shadow-2xl shadow-primary/30 backdrop-blur-sm">
+                      {/* Cantos decorativos animados */}
+                      <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-2xl animate-pulse" />
+                      <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-2xl animate-pulse" style={{ animationDelay: '0.2s' }} />
+                      <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-2xl animate-pulse" style={{ animationDelay: '0.4s' }} />
+                      <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-2xl animate-pulse" style={{ animationDelay: '0.6s' }} />
+                    </div>
+                    <div className="absolute -top-16 left-0 right-0 text-center">
+                      <div className="inline-block bg-gradient-to-r from-black/90 to-black/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 shadow-2xl">
+                        <span className="text-white text-base font-semibold">
+                          📄 Posicione o documento dentro do quadro
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
                 {guideType === 'selfie' && (
-                  <div className="relative">
+                  <div className="relative animate-scale-in">
                     <div 
                       className={cn(
-                        "w-64 h-80 border-4 rounded-full transition-all duration-300",
+                        "w-72 h-96 border-4 rounded-full transition-all duration-500 backdrop-blur-sm",
                         faceDetected 
-                          ? "border-green-400 shadow-[0_0_30px_rgba(34,197,94,0.6)] animate-pulse" 
-                          : "border-white/70"
+                          ? "border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.8)] scale-105" 
+                          : "border-white/80 shadow-2xl shadow-white/30"
                       )}
                     >
-                      {/* Indicadores de canto animados */}
+                      {/* Grade de detecção facial */}
                       {faceDetected && (
                         <>
-                          <div className="absolute top-0 left-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" />
-                          <div className="absolute top-0 right-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.2s' }} />
-                          <div className="absolute bottom-0 left-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.4s' }} />
-                          <div className="absolute bottom-0 right-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.6s' }} />
+                          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-3 h-3 bg-green-400 rounded-full animate-ping" />
+                          <div className="absolute top-1/3 left-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.2s' }} />
+                          <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.4s' }} />
+                          <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.6s' }} />
+                          <div className="absolute bottom-1/3 right-1/3 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.8s' }} />
                         </>
                       )}
-                      <div className="absolute -top-12 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
+                    </div>
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
+                      <div className={cn(
+                        "inline-block px-6 py-3 rounded-2xl transition-all duration-300 backdrop-blur-md border shadow-2xl",
+                        faceDetected 
+                          ? "bg-gradient-to-r from-green-900/90 to-emerald-900/90 border-green-400/50" 
+                          : "bg-gradient-to-r from-black/90 to-black/80 border-white/20"
+                      )}>
                         <span className={cn(
-                          "text-base font-medium px-4 py-2 rounded-lg transition-colors inline-block",
-                          faceDetected 
-                            ? "text-green-400 bg-green-900/70" 
-                            : "text-white bg-black/70"
+                          "text-base font-semibold transition-colors",
+                          faceDetected ? "text-green-300" : "text-white"
                         )}>
-                          {faceDetected ? "✓ Rosto detectado!" : "Posicione seu rosto no círculo"}
+                          {faceDetected ? "✓ Rosto detectado!" : "👤 Centralize seu rosto no círculo"}
                         </span>
                       </div>
                     </div>
@@ -445,18 +460,18 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
             )}
           </div>
 
-          {/* Botões fixos na parte inferior - sempre visíveis */}
-          <div className="safe-area-inset-bottom bg-black/90 backdrop-blur-sm border-t border-white/10 p-4">
-            <div className="max-w-lg mx-auto flex gap-3">
+          {/* Botões com glassmorphism */}
+          <div className="safe-area-inset-bottom bg-gradient-to-t from-black via-black/95 to-black/90 backdrop-blur-xl border-t border-white/10 p-6 animate-slide-in-bottom">
+            <div className="max-w-lg mx-auto flex gap-4">
               <Button
                 type="button"
-                variant="destructive"
+                variant="outline"
                 onClick={() => {
                   setShowCamera(false);
                   setCameraReady(false);
                   setFaceDetected(false);
                 }}
-                className="flex-1 h-14 text-base"
+                className="flex-1 h-14 text-base bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-sm transition-all hover:scale-105"
                 size="lg"
               >
                 <X className="w-5 h-5 mr-2" />
@@ -466,7 +481,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
                 type="button"
                 onClick={capturePhoto}
                 disabled={!cameraReady}
-                className="flex-1 h-14 text-base bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                className="flex-1 h-14 text-base bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] disabled:opacity-50 shadow-lg shadow-primary/50 transition-all hover:scale-105 disabled:hover:scale-100"
                 size="lg"
               >
                 <Camera className="w-5 h-5 mr-2" />
@@ -479,7 +494,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
     );
   }
 
-  // Tela inicial de seleção
+  // Tela inicial de seleção modernizada
   return (
     <>
       <input
@@ -489,34 +504,36 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
         onChange={handleFileUpload}
         className="hidden"
       />
-      <Card className={cn(
-        "p-6 border-2 border-dashed transition-colors",
-        "bg-muted/30"
-      )}>
-        <div className="w-full flex flex-col items-center gap-3">
-          <div className="flex gap-3 w-full">
-            <button
-              type="button"
-              onClick={() => setShowCamera(true)}
-              className="flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-            >
-              <Camera className="w-8 h-8 text-muted-foreground" />
-              <p className="text-xs text-center">Usar câmera</p>
-            </button>
-            <button
-              type="button"
-              onClick={triggerFileUpload}
-              className="flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-            >
-              <Upload className="w-8 h-8 text-muted-foreground" />
-              <p className="text-xs text-center">Escolher arquivo</p>
-            </button>
-          </div>
-          <div className="text-center">
-            <p className="font-medium">{label}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {guideType === 'selfie' ? 'Tire uma selfie ou escolha uma foto' : 'Fotografe ou escolha o documento (foto ou PDF)'}
-            </p>
+      <Card className="overflow-hidden border-2 border-dashed border-primary/30 bg-gradient-to-br from-muted/30 to-background hover:border-primary/50 transition-all hover:shadow-xl hover:shadow-primary/10 animate-fade-in-up">
+        <div className="p-8">
+          <div className="flex flex-col items-center gap-6 text-center">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center border-2 border-primary/30 animate-bounce-subtle">
+              <Camera className="w-10 h-10 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-foreground">{label}</h3>
+              <p className="text-sm text-muted-foreground">Escolha como enviar sua foto</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full">
+              <Button
+                type="button"
+                onClick={() => setShowCamera(true)}
+                variant="default"
+                className="flex-1 h-12 bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg hover:shadow-xl hover:shadow-primary/30 transition-all hover:scale-105"
+              >
+                <Camera className="w-5 h-5 mr-2" />
+                Tirar Foto
+              </Button>
+              <Button
+                type="button"
+                onClick={triggerFileUpload}
+                variant="outline"
+                className="flex-1 h-12 border-2 border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-all hover:scale-105"
+              >
+                <Upload className="w-5 h-5 mr-2" />
+                Enviar da Galeria
+              </Button>
+            </div>
           </div>
         </div>
       </Card>
