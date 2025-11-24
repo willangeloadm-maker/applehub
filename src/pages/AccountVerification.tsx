@@ -288,30 +288,37 @@ export default function AccountVerification() {
     }
   };
 
-  // Handlers de mudança de campo memoizados
-  const handleFieldChange = useCallback((field: keyof typeof formData) => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      setFormData(prev => ({ ...prev, [field]: e.target.value }));
-    };
+  // Handlers de mudança de campo memoizados individualmente
+  const handleNomeCompletoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, nome_completo: e.target.value }));
   }, []);
 
   const handleCPFChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }));
   }, []);
 
-  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, telefone: formatPhone(e.target.value) }));
-  }, []);
-
   const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, data_nascimento: formatDate(e.target.value) }));
   }, []);
 
-  const handleCurrencyChange = useCallback((field: 'patrimonio' | 'renda_mensal') => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const formatted = formatCurrency(e.target.value);
-      setFormData(prev => ({ ...prev, [field]: formatted }));
-    };
+  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, telefone: formatPhone(e.target.value) }));
+  }, []);
+
+  const handleNomeMaeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, nome_mae: e.target.value }));
+  }, []);
+
+  const handleProfissaoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, profissao: e.target.value }));
+  }, []);
+
+  const handlePatrimonioChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, patrimonio: formatCurrency(e.target.value) }));
+  }, []);
+
+  const handleRendaMensalChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, renda_mensal: formatCurrency(e.target.value) }));
   }, []);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -772,7 +779,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.nome_completo}
-                            onChange={handleFieldChange('nome_completo')}
+                            onChange={handleNomeCompletoChange}
                             placeholder="Seu nome completo"
                             className="h-12 text-base"
                             required
@@ -877,7 +884,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.nome_mae}
-                            onChange={handleFieldChange('nome_mae')}
+                            onChange={handleNomeMaeChange}
                             placeholder="Nome completo da mãe"
                             className="h-12 text-base"
                             required
@@ -898,7 +905,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.profissao}
-                            onChange={handleFieldChange('profissao')}
+                            onChange={handleProfissaoChange}
                             placeholder="Sua profissão"
                             className="h-12 text-base"
                             required
@@ -921,7 +928,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.patrimonio}
-                            onChange={handleCurrencyChange('patrimonio')}
+                            onChange={handlePatrimonioChange}
                             placeholder="R$ 0,00"
                             className="h-12 text-base"
                             required
@@ -942,7 +949,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.renda_mensal}
-                            onChange={handleCurrencyChange('renda_mensal')}
+                            onChange={handleRendaMensalChange}
                             placeholder="R$ 0,00"
                             className="h-12 text-base"
                             required
