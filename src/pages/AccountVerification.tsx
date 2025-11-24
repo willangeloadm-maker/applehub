@@ -327,6 +327,18 @@ export default function AccountVerification() {
     );
   }
 
+  // Componente para animação de transição entre steps
+  const StepTransition = ({ children, stepKey }: { children: React.ReactNode, stepKey: string }) => {
+    return (
+      <div 
+        key={stepKey}
+        className="animate-fade-in-up"
+      >
+        {children}
+      </div>
+    );
+  };
+
   return (
     <AppLayout>
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -372,7 +384,7 @@ export default function AccountVerification() {
 
           {/* Conta Verificada */}
           {step === 'check' && verification?.status === 'verificado' && (
-            <div className="animate-fade-in-up">
+            <StepTransition stepKey="verified">
               <Card className="border-2 border-green-500/20 bg-gradient-to-br from-green-50/50 to-background dark:from-green-950/20 shadow-2xl overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-500/10 to-transparent rounded-full blur-3xl" />
                 <CardHeader className="text-center relative z-10 pb-4">
@@ -414,12 +426,12 @@ export default function AccountVerification() {
                   </Button>
                 </CardContent>
               </Card>
-            </div>
+            </StepTransition>
           )}
 
           {/* Iniciar Verificação */}
           {step === 'check' && (!verification || verification.status !== 'verificado') && (
-            <div className="animate-fade-in-up">
+            <StepTransition stepKey="start">
               <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background shadow-2xl overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-3xl" />
                 <CardHeader className="text-center relative z-10 pb-4">
@@ -461,12 +473,12 @@ export default function AccountVerification() {
                   </Button>
                 </CardContent>
               </Card>
-            </div>
+            </StepTransition>
           )}
 
           {/* Formulário de Dados */}
           {step === 'form' && (
-            <div className="animate-fade-in-up">
+            <StepTransition stepKey="form">
               <Card className="shadow-2xl border-2 border-border/50">
                 <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
                   <div className="flex items-center gap-3 mb-2">
@@ -613,11 +625,12 @@ export default function AccountVerification() {
                   </form>
                 </CardContent>
               </Card>
-            </div>
+            </StepTransition>
           )}
 
           {/* Validando */}
           {step === 'validating' && (
+            <StepTransition stepKey="validating">
             <Card className="shadow-2xl animate-fade-in">
               <CardContent className="flex flex-col items-center justify-center py-16 space-y-6">
                 <div className="relative">
@@ -630,10 +643,12 @@ export default function AccountVerification() {
                 </div>
               </CardContent>
             </Card>
+            </StepTransition>
           )}
 
           {/* Tipo de Documento */}
           {step === 'kyc_doc_type' && (
+            <StepTransition stepKey="doc_type">
             <Card>
             <CardHeader>
               <CardTitle>Escolha o Tipo de Documento</CardTitle>
@@ -670,9 +685,11 @@ export default function AccountVerification() {
               </Button>
             </CardContent>
           </Card>
+          </StepTransition>
           )}
 
         {step === 'kyc_cnh_format' && (
+          <StepTransition stepKey="cnh_format">
           <Card>
             <CardHeader>
               <CardTitle>Formato da CNH</CardTitle>
@@ -729,9 +746,11 @@ export default function AccountVerification() {
               </Button>
             </CardContent>
           </Card>
+          </StepTransition>
         )}
 
         {step === 'kyc_capture' && (
+          <StepTransition stepKey="capture">
           <Card>
             <CardHeader>
               <CardTitle>Envio de Documentos</CardTitle>
@@ -952,9 +971,12 @@ export default function AccountVerification() {
               </div>
             </CardContent>
           </Card>
+          </StepTransition>
         )}
 
+        {/* Captura da selfie */}
         {step === 'kyc_selfie' && (
+          <StepTransition stepKey="selfie">
           <Card>
             <CardHeader>
               <CardTitle>Selfie de Verificação</CardTitle>
@@ -995,9 +1017,12 @@ export default function AccountVerification() {
               </form>
             </CardContent>
           </Card>
+          </StepTransition>
         )}
 
+        {/* Analisando verificação */}
         {step === 'analyzing' && (
+          <StepTransition stepKey="analyzing">
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-16 h-16 animate-spin text-primary mb-4" />
@@ -1009,9 +1034,12 @@ export default function AccountVerification() {
               </p>
             </CardContent>
           </Card>
+          </StepTransition>
         )}
 
+        {/* Resultado final */}
         {step === 'result' && (
+          <StepTransition stepKey="result">
           <Card className="border-green-500">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-600">
@@ -1046,6 +1074,7 @@ export default function AccountVerification() {
               </Button>
             </CardContent>
           </Card>
+          </StepTransition>
         )}
         </div>
       </div>
