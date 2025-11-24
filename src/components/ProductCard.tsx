@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useState, memo } from "react";
+import OptimizedImage from "@/components/OptimizedImage";
 
 interface ProductCardProps {
   id: string;
@@ -80,17 +81,17 @@ const ProductCard = memo(({
   return (
     <Card className="group overflow-hidden transition-all hover:shadow-lg active:scale-[0.98] border-0 shadow-sm bg-card">
       <Link to={`/produto/${id}`}>
-        <div className="aspect-square overflow-hidden bg-secondary rounded-t-xl relative">
-          <img
+        <div className="overflow-hidden bg-secondary rounded-t-xl relative">
+          <OptimizedImage
             src={imagens[0] || "/placeholder.svg"}
             alt={nome}
-            loading="lazy"
+            aspectRatio="square"
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background"
+            className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background z-20"
             onClick={handleToggleFavorite}
           >
             <Heart 
