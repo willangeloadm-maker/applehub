@@ -9,6 +9,42 @@ type CartItem = Tables<"cart_items"> & {
 };
 
 const CART_CACHE_KEY = "applehub_cart_cache";
+const OFFLINE_QUEUE_KEY = "applehub_cart_offline_queue";
+
+type OfflineOperation = {
+  id: string;
+  type: 'add' | 'update' | 'remove' | 'clear';
+  data: any;
+  timestamp: number;
+};
+
+// Offline queue helpers
+const saveOfflineOperation = (operation: OfflineOperation) => {
+  try {
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+    queue.push(operation);
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+  } catch (error) {
+    console.error("Erro ao salvar operação offline:", error);
+  }
+};
+
+const getOfflineQueue = (): OfflineOperation[] => {
+  try {
+    return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+  } catch (error) {
+    console.error("Erro ao ler fila offline:", error);
+    return [];
+  }
+};
+
+const clearOfflineQueue = () => {
+  try {
+    localStorage.removeItem(OFFLINE_QUEUE_KEY);
+  } catch (error) {
+    console.error("Erro ao limpar fila offline:", error);
+  }
+};
 
 // Cache helpers
 const saveCartToCache = (items: CartItem[], userId: string) => {
@@ -57,6 +93,7 @@ const clearCartCache = () => {
 export const useCart = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { toast } = useToast();
 
   const fetchCart = async () => {
@@ -134,12 +171,23 @@ export const useCart = () => {
 
       // Update otimista - atualiza UI imediatamente
       toast({
-        title: "✓ Adicionado!",
+        title: isOnline ? "✓ Adicionado!" : "✓ Adicionado (offline)",
         duration: 1500,
       });
 
       // Trigger animação do carrinho
       triggerCartAnimation();
+
+      // Se offline, salva na fila e retorna
+      if (!isOnline) {
+        saveOfflineOperation({
+          id: `${Date.now()}-add`,
+          type: 'add',
+          data: { productId, quantidade },
+          timestamp: Date.now(),
+        });
+        return true;
+      }
 
       if (existingItem) {
         // Update otimista da quantidade
@@ -239,6 +287,17 @@ export const useCart = () => {
         )
       );
 
+      // Se offline, salva na fila
+      if (!isOnline) {
+        saveOfflineOperation({
+          id: `${Date.now()}-update`,
+          type: 'update',
+          data: { cartItemId, newQuantidade },
+          timestamp: Date.now(),
+        });
+        return;
+      }
+
       // Atualiza no banco
       const { error } = await supabase
         .from("cart_items")
@@ -268,6 +327,17 @@ export const useCart = () => {
         duration: 2000,
       });
 
+      // Se offline, salva na fila
+      if (!isOnline) {
+        saveOfflineOperation({
+          id: `${Date.now()}-remove`,
+          type: 'remove',
+          data: { cartItemId },
+          timestamp: Date.now(),
+        });
+        return;
+      }
+
       // Remove no banco
       const { error } = await supabase
         .from("cart_items")
@@ -292,15 +362,26 @@ export const useCart = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      setCartItems([]);
+      clearCartCache();
+
+      // Se offline, salva na fila
+      if (!isOnline) {
+        saveOfflineOperation({
+          id: `${Date.now()}-clear`,
+          type: 'clear',
+          data: { userId: user.id },
+          timestamp: Date.now(),
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from("cart_items")
         .delete()
         .eq("user_id", user.id);
 
       if (error) throw error;
-
-      setCartItems([]);
-      clearCartCache();
       
       toast({
         title: "Carrinho limpo",
@@ -324,6 +405,69 @@ export const useCart = () => {
   const getItemCount = () => {
     return cartItems.reduce((count, item) => count + item.quantidade, 0);
   };
+
+  // Processa fila de operações offline
+  const processOfflineQueue = async () => {
+    const queue = getOfflineQueue();
+    if (queue.length === 0) return;
+
+    console.log(`Sincronizando ${queue.length} operações offline...`);
+    
+    for (const operation of queue) {
+      try {
+        switch (operation.type) {
+          case 'add':
+            await addToCart(operation.data.productId, operation.data.quantidade);
+            break;
+          case 'update':
+            await updateQuantity(operation.data.cartItemId, operation.data.newQuantidade);
+            break;
+          case 'remove':
+            await removeFromCart(operation.data.cartItemId);
+            break;
+          case 'clear':
+            await clearCart();
+            break;
+        }
+      } catch (error) {
+        console.error("Erro ao processar operação offline:", error);
+      }
+    }
+
+    clearOfflineQueue();
+    await fetchCart();
+    
+    toast({
+      title: "✓ Carrinho sincronizado",
+      description: "Suas alterações offline foram salvas",
+      duration: 3000,
+    });
+  };
+
+  // Monitora conexão online/offline
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      processOfflineQueue();
+    };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast({
+        title: "Modo offline",
+        description: "Suas alterações serão sincronizadas quando voltar online",
+        duration: 3000,
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     fetchCart();

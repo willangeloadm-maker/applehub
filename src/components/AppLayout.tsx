@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { CartSheet } from "@/components/CartSheet";
+import { CartImagePreloader } from "@/components/CartImagePreloader";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 
@@ -47,6 +48,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <SidebarProvider>
+      <CartImagePreloader />
       <div className="flex min-h-screen w-full max-w-full overflow-x-hidden flex-col">
         {/* Header com Menu */}
         <header className="sticky top-0 z-40 flex h-14 w-full items-center border-b border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 px-3 sm:px-4">
