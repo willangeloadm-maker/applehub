@@ -410,7 +410,10 @@ export default function AccountVerification() {
     return (
       <div 
         key={stepKey}
-        className="animate-fade-in-up"
+        className="animate-fade-in-up [animation-duration:0.6s] [animation-timing-function:cubic-bezier(0.16,1,0.3,1)]"
+        style={{
+          willChange: 'transform, opacity'
+        }}
       >
         {children}
       </div>
@@ -423,12 +426,12 @@ export default function AccountVerification() {
         <div className="container mx-auto px-4 py-8 max-w-5xl lg:max-w-6xl">
           {/* Progress Indicator */}
           {step !== 'check' && step !== 'result' && (
-            <div className="mb-8 animate-fade-in">
+            <div className="mb-8 animate-fade-in-down">
               <div className="flex items-center justify-between relative lg:px-12">
                 {/* Progress Line */}
                 <div className="absolute top-5 left-0 right-0 h-0.5 bg-border -z-10">
                   <div 
-                    className="h-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] transition-all duration-700 ease-out"
                     style={{ width: `${(getStepNumber() / (progressSteps.length - 1)) * 100}%` }}
                   />
                 </div>
@@ -441,15 +444,15 @@ export default function AccountVerification() {
                   return (
                     <div key={idx} className="flex flex-col items-center gap-2 bg-background z-10">
                       <div className={`
-                        w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
-                        ${isComplete ? 'bg-gradient-to-r from-[#ff6b35] to-[#ff4757] text-white scale-110' : 
-                          isActive ? 'bg-primary/10 text-primary ring-4 ring-primary/20' : 
-                          'bg-muted text-muted-foreground'}
+                        w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500
+                        ${isComplete ? 'bg-gradient-to-r from-[#ff6b35] to-[#ff4757] text-white scale-110 shadow-lg shadow-primary/50' : 
+                          isActive ? 'bg-primary/10 text-primary ring-4 ring-primary/20 scale-105' : 
+                          'bg-muted text-muted-foreground scale-100'}
                       `}>
-                        {isComplete ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                        {isComplete ? <Check className="w-5 h-5 animate-scale-in" /> : <Icon className="w-5 h-5" />}
                       </div>
-                      <span className={`text-xs font-medium hidden sm:block ${
-                        isActive ? 'text-primary' : 'text-muted-foreground'
+                      <span className={`text-xs font-medium hidden sm:block transition-all duration-300 ${
+                        isActive ? 'text-primary scale-105' : 'text-muted-foreground'
                       }`}>
                         {item.label}
                       </span>
@@ -497,7 +500,7 @@ export default function AccountVerification() {
                   <Button 
                     onClick={() => navigate('/')} 
                     size="lg"
-                    className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg"
+                    className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
                   >
                     Voltar para Home
                     <ArrowRight className="ml-2 w-5 h-5" />
@@ -531,10 +534,10 @@ export default function AccountVerification() {
                     ].map((item, idx) => (
                       <div 
                         key={idx}
-                        className="flex items-center gap-4 p-4 lg:p-5 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-all duration-200 animate-fade-in hover:scale-[1.02]"
+                        className="flex items-center gap-4 p-4 lg:p-5 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-all duration-300 animate-fade-in hover:scale-[1.02] hover:bg-muted/50 cursor-pointer"
                         style={{ animationDelay: `${idx * 100}ms` }}
                       >
-                        <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-gradient-to-r from-[#ff6b35]/20 to-[#ff4757]/20 flex items-center justify-center shrink-0">
+                        <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-gradient-to-r from-[#ff6b35]/20 to-[#ff4757]/20 flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110">
                           <item.icon className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
                         </div>
                         <span className="text-sm lg:text-base font-medium">{item.text}</span>
@@ -544,7 +547,7 @@ export default function AccountVerification() {
                   <Button 
                     onClick={() => setStep('form')} 
                     size="lg"
-                    className="w-full lg:w-auto lg:min-w-64 lg:mx-auto lg:block bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg"
+                    className="w-full lg:w-auto lg:min-w-64 lg:mx-auto lg:block bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
                   >
                     Iniciar Verificação
                     <ArrowRight className="ml-2 w-5 h-5" />
@@ -570,18 +573,21 @@ export default function AccountVerification() {
                   </div>
                   
                   {/* Barra de Progresso */}
-                  <div className="mt-6 space-y-2 animate-fade-in">
+                  <div className="mt-6 space-y-2 animate-fade-in" style={{ animationDelay: '200ms' }}>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground">Progresso do formulário</span>
-                      <span className="font-bold text-primary">{formProgress}%</span>
+                      <span className="font-medium text-foreground transition-all duration-300">Progresso do formulário</span>
+                      <span className="font-bold text-primary animate-fade-in">{formProgress}%</span>
                     </div>
-                    <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-muted rounded-full overflow-hidden shadow-inner">
                       <div 
-                        className="h-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] transition-all duration-500 ease-out rounded-full"
+                        className="h-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] transition-all duration-700 ease-out rounded-full relative overflow-hidden"
                         style={{ width: `${formProgress}%` }}
-                      />
+                      >
+                        {/* Shimmer effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground transition-all duration-300">
                       {formProgress === 100 ? '✓ Todos os campos preenchidos!' : `${Object.values(formData).filter(v => v).length} de ${Object.keys(formData).length} campos preenchidos`}
                     </p>
                   </div>
@@ -624,9 +630,9 @@ export default function AccountVerification() {
                             </Tooltip>
                             {formData.cpf && (
                               validateCPF(formData.cpf) ? (
-                                <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
+                                <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in transition-all duration-300" />
                               ) : (
-                                <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
+                                <XCircle className="w-4 h-4 text-red-500 animate-scale-in transition-all duration-300" />
                               )
                             )}
                           </Label>
@@ -677,9 +683,9 @@ export default function AccountVerification() {
                             </Tooltip>
                             {formData.telefone && (
                               validatePhone(formData.telefone) ? (
-                                <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
+                                <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in transition-all duration-300" />
                               ) : (
-                                <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
+                                <XCircle className="w-4 h-4 text-red-500 animate-scale-in transition-all duration-300" />
                               )
                             )}
                           </Label>
@@ -791,7 +797,7 @@ export default function AccountVerification() {
                       <Button 
                         type="submit" 
                         size="lg"
-                        className="w-full lg:w-auto lg:min-w-80 lg:mx-auto lg:block mt-8 bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg h-12 lg:h-14 text-base lg:text-lg"
+                        className="w-full lg:w-auto lg:min-w-80 lg:mx-auto lg:block mt-8 bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg h-12 lg:h-14 text-base lg:text-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl"
                       >
                         Continuar
                         <ArrowRight className="ml-2 w-5 h-5" />
@@ -806,13 +812,13 @@ export default function AccountVerification() {
           {/* Validando */}
           {step === 'validating' && (
             <StepTransition stepKey="validating">
-            <Card className="shadow-2xl animate-fade-in max-w-2xl mx-auto">
+            <Card className="shadow-2xl animate-fade-in max-w-2xl mx-auto overflow-hidden">
               <CardContent className="flex flex-col items-center justify-center py-16 lg:py-24 space-y-6">
                 <div className="relative">
-                  <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse" />
+                  <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse-glow" />
                   <Loader2 className="w-12 h-12 lg:w-16 lg:h-16 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" />
                 </div>
-                <div className="text-center space-y-2">
+                <div className="text-center space-y-2 animate-fade-in-up" style={{ animationDelay: '200ms' }}>
                   <p className="text-xl lg:text-2xl font-semibold">Validando seus dados...</p>
                   <p className="text-sm lg:text-base text-muted-foreground">Isso levará apenas alguns segundos</p>
                 </div>
@@ -835,28 +841,28 @@ export default function AccountVerification() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
                 <Button
                   variant="outline"
-                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
                   onClick={() => {
                     setDocumentType('cnh');
                     setStep('kyc_cnh_format');
                   }}
                 >
                   <div className="text-left w-full space-y-2">
-                    <p className="font-semibold text-base lg:text-lg">CNH</p>
+                    <p className="font-semibold text-base lg:text-lg group-hover:text-primary transition-colors">CNH</p>
                     <p className="font-normal text-sm">Carteira Nacional de Habilitação</p>
                     <p className="text-xs text-muted-foreground">Versão aberta, fechada ou digital</p>
                   </div>
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
                   onClick={() => {
                     setDocumentType('rg');
                     setStep('kyc_capture');
                   }}
                 >
                   <div className="text-left w-full space-y-2">
-                    <p className="font-semibold text-base lg:text-lg">RG</p>
+                    <p className="font-semibold text-base lg:text-lg group-hover:text-primary transition-colors">RG</p>
                     <p className="font-normal text-sm">Registro Geral</p>
                     <p className="text-xs text-muted-foreground">Envie frente e verso</p>
                   </div>
@@ -880,40 +886,40 @@ export default function AccountVerification() {
               <div className="space-y-4">
                 <Button
                   variant="outline"
-                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
                   onClick={() => {
                     setCnhFormat('aberta');
                     setStep('kyc_capture');
                   }}
                 >
                   <div className="text-left w-full space-y-1">
-                    <p className="font-semibold text-base lg:text-lg">CNH Aberta</p>
+                    <p className="font-semibold text-base lg:text-lg group-hover:text-primary transition-colors">CNH Aberta</p>
                     <p className="text-xs lg:text-sm text-muted-foreground">Envie uma foto da CNH completamente aberta</p>
                   </div>
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
                   onClick={() => {
                     setCnhFormat('fechada');
                     setStep('kyc_capture');
                   }}
                 >
                   <div className="text-left w-full space-y-1">
-                    <p className="font-semibold text-base lg:text-lg">CNH Fechada</p>
+                    <p className="font-semibold text-base lg:text-lg group-hover:text-primary transition-colors">CNH Fechada</p>
                     <p className="text-xs lg:text-sm text-muted-foreground">Envie foto da frente e do verso separadamente</p>
                   </div>
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
                   onClick={() => {
                     setCnhFormat('digital');
                     setStep('kyc_capture');
                   }}
                 >
                   <div className="text-left w-full space-y-1">
-                    <p className="font-semibold text-base lg:text-lg">CNH Digital</p>
+                    <p className="font-semibold text-base lg:text-lg group-hover:text-primary transition-colors">CNH Digital</p>
                     <p className="text-xs lg:text-sm text-muted-foreground">Envie o arquivo PDF da CNH digital</p>
                   </div>
                 </Button>
@@ -1201,22 +1207,25 @@ export default function AccountVerification() {
           </StepTransition>
         )}
 
-        {/* Analisando verificação */}
-        {step === 'analyzing' && (
-          <StepTransition stepKey="analyzing">
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-16 h-16 animate-spin text-primary mb-4" />
-              <p className="text-xl font-semibold mb-2">Verificando documentos...</p>
-              <p className="text-sm text-muted-foreground text-center">
-                Estamos verificando seus documentos.
-                <br />
-                Isso pode levar alguns instantes.
-              </p>
-            </CardContent>
-          </Card>
-          </StepTransition>
-        )}
+          {/* Analisando verificação */}
+          {step === 'analyzing' && (
+            <StepTransition stepKey="analyzing">
+            <Card className="shadow-2xl max-w-2xl mx-auto overflow-hidden">
+              <CardContent className="flex flex-col items-center justify-center py-12 lg:py-16">
+                <div className="relative mb-6">
+                  <div className="w-20 h-20 lg:w-24 lg:h-24 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse-glow" />
+                  <Loader2 className="w-10 h-10 lg:w-12 lg:h-12 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" />
+                </div>
+                <p className="text-xl lg:text-2xl font-semibold mb-2 animate-fade-in-up">Verificando documentos...</p>
+                <p className="text-sm lg:text-base text-muted-foreground text-center animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+                  Estamos verificando seus documentos.
+                  <br />
+                  Isso pode levar alguns instantes.
+                </p>
+              </CardContent>
+            </Card>
+            </StepTransition>
+          )}
 
         {/* Resultado final */}
         {step === 'result' && (
