@@ -163,7 +163,7 @@ const Auth = () => {
         // Login direto com email
         email = formData.get("identifier") as string;
       } else if (loginMethod === "cpf") {
-        // Buscar profile pelo CPF para obter o user_id
+        // Buscar email pelo CPF usando função RPC
         const identifierValue = formData.get("identifier") as string;
         const cpfSemFormatacao = identifierValue.replace(/\D/g, "");
         
@@ -174,88 +174,47 @@ const Auth = () => {
         if (cpfSemFormatacao.length !== 11) {
           throw new Error("CPF deve ter 11 dígitos");
         }
-        
-        // Buscar pelo CPF sem formatação (como é armazenado no banco)
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("id, cpf, nome_completo")
-          .eq("cpf", cpfSemFormatacao)
-          .maybeSingle();
 
-        console.log("📋 [LOGIN CPF] Profile response:", { profile, error: profileError });
-
-        if (profileError) {
-          console.error("❌ [LOGIN CPF] Erro ao buscar profile:", profileError);
-          throw new Error("Erro ao buscar usuário. Tente novamente.");
-        }
-
-        if (!profile) {
-          console.error("❌ [LOGIN CPF] CPF não encontrado no banco");
-          throw new Error("CPF não encontrado. Verifique se está cadastrado.");
-        }
-
-        console.log("✅ [LOGIN CPF] Profile encontrado:", profile.nome_completo);
-        console.log("🔍 [LOGIN CPF] Buscando email para user_id:", profile.id);
-
-        // Buscar o email do usuário usando a função do banco
+        // Buscar email usando função RPC (contorna RLS)
         const { data: emailData, error: emailError } = await supabase
-          .rpc('get_user_email_by_id', { user_id: profile.id });
+          .rpc('get_user_email_by_cpf', { user_cpf: cpfSemFormatacao });
         
         console.log("📧 [LOGIN CPF] Email response:", { emailData, error: emailError });
         
         if (emailError) {
           console.error("❌ [LOGIN CPF] Erro ao buscar email:", emailError);
-          throw new Error("Erro ao buscar e-mail do usuário.");
+          throw new Error("Erro ao buscar CPF: " + emailError.message);
         }
         
         if (!emailData) {
-          console.error("❌ [LOGIN CPF] Email não retornado pela função");
-          throw new Error("E-mail não encontrado para este CPF.");
+          console.error("❌ [LOGIN CPF] CPF não encontrado no banco");
+          throw new Error("CPF não encontrado. Verifique se está cadastrado.");
         }
         
         console.log("✅ [LOGIN CPF] Email encontrado:", emailData);
         email = emailData as string;
       } else if (loginMethod === "telefone") {
-        // Buscar profile pelo telefone para obter o user_id
+        // Buscar email pelo telefone usando função RPC
         const identifierValue = formData.get("identifier") as string;
         const telefoneSemFormatacao = identifierValue.replace(/\D/g, "");
         
         console.log("🔍 [LOGIN TELEFONE] Valor digitado:", identifierValue);
         console.log("🔍 [LOGIN TELEFONE] Telefone sem formatação:", telefoneSemFormatacao);
-        
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("id, nome_completo")
-          .eq("telefone", telefoneSemFormatacao)
-          .maybeSingle();
 
-        console.log("📋 [LOGIN TELEFONE] Profile response:", { profile, error: profileError });
-
-        if (profileError) {
-          console.error("❌ [LOGIN TELEFONE] Erro ao buscar profile:", profileError);
-          throw new Error("Erro ao buscar usuário.");
-        }
-        
-        if (!profile) {
-          console.error("❌ [LOGIN TELEFONE] Telefone não encontrado");
-          throw new Error("Telefone não encontrado. Verifique se está cadastrado.");
-        }
-
-        console.log("✅ [LOGIN TELEFONE] Profile encontrado:", profile.nome_completo);
-
+        // Buscar email usando função RPC (contorna RLS)
         const { data: emailData, error: emailError } = await supabase
-          .rpc('get_user_email_by_id', { user_id: profile.id });
+          .rpc('get_user_email_by_phone', { user_phone: telefoneSemFormatacao });
         
         console.log("📧 [LOGIN TELEFONE] Email response:", { emailData, error: emailError });
         
         if (emailError) {
           console.error("❌ [LOGIN TELEFONE] Erro ao buscar email:", emailError);
-          throw new Error("Erro ao buscar e-mail do usuário.");
+          throw new Error("Erro ao buscar telefone: " + emailError.message);
         }
         
         if (!emailData) {
-          console.error("❌ [LOGIN TELEFONE] Email não retornado");
-          throw new Error("E-mail não encontrado para este telefone.");
+          console.error("❌ [LOGIN TELEFONE] Telefone não encontrado");
+          throw new Error("Telefone não encontrado. Verifique se está cadastrado.");
         }
         
         console.log("✅ [LOGIN TELEFONE] Email encontrado:", emailData);
