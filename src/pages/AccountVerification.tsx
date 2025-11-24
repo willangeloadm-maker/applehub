@@ -29,6 +29,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import confetti from 'canvas-confetti';
 import CircularProgress from '@/components/CircularProgress';
 import FloatingParticles from '@/components/FloatingParticles';
+import { StableInput } from '@/components/StableInput';
 
 export default function AccountVerification() {
   const navigate = useNavigate();
@@ -268,73 +269,9 @@ export default function AccountVerification() {
   };
 
   // Handlers de mudança de campo sem dependências para evitar re-renders
-  const handleNomeCompletoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handleFieldChange = useCallback((field: string, value: string) => {
     setFormData(prev => {
-      const newData = { ...prev, nome_completo: value };
-      localStorage.setItem('verification_form_data', JSON.stringify(newData));
-      return newData;
-    });
-  }, []);
-
-  const handleCPFChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = formatCPF(e.target.value);
-    setFormData(prev => {
-      const newData = { ...prev, cpf: value };
-      localStorage.setItem('verification_form_data', JSON.stringify(newData));
-      return newData;
-    });
-  }, []);
-
-  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = formatDate(e.target.value);
-    setFormData(prev => {
-      const newData = { ...prev, data_nascimento: value };
-      localStorage.setItem('verification_form_data', JSON.stringify(newData));
-      return newData;
-    });
-  }, []);
-
-  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = formatPhone(e.target.value);
-    setFormData(prev => {
-      const newData = { ...prev, telefone: value };
-      localStorage.setItem('verification_form_data', JSON.stringify(newData));
-      return newData;
-    });
-  }, []);
-
-  const handleNomeMaeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setFormData(prev => {
-      const newData = { ...prev, nome_mae: value };
-      localStorage.setItem('verification_form_data', JSON.stringify(newData));
-      return newData;
-    });
-  }, []);
-
-  const handleProfissaoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setFormData(prev => {
-      const newData = { ...prev, profissao: value };
-      localStorage.setItem('verification_form_data', JSON.stringify(newData));
-      return newData;
-    });
-  }, []);
-
-  const handlePatrimonioChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = formatCurrency(e.target.value);
-    setFormData(prev => {
-      const newData = { ...prev, patrimonio: value };
-      localStorage.setItem('verification_form_data', JSON.stringify(newData));
-      return newData;
-    });
-  }, []);
-
-  const handleRendaMensalChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = formatCurrency(e.target.value);
-    setFormData(prev => {
-      const newData = { ...prev, renda_mensal: value };
+      const newData = { ...prev, [field]: value };
       localStorage.setItem('verification_form_data', JSON.stringify(newData));
       return newData;
     });
@@ -785,9 +722,9 @@ export default function AccountVerification() {
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Nome Completo</Label>
-                          <Input
+                          <StableInput
                             value={formData.nome_completo}
-                            onChange={handleNomeCompletoChange}
+                            onValueChange={(value) => handleFieldChange('nome_completo', value)}
                             placeholder="Seu nome completo"
                             className="h-12 text-base"
                             required
@@ -805,9 +742,10 @@ export default function AccountVerification() {
                               )
                             )}
                           </Label>
-                          <Input
+                          <StableInput
                             value={formData.cpf}
-                            onChange={handleCPFChange}
+                            onValueChange={(value) => handleFieldChange('cpf', value)}
+                            formatter={formatCPF}
                             placeholder="000.000.000-00"
                             maxLength={14}
                             className="h-12 text-base"
@@ -819,9 +757,10 @@ export default function AccountVerification() {
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Data de Nascimento</Label>
-                          <Input
+                          <StableInput
                             value={formData.data_nascimento}
-                            onChange={handleDateChange}
+                            onValueChange={(value) => handleFieldChange('data_nascimento', value)}
+                            formatter={formatDate}
                             placeholder="DD/MM/AAAA"
                             maxLength={10}
                             className="h-12 text-base"
@@ -840,9 +779,10 @@ export default function AccountVerification() {
                               )
                             )}
                           </Label>
-                          <Input
+                          <StableInput
                             value={formData.telefone}
-                            onChange={handlePhoneChange}
+                            onValueChange={(value) => handleFieldChange('telefone', value)}
+                            formatter={formatPhone}
                             placeholder="(00) 00000-0000"
                             maxLength={15}
                             className="h-12 text-base"
@@ -854,9 +794,9 @@ export default function AccountVerification() {
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Nome da Mãe</Label>
-                          <Input
+                          <StableInput
                             value={formData.nome_mae}
-                            onChange={handleNomeMaeChange}
+                            onValueChange={(value) => handleFieldChange('nome_mae', value)}
                             placeholder="Nome completo da mãe"
                             className="h-12 text-base"
                             required
@@ -865,9 +805,9 @@ export default function AccountVerification() {
 
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Profissão</Label>
-                          <Input
+                          <StableInput
                             value={formData.profissao}
-                            onChange={handleProfissaoChange}
+                            onValueChange={(value) => handleFieldChange('profissao', value)}
                             placeholder="Sua profissão"
                             className="h-12 text-base"
                             required
@@ -878,9 +818,10 @@ export default function AccountVerification() {
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Patrimônio</Label>
-                          <Input
+                          <StableInput
                             value={formData.patrimonio}
-                            onChange={handlePatrimonioChange}
+                            onValueChange={(value) => handleFieldChange('patrimonio', value)}
+                            formatter={formatCurrency}
                             placeholder="R$ 0,00"
                             className="h-12 text-base"
                             required
@@ -889,9 +830,10 @@ export default function AccountVerification() {
 
                         <div className="space-y-2">
                           <Label className="text-sm font-semibold">Renda Mensal</Label>
-                          <Input
+                          <StableInput
                             value={formData.renda_mensal}
-                            onChange={handleRendaMensalChange}
+                            onValueChange={(value) => handleFieldChange('renda_mensal', value)}
+                            formatter={formatCurrency}
                             placeholder="R$ 0,00"
                             className="h-12 text-base"
                             required
