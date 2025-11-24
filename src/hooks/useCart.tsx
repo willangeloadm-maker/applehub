@@ -8,6 +8,52 @@ type CartItem = Tables<"cart_items"> & {
   products: Tables<"products">;
 };
 
+const CART_CACHE_KEY = "applehub_cart_cache";
+
+// Cache helpers
+const saveCartToCache = (items: CartItem[], userId: string) => {
+  try {
+    const cacheData = {
+      items,
+      userId,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(CART_CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.error("Erro ao salvar cache do carrinho:", error);
+  }
+};
+
+const loadCartFromCache = (userId: string): CartItem[] | null => {
+  try {
+    const cached = localStorage.getItem(CART_CACHE_KEY);
+    if (!cached) return null;
+
+    const cacheData = JSON.parse(cached);
+    
+    // Cache válido por 24 horas e deve ser do mesmo usuário
+    const cacheAge = Date.now() - cacheData.timestamp;
+    const maxAge = 24 * 60 * 60 * 1000; // 24 horas
+    
+    if (cacheAge < maxAge && cacheData.userId === userId) {
+      return cacheData.items;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Erro ao carregar cache do carrinho:", error);
+    return null;
+  }
+};
+
+const clearCartCache = () => {
+  try {
+    localStorage.removeItem(CART_CACHE_KEY);
+  } catch (error) {
+    console.error("Erro ao limpar cache do carrinho:", error);
+  }
+};
+
 export const useCart = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,9 +65,18 @@ export const useCart = () => {
       if (!user) {
         setCartItems([]);
         setLoading(false);
+        clearCartCache();
         return;
       }
 
+      // Carrega do cache primeiro para UI instantânea
+      const cachedItems = loadCartFromCache(user.id);
+      if (cachedItems && cachedItems.length > 0) {
+        setCartItems(cachedItems);
+        setLoading(false);
+      }
+
+      // Busca dados atualizados do Supabase
       const { data, error } = await supabase
         .from("cart_items")
         .select(`
@@ -45,7 +100,12 @@ export const useCart = () => {
         .eq("user_id", user.id);
 
       if (error) throw error;
-      setCartItems(data as CartItem[]);
+      
+      const freshItems = data as CartItem[];
+      setCartItems(freshItems);
+      
+      // Salva no cache
+      saveCartToCache(freshItems, user.id);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar carrinho",
@@ -240,6 +300,8 @@ export const useCart = () => {
       if (error) throw error;
 
       setCartItems([]);
+      clearCartCache();
+      
       toast({
         title: "Carrinho limpo",
         description: "Todos os produtos foram removidos",
@@ -318,6 +380,39 @@ export const useCart = () => {
         supabase.removeChannel(channelCleanup);
       }
     };
+  }, []);
+
+  // Salva no cache sempre que o carrinho mudar
+  useEffect(() => {
+    const saveCache = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && cartItems.length >= 0) {
+        saveCartToCache(cartItems, user.id);
+      }
+    };
+    
+    saveCache();
+  }, [cartItems]);
+
+  // Sincroniza entre abas/janelas
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === CART_CACHE_KEY && e.newValue) {
+        try {
+          const cacheData = JSON.parse(e.newValue);
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user && cacheData.userId === user.id) {
+              setCartItems(cacheData.items);
+            }
+          });
+        } catch (error) {
+          console.error("Erro ao sincronizar carrinho entre abas:", error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   return {
