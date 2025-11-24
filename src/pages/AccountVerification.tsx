@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
@@ -161,14 +161,12 @@ export default function AccountVerification() {
     }
   }, [step]);
 
-  // Calcular progresso do formulário
-  const calculateFormProgress = () => {
+  // Calcular progresso do formulário com useMemo
+  const formProgress = useMemo(() => {
     const fields = Object.values(formData);
     const filledFields = fields.filter(field => field && field.trim() !== '').length;
     return Math.round((filledFields / fields.length) * 100);
-  };
-
-  const formProgress = calculateFormProgress();
+  }, [formData]);
 
   // Progress steps para visual feedback
   const getStepNumber = () => {
@@ -289,6 +287,32 @@ export default function AccountVerification() {
       setLoading(false);
     }
   };
+
+  // Handlers de mudança de campo memoizados
+  const handleFieldChange = useCallback((field: keyof typeof formData) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      setFormData(prev => ({ ...prev, [field]: e.target.value }));
+    };
+  }, []);
+
+  const handleCPFChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }));
+  }, []);
+
+  const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, telefone: formatPhone(e.target.value) }));
+  }, []);
+
+  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, data_nascimento: formatDate(e.target.value) }));
+  }, []);
+
+  const handleCurrencyChange = useCallback((field: 'patrimonio' | 'renda_mensal') => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const formatted = formatCurrency(e.target.value);
+      setFormData(prev => ({ ...prev, [field]: formatted }));
+    };
+  }, []);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -748,7 +772,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.nome_completo}
-                            onChange={(e) => setFormData(prev => ({ ...prev, nome_completo: e.target.value }))}
+                            onChange={handleFieldChange('nome_completo')}
                             placeholder="Seu nome completo"
                             className="h-12 text-base"
                             required
@@ -776,7 +800,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.cpf}
-                            onChange={(e) => setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }))}
+                            onChange={handleCPFChange}
                             placeholder="000.000.000-00"
                             maxLength={14}
                             className="h-12 text-base"
@@ -800,7 +824,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.data_nascimento}
-                            onChange={(e) => setFormData(prev => ({ ...prev, data_nascimento: formatDate(e.target.value) }))}
+                            onChange={handleDateChange}
                             placeholder="DD/MM/AAAA"
                             maxLength={10}
                             className="h-12 text-base"
@@ -829,7 +853,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.telefone}
-                            onChange={(e) => setFormData(prev => ({ ...prev, telefone: formatPhone(e.target.value) }))}
+                            onChange={handlePhoneChange}
                             placeholder="(00) 00000-0000"
                             maxLength={15}
                             className="h-12 text-base"
@@ -853,7 +877,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.nome_mae}
-                            onChange={(e) => setFormData(prev => ({ ...prev, nome_mae: e.target.value }))}
+                            onChange={handleFieldChange('nome_mae')}
                             placeholder="Nome completo da mãe"
                             className="h-12 text-base"
                             required
@@ -874,7 +898,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.profissao}
-                            onChange={(e) => setFormData(prev => ({ ...prev, profissao: e.target.value }))}
+                            onChange={handleFieldChange('profissao')}
                             placeholder="Sua profissão"
                             className="h-12 text-base"
                             required
@@ -897,10 +921,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.patrimonio}
-                            onChange={(e) => {
-                              const formatted = formatCurrency(e.target.value);
-                              setFormData(prev => ({ ...prev, patrimonio: formatted }));
-                            }}
+                            onChange={handleCurrencyChange('patrimonio')}
                             placeholder="R$ 0,00"
                             className="h-12 text-base"
                             required
@@ -921,10 +942,7 @@ export default function AccountVerification() {
                           </Label>
                           <Input
                             value={formData.renda_mensal}
-                            onChange={(e) => {
-                              const formatted = formatCurrency(e.target.value);
-                              setFormData(prev => ({ ...prev, renda_mensal: formatted }));
-                            }}
+                            onChange={handleCurrencyChange('renda_mensal')}
                             placeholder="R$ 0,00"
                             className="h-12 text-base"
                             required
