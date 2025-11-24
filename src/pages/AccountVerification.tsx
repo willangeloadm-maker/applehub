@@ -27,6 +27,8 @@ import { formatCPF, formatPhone, formatCurrency, unformatCurrency, formatDate, v
 import { formatDateOnlyBrasilia } from '@/lib/dateUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import confetti from 'canvas-confetti';
+import CircularProgress from '@/components/CircularProgress';
+import FloatingParticles from '@/components/FloatingParticles';
 
 export default function AccountVerification() {
   const navigate = useNavigate();
@@ -53,6 +55,26 @@ export default function AccountVerification() {
   });
   const [validatingDocument, setValidatingDocument] = useState(false);
   const [ocrResult, setOcrResult] = useState<any>(null);
+
+  // Feedback háptico (vibração)
+  const triggerHapticFeedback = (pattern: 'light' | 'medium' | 'heavy' | 'success') => {
+    if ('vibrate' in navigator) {
+      switch (pattern) {
+        case 'light':
+          navigator.vibrate(10);
+          break;
+        case 'medium':
+          navigator.vibrate(20);
+          break;
+        case 'heavy':
+          navigator.vibrate(30);
+          break;
+        case 'success':
+          navigator.vibrate([30, 50, 30, 50, 50]);
+          break;
+      }
+    }
+  };
 
   // Som de transição suave
   const playTransitionSound = () => {
@@ -131,10 +153,11 @@ export default function AccountVerification() {
     }());
   };
 
-  // Tocar som ao mudar de etapa
+  // Tocar som e vibrar ao mudar de etapa
   useEffect(() => {
     if (step !== 'check' && step !== 'result') {
       playTransitionSound();
+      triggerHapticFeedback('medium');
     }
   }, [step]);
 
@@ -464,9 +487,10 @@ export default function AccountVerification() {
 
         setStep('result');
         
-        // Tocar som de sucesso e disparar confetes
+        // Tocar som de sucesso, vibrar e disparar confetes
         setTimeout(() => {
           playSuccessSound();
+          triggerHapticFeedback('success');
           triggerConfetti();
         }, 300);
       }, 10000);
@@ -513,11 +537,24 @@ export default function AccountVerification() {
 
   return (
     <AppLayout>
+      {/* Partículas flutuantes no fundo */}
+      {step !== 'check' && step !== 'result' && <FloatingParticles />}
+      
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 lg:py-8">
-        <div className="container mx-auto px-4 py-8 max-w-5xl lg:max-w-6xl">
+        <div className="container mx-auto px-4 py-8 max-w-5xl lg:max-w-6xl relative z-10">
           {/* Progress Indicator */}
           {step !== 'check' && step !== 'result' && (
-            <div className="mb-8 animate-fade-in-down">
+            <div className="mb-8 animate-fade-in-down space-y-6">
+              {/* Circular Progress - Overall completion */}
+              <div className="flex justify-center">
+                <CircularProgress 
+                  progress={(getStepNumber() / progressSteps.length) * 100}
+                  size={140}
+                  strokeWidth={10}
+                />
+              </div>
+              
+              {/* Linear progress with steps */}
               <div className="flex items-center justify-between relative lg:px-12">
                 {/* Progress Line */}
                 <div className="absolute top-5 left-0 right-0 h-0.5 bg-border -z-10">
@@ -664,23 +701,33 @@ export default function AccountVerification() {
                   </div>
                   
                   {/* Barra de Progresso */}
-                  <div className="mt-6 space-y-2 animate-fade-in" style={{ animationDelay: '200ms' }}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground transition-all duration-300">Progresso do formulário</span>
-                      <span className="font-bold text-primary animate-fade-in">{formProgress}%</span>
+                  <div className="mt-6 space-y-4 animate-fade-in" style={{ animationDelay: '200ms' }}>
+                    <div className="flex items-center justify-center">
+                      <CircularProgress 
+                        progress={formProgress}
+                        size={100}
+                        strokeWidth={8}
+                      />
                     </div>
-                    <div className="h-2.5 bg-muted rounded-full overflow-hidden shadow-inner">
-                      <div 
-                        className="h-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] transition-all duration-700 ease-out rounded-full relative overflow-hidden"
-                        style={{ width: `${formProgress}%` }}
-                      >
-                        {/* Shimmer effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-foreground transition-all duration-300">Progresso do formulário</span>
+                        <span className="font-bold text-primary animate-fade-in">{formProgress}%</span>
                       </div>
+                      <div className="h-2.5 bg-muted rounded-full overflow-hidden shadow-inner">
+                        <div 
+                          className="h-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] transition-all duration-700 ease-out rounded-full relative overflow-hidden"
+                          style={{ width: `${formProgress}%` }}
+                        >
+                          {/* Shimmer effect */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground transition-all duration-300 text-center">
+                        {formProgress === 100 ? '✓ Todos os campos preenchidos!' : `${Object.values(formData).filter(v => v).length} de ${Object.keys(formData).length} campos preenchidos`}
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground transition-all duration-300">
-                      {formProgress === 100 ? '✓ Todos os campos preenchidos!' : `${Object.values(formData).filter(v => v).length} de ${Object.keys(formData).length} campos preenchidos`}
-                    </p>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 lg:px-8 lg:pb-8">
