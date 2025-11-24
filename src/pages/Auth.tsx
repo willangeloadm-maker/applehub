@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { CheckCircle2, XCircle, Mail, Apple, Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, XCircle, Mail, Apple, Eye, EyeOff, Shield, AlertCircle, Lock } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const loginSchema = z.object({
@@ -57,6 +57,66 @@ const Auth = () => {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showSignupPassword, setShowSignupPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [signupPassword, setSignupPassword] = useState("");
+
+  // Função para calcular força da senha
+  const calculatePasswordStrength = useCallback((password: string) => {
+    if (!password) return { score: 0, label: '', color: '', suggestions: [] };
+    
+    let score = 0;
+    const suggestions: string[] = [];
+    
+    // Comprimento
+    if (password.length >= 8) score += 20;
+    else suggestions.push("Use no mínimo 8 caracteres");
+    
+    if (password.length >= 12) score += 10;
+    
+    // Letras minúsculas
+    if (/[a-z]/.test(password)) score += 15;
+    else suggestions.push("Adicione letras minúsculas");
+    
+    // Letras maiúsculas
+    if (/[A-Z]/.test(password)) score += 15;
+    else suggestions.push("Adicione letras maiúsculas");
+    
+    // Números
+    if (/\d/.test(password)) score += 15;
+    else suggestions.push("Adicione números");
+    
+    // Caracteres especiais
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score += 15;
+    else suggestions.push("Adicione caracteres especiais (!@#$%...)");
+    
+    // Variedade de caracteres
+    const uniqueChars = new Set(password).size;
+    if (uniqueChars >= password.length * 0.7) score += 10;
+    
+    // Determinar nível
+    let label = '';
+    let color = '';
+    
+    if (score < 40) {
+      label = 'Muito fraca';
+      color = 'bg-red-500';
+    } else if (score < 60) {
+      label = 'Fraca';
+      color = 'bg-orange-500';
+    } else if (score < 80) {
+      label = 'Média';
+      color = 'bg-yellow-500';
+    } else {
+      label = 'Forte';
+      color = 'bg-green-500';
+    }
+    
+    return { score, label, color, suggestions };
+  }, []);
+
+  const passwordStrength = useMemo(
+    () => calculatePasswordStrength(signupPassword),
+    [signupPassword, calculatePasswordStrength]
+  );
 
   const validateCpf = (cpf: string): boolean => {
     const numbers = cpf.replace(/\D/g, "");
@@ -628,9 +688,12 @@ const Auth = () => {
                     />
                   </div>
 
-                  <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+                  <div className="space-y-3 sm:space-y-4">
                     <div className="space-y-1.5 sm:space-y-2">
-                      <Label htmlFor="signup-password" className="text-white text-sm">Senha *</Label>
+                      <Label htmlFor="signup-password" className="text-white text-sm flex items-center gap-2">
+                        <Lock className="w-4 h-4" />
+                        Senha *
+                      </Label>
                       <div className="relative">
                         <Input
                           id="signup-password"
@@ -638,6 +701,8 @@ const Auth = () => {
                           type={showSignupPassword ? "text" : "password"}
                           placeholder="••••••"
                           required
+                          value={signupPassword}
+                          onChange={(e) => setSignupPassword(e.target.value)}
                           className="bg-white/5 border-white/20 text-white placeholder:text-gray-400 h-10 sm:h-11 pr-10"
                         />
                         <button
@@ -652,9 +717,55 @@ const Auth = () => {
                           )}
                         </button>
                       </div>
+                      
+                      {/* Indicador de força da senha */}
+                      {signupPassword && (
+                        <div className="space-y-2 animate-fade-in mt-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              {passwordStrength.score < 60 ? (
+                                <AlertCircle className="w-4 h-4 text-orange-400" />
+                              ) : (
+                                <Shield className="w-4 h-4 text-green-400" />
+                              )}
+                              <span className="text-xs text-white font-medium">
+                                Força: {passwordStrength.label}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-300">
+                              {passwordStrength.score}%
+                            </span>
+                          </div>
+                          
+                          {/* Barra de progresso */}
+                          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${passwordStrength.color} transition-all duration-500 ease-out rounded-full`}
+                              style={{ width: `${passwordStrength.score}%` }}
+                            />
+                          </div>
+                          
+                          {/* Sugestões */}
+                          {passwordStrength.suggestions.length > 0 && (
+                            <div className="space-y-1 pt-1">
+                              {passwordStrength.suggestions.slice(0, 3).map((suggestion, idx) => (
+                                <div 
+                                  key={idx}
+                                  className="flex items-start gap-1.5 animate-fade-in"
+                                  style={{ animationDelay: `${idx * 50}ms` }}
+                                >
+                                  <div className="w-1 h-1 rounded-full bg-orange-400 mt-1.5 shrink-0" />
+                                  <span className="text-xs text-gray-300">{suggestion}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
+                    
                     <div className="space-y-1.5 sm:space-y-2">
-                      <Label htmlFor="confirmPassword" className="text-white text-sm">Confirmar *</Label>
+                      <Label htmlFor="confirmPassword" className="text-white text-sm">Confirmar senha *</Label>
                       <div className="relative">
                         <Input
                           id="confirmPassword"
