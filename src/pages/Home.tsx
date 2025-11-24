@@ -166,21 +166,26 @@ const Home = () => {
 
 
         {/* Categories */}
-        <section className="px-4 pb-6">
+        <section className="px-4 pb-6 animate-fade-in">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">Categorias</h2>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            {categories.map((category) => (
+            {categories.map((category, index) => (
               <Link
                 key={category.slug}
                 to={`/produtos?categoria=${category.slug}`}
-                className="group"
+                className="group animate-fade-in"
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <Card className="border-0 shadow-sm overflow-hidden transition-all hover:shadow-md active:scale-95">
-                  <CardContent className={`p-4 bg-gradient-to-br ${category.gradient} text-white`}>
-                    <div className="flex flex-col items-center gap-2 text-center">
-                      <category.icon className="h-8 w-8" />
+                <Card className="border-0 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-95">
+                  <CardContent className={`p-4 bg-gradient-to-br ${category.gradient} text-white relative overflow-hidden`}>
+                    {/* Shine effect */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shine_1.5s_ease-in-out]" />
+                    </div>
+                    <div className="flex flex-col items-center gap-2 text-center relative z-10">
+                      <category.icon className="h-8 w-8 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
                       <span className="text-xs font-medium">{category.label}</span>
                     </div>
                   </CardContent>
@@ -191,16 +196,16 @@ const Home = () => {
         </section>
 
         {/* Featured Products */}
-        <section className="px-4 pb-6">
+        <section className="px-4 pb-6 animate-fade-in-up">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-xl font-bold">Destaques</h2>
               <p className="text-xs text-muted-foreground">Produtos em destaque</p>
             </div>
-            <Link to="/produtos">
-              <Button variant="ghost" size="sm" className="gap-1 text-xs">
+            <Link to="/produtos" className="group">
+              <Button variant="ghost" size="sm" className="gap-1 text-xs hover:scale-105 transition-transform">
                 Ver todos
-                <ChevronRight className="h-3 w-3" />
+                <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
           </div>

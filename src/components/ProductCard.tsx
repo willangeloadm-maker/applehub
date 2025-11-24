@@ -79,23 +79,31 @@ const ProductCard = memo(({
   };
 
   return (
-    <Card className="group overflow-hidden transition-all hover:shadow-lg active:scale-[0.98] border-0 shadow-sm bg-card">
+    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 active:scale-[0.98] border-0 shadow-sm bg-card animate-fade-in">
       <Link to={`/produto/${id}`}>
         <div className="overflow-hidden bg-secondary rounded-t-xl relative">
           <OptimizedImage
             src={imagens[0] || "/placeholder.svg"}
             alt={nome}
             aspectRatio="square"
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
+          {/* Shine effect on hover */}
+          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shine_1.5s_ease-in-out]" />
+          </div>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background z-20"
+            className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm hover:bg-background hover:scale-110 active:scale-95 transition-all duration-200 z-20"
             onClick={handleToggleFavorite}
           >
             <Heart 
-              className={`h-4 w-4 ${isFavorite ? 'fill-primary text-primary' : 'text-foreground'}`} 
+              className={`h-4 w-4 transition-all duration-300 ${
+                isFavorite 
+                  ? 'fill-primary text-primary scale-110' 
+                  : 'text-foreground hover:text-primary'
+              }`} 
             />
           </Button>
         </div>
@@ -135,13 +143,15 @@ const ProductCard = memo(({
 
       <CardFooter className="p-3 pt-0">
         <Button 
-          className="w-full h-8 text-xs" 
+          className="w-full h-8 text-xs relative overflow-hidden group/btn transition-all duration-200 hover:shadow-lg active:scale-95" 
           size="sm"
           onClick={handleAddToCart}
           disabled={adding}
         >
-          <ShoppingCart className="mr-1.5 h-3 w-3" />
-          {adding ? "Adicionando..." : "Adicionar"}
+          {/* Ripple effect background */}
+          <span className="absolute inset-0 bg-white/20 scale-0 group-hover/btn:scale-100 transition-transform duration-300 rounded-md" />
+          <ShoppingCart className={`mr-1.5 h-3 w-3 transition-transform duration-200 ${adding ? 'animate-pulse' : 'group-hover/btn:scale-110'}`} />
+          <span className="relative z-10">{adding ? "Adicionando..." : "Adicionar"}</span>
         </Button>
       </CardFooter>
     </Card>
