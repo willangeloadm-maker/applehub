@@ -499,7 +499,7 @@ export default function AccountVerification() {
                       </Label>
                       <Input
                         value={formData.nome_completo}
-                        onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, nome_completo: e.target.value }))}
                         placeholder="Seu nome completo"
                         className="h-12 text-base"
                         required
@@ -519,7 +519,7 @@ export default function AccountVerification() {
                       </Label>
                       <Input
                         value={formData.cpf}
-                        onChange={(e) => setFormData({ ...formData, cpf: formatCPF(e.target.value) })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }))}
                         placeholder="000.000.000-00"
                         maxLength={14}
                         className="h-12 text-base"
@@ -532,7 +532,7 @@ export default function AccountVerification() {
                         <Label className="text-sm font-semibold">Data de Nascimento</Label>
                         <Input
                           value={formData.data_nascimento}
-                          onChange={(e) => setFormData({ ...formData, data_nascimento: formatDate(e.target.value) })}
+                          onChange={(e) => setFormData(prev => ({ ...prev, data_nascimento: formatDate(e.target.value) }))}
                           placeholder="DD/MM/AAAA"
                           maxLength={10}
                           className="h-12 text-base"
@@ -553,7 +553,7 @@ export default function AccountVerification() {
                         </Label>
                         <Input
                           value={formData.telefone}
-                          onChange={(e) => setFormData({ ...formData, telefone: formatPhone(e.target.value) })}
+                          onChange={(e) => setFormData(prev => ({ ...prev, telefone: formatPhone(e.target.value) }))}
                           placeholder="(00) 00000-0000"
                           maxLength={15}
                           className="h-12 text-base"
@@ -566,7 +566,7 @@ export default function AccountVerification() {
                       <Label className="text-sm font-semibold">Nome da Mãe</Label>
                       <Input
                         value={formData.nome_mae}
-                        onChange={(e) => setFormData({ ...formData, nome_mae: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, nome_mae: e.target.value }))}
                         placeholder="Nome completo da mãe"
                         className="h-12 text-base"
                         required
@@ -577,7 +577,7 @@ export default function AccountVerification() {
                       <Label className="text-sm font-semibold">Profissão</Label>
                       <Input
                         value={formData.profissao}
-                        onChange={(e) => setFormData({ ...formData, profissao: e.target.value })}
+                        onChange={(e) => setFormData(prev => ({ ...prev, profissao: e.target.value }))}
                         placeholder="Sua profissão"
                         className="h-12 text-base"
                         required
@@ -591,7 +591,7 @@ export default function AccountVerification() {
                           value={formData.patrimonio}
                           onChange={(e) => {
                             const formatted = formatCurrency(e.target.value);
-                            setFormData({ ...formData, patrimonio: formatted });
+                            setFormData(prev => ({ ...prev, patrimonio: formatted }));
                           }}
                           placeholder="R$ 0,00"
                           className="h-12 text-base"
@@ -605,7 +605,7 @@ export default function AccountVerification() {
                           value={formData.renda_mensal}
                           onChange={(e) => {
                             const formatted = formatCurrency(e.target.value);
-                            setFormData({ ...formData, renda_mensal: formatted });
+                            setFormData(prev => ({ ...prev, renda_mensal: formatted }));
                           }}
                           placeholder="R$ 0,00"
                           className="h-12 text-base"
