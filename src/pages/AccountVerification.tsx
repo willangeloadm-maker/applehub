@@ -26,6 +26,7 @@ import CameraCapture from '@/components/CameraCapture';
 import { formatCPF, formatPhone, formatCurrency, unformatCurrency, formatDate, validateCPF, validatePhone } from '@/lib/formatters';
 import { formatDateOnlyBrasilia } from '@/lib/dateUtils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import confetti from 'canvas-confetti';
 
 export default function AccountVerification() {
   const navigate = useNavigate();
@@ -52,6 +53,90 @@ export default function AccountVerification() {
   });
   const [validatingDocument, setValidatingDocument] = useState(false);
   const [ocrResult, setOcrResult] = useState<any>(null);
+
+  // Som de transição suave
+  const playTransitionSound = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(1000, audioContext.currentTime + 0.1);
+    
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.15);
+  };
+
+  // Som de sucesso
+  const playSuccessSound = () => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator1 = audioContext.createOscillator();
+    const oscillator2 = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator1.connect(gainNode);
+    oscillator2.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator1.type = 'sine';
+    oscillator2.type = 'sine';
+    oscillator1.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+    oscillator2.frequency.setValueAtTime(659.25, audioContext.currentTime); // E5
+    oscillator1.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.1); // G5
+    
+    gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+    
+    oscillator1.start(audioContext.currentTime);
+    oscillator2.start(audioContext.currentTime);
+    oscillator1.stop(audioContext.currentTime + 0.4);
+    oscillator2.stop(audioContext.currentTime + 0.4);
+  };
+
+  // Animação de confetes
+  const triggerConfetti = () => {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const colors = ['#ff6b35', '#ff4757', '#ffa502', '#ff6348'];
+
+    (function frame() {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: colors,
+        disableForReducedMotion: true
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: colors,
+        disableForReducedMotion: true
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    }());
+  };
+
+  // Tocar som ao mudar de etapa
+  useEffect(() => {
+    if (step !== 'check' && step !== 'result') {
+      playTransitionSound();
+    }
+  }, [step]);
 
   // Calcular progresso do formulário
   const calculateFormProgress = () => {
@@ -378,6 +463,12 @@ export default function AccountVerification() {
         localStorage.removeItem('verification_form_data');
 
         setStep('result');
+        
+        // Tocar som de sucesso e disparar confetes
+        setTimeout(() => {
+          playSuccessSound();
+          triggerConfetti();
+        }, 300);
       }, 10000);
     } catch (error) {
       toast({
