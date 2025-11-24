@@ -115,10 +115,14 @@ export default function AccountVerification() {
     }
   }, [user]);
 
-  // Salvar automaticamente no localStorage quando formData mudar
+  // Salvar automaticamente no localStorage quando formData mudar (com debounce)
   useEffect(() => {
     if (step === 'form' && user) {
-      localStorage.setItem('verification_form_data', JSON.stringify(formData));
+      const timeoutId = setTimeout(() => {
+        localStorage.setItem('verification_form_data', JSON.stringify(formData));
+      }, 500); // Debounce de 500ms
+      
+      return () => clearTimeout(timeoutId);
     }
   }, [formData, step, user]);
 
@@ -140,10 +144,18 @@ export default function AccountVerification() {
         .single();
 
       if (profileData) {
+        // Converter data sem perder dia devido a timezone
+        let dataNascimentoFormatada = '';
+        if (profileData.data_nascimento) {
+          const dateStr = profileData.data_nascimento;
+          const [year, month, day] = dateStr.split('-');
+          dataNascimentoFormatada = `${day}/${month}/${year}`;
+        }
+        
         setFormData({
           nome_completo: profileData.nome_completo || '',
           cpf: formatCPF(profileData.cpf || ''),
-          data_nascimento: profileData.data_nascimento ? formatDateOnlyBrasilia(new Date(profileData.data_nascimento)) : '',
+          data_nascimento: dataNascimentoFormatada,
           telefone: formatPhone(profileData.telefone || ''),
           nome_mae: '',
           profissao: '',
