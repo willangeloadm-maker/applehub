@@ -51,6 +51,15 @@ export default function AccountVerification() {
   const [validatingDocument, setValidatingDocument] = useState(false);
   const [ocrResult, setOcrResult] = useState<any>(null);
 
+  // Calcular progresso do formulário
+  const calculateFormProgress = () => {
+    const fields = Object.values(formData);
+    const filledFields = fields.filter(field => field && field.trim() !== '').length;
+    return Math.round((filledFields / fields.length) * 100);
+  };
+
+  const formProgress = calculateFormProgress();
+
   // Progress steps para visual feedback
   const getStepNumber = () => {
     const steps = {
@@ -88,6 +97,26 @@ export default function AccountVerification() {
       }
 
       setUser(authUser);
+
+      // Buscar dados do perfil para autopreencher
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (profileData) {
+        setFormData({
+          nome_completo: profileData.nome_completo || '',
+          cpf: formatCPF(profileData.cpf || ''),
+          data_nascimento: profileData.data_nascimento ? formatDateOnlyBrasilia(new Date(profileData.data_nascimento)) : '',
+          telefone: formatPhone(profileData.telefone || ''),
+          nome_mae: '',
+          profissao: '',
+          patrimonio: '',
+          renda_mensal: ''
+        });
+      }
 
       const { data: verificationData } = await supabase
         .from('account_verifications')
@@ -341,12 +370,12 @@ export default function AccountVerification() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 lg:py-8">
+        <div className="container mx-auto px-4 py-8 max-w-5xl lg:max-w-6xl">
           {/* Progress Indicator */}
           {step !== 'check' && step !== 'result' && (
             <div className="mb-8 animate-fade-in">
-              <div className="flex items-center justify-between relative">
+              <div className="flex items-center justify-between relative lg:px-12">
                 {/* Progress Line */}
                 <div className="absolute top-5 left-0 right-0 h-0.5 bg-border -z-10">
                   <div 
@@ -432,19 +461,19 @@ export default function AccountVerification() {
           {/* Iniciar Verificação */}
           {step === 'check' && (!verification || verification.status !== 'verificado') && (
             <StepTransition stepKey="start">
-              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background shadow-2xl overflow-hidden">
+              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background shadow-2xl overflow-hidden max-w-3xl mx-auto">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-3xl" />
-                <CardHeader className="text-center relative z-10 pb-4">
-                  <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] flex items-center justify-center mb-4 shadow-lg animate-scale-in">
-                    <Shield className="w-10 h-10 text-white" />
+                <CardHeader className="text-center relative z-10 pb-4 lg:pb-6">
+                  <div className="mx-auto w-20 h-20 lg:w-24 lg:h-24 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] flex items-center justify-center mb-4 lg:mb-6 shadow-lg animate-scale-in">
+                    <Shield className="w-10 h-10 lg:w-12 lg:h-12 text-white" />
                   </div>
-                  <CardTitle className="text-3xl font-bold">Verificação de Conta</CardTitle>
-                  <CardDescription className="text-base mt-2">
+                  <CardTitle className="text-3xl lg:text-4xl font-bold">Verificação de Conta</CardTitle>
+                  <CardDescription className="text-base lg:text-lg mt-2">
                     Desbloqueie o parcelamento em até 24x
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="relative z-10 space-y-6">
-                  <div className="space-y-3">
+                <CardContent className="relative z-10 space-y-6 lg:px-8 lg:pb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:gap-4">
                     {[
                       { icon: FileText, text: 'Envio rápido de documentos' },
                       { icon: Camera, text: 'Verificação facial por selfie' },
@@ -453,20 +482,20 @@ export default function AccountVerification() {
                     ].map((item, idx) => (
                       <div 
                         key={idx}
-                        className="flex items-center gap-4 p-4 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-all duration-200 animate-fade-in hover:scale-[1.02]"
+                        className="flex items-center gap-4 p-4 lg:p-5 rounded-lg bg-muted/30 border border-border/50 hover:border-primary/30 transition-all duration-200 animate-fade-in hover:scale-[1.02]"
                         style={{ animationDelay: `${idx * 100}ms` }}
                       >
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#ff6b35]/20 to-[#ff4757]/20 flex items-center justify-center shrink-0">
-                          <item.icon className="w-5 h-5 text-primary" />
+                        <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-gradient-to-r from-[#ff6b35]/20 to-[#ff4757]/20 flex items-center justify-center shrink-0">
+                          <item.icon className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
                         </div>
-                        <span className="text-sm font-medium">{item.text}</span>
+                        <span className="text-sm lg:text-base font-medium">{item.text}</span>
                       </div>
                     ))}
                   </div>
                   <Button 
                     onClick={() => setStep('form')} 
                     size="lg"
-                    className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg"
+                    className="w-full lg:w-auto lg:min-w-64 lg:mx-auto lg:block bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg"
                   >
                     Iniciar Verificação
                     <ArrowRight className="ml-2 w-5 h-5" />
@@ -479,55 +508,74 @@ export default function AccountVerification() {
           {/* Formulário de Dados */}
           {step === 'form' && (
             <StepTransition stepKey="form">
-              <Card className="shadow-2xl border-2 border-border/50">
-                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
+              <Card className="shadow-2xl border-2 border-border/50 max-w-5xl mx-auto">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent lg:px-8 lg:pt-8">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] flex items-center justify-center">
-                      <User className="w-6 h-6 text-white" />
+                    <div className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] flex items-center justify-center">
+                      <User className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
                     </div>
                     <div>
-                      <CardTitle className="text-2xl">Dados Pessoais</CardTitle>
-                      <CardDescription>Preencha suas informações com atenção</CardDescription>
+                      <CardTitle className="text-2xl lg:text-3xl">Dados Pessoais</CardTitle>
+                      <CardDescription className="text-sm lg:text-base">Preencha suas informações com atenção</CardDescription>
                     </div>
                   </div>
+                  
+                  {/* Barra de Progresso */}
+                  <div className="mt-6 space-y-2 animate-fade-in">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-foreground">Progresso do formulário</span>
+                      <span className="font-bold text-primary">{formProgress}%</span>
+                    </div>
+                    <div className="h-2.5 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] transition-all duration-500 ease-out rounded-full"
+                        style={{ width: `${formProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {formProgress === 100 ? '✓ Todos os campos preenchidos!' : `${Object.values(formData).filter(v => v).length} de ${Object.keys(formData).length} campos preenchidos`}
+                    </p>
+                  </div>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent className="pt-6 lg:px-8 lg:pb-8">
                   <form onSubmit={handleFormSubmit} className="space-y-5">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-2">
-                        Nome Completo
-                      </Label>
-                      <Input
-                        value={formData.nome_completo}
-                        onChange={(e) => setFormData(prev => ({ ...prev, nome_completo: e.target.value }))}
-                        placeholder="Seu nome completo"
-                        className="h-12 text-base"
-                        required
-                      />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          Nome Completo
+                        </Label>
+                        <Input
+                          value={formData.nome_completo}
+                          onChange={(e) => setFormData(prev => ({ ...prev, nome_completo: e.target.value }))}
+                          placeholder="Seu nome completo"
+                          className="h-12 text-base"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold flex items-center gap-2">
+                          CPF
+                          {formData.cpf && (
+                            validateCPF(formData.cpf) ? (
+                              <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
+                            )
+                          )}
+                        </Label>
+                        <Input
+                          value={formData.cpf}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }))}
+                          placeholder="000.000.000-00"
+                          maxLength={14}
+                          className="h-12 text-base"
+                          required
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-2">
-                        CPF
-                        {formData.cpf && (
-                          validateCPF(formData.cpf) ? (
-                            <CheckCircle className="w-4 h-4 text-green-500 animate-scale-in" />
-                          ) : (
-                            <XCircle className="w-4 h-4 text-red-500 animate-scale-in" />
-                          )
-                        )}
-                      </Label>
-                      <Input
-                        value={formData.cpf}
-                        onChange={(e) => setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }))}
-                        placeholder="000.000.000-00"
-                        maxLength={14}
-                        className="h-12 text-base"
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       <div className="space-y-2">
                         <Label className="text-sm font-semibold">Data de Nascimento</Label>
                         <Input
@@ -562,29 +610,31 @@ export default function AccountVerification() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Nome da Mãe</Label>
-                      <Input
-                        value={formData.nome_mae}
-                        onChange={(e) => setFormData(prev => ({ ...prev, nome_mae: e.target.value }))}
-                        placeholder="Nome completo da mãe"
-                        className="h-12 text-base"
-                        required
-                      />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Nome da Mãe</Label>
+                        <Input
+                          value={formData.nome_mae}
+                          onChange={(e) => setFormData(prev => ({ ...prev, nome_mae: e.target.value }))}
+                          placeholder="Nome completo da mãe"
+                          className="h-12 text-base"
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm font-semibold">Profissão</Label>
+                        <Input
+                          value={formData.profissao}
+                          onChange={(e) => setFormData(prev => ({ ...prev, profissao: e.target.value }))}
+                          placeholder="Sua profissão"
+                          className="h-12 text-base"
+                          required
+                        />
+                      </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold">Profissão</Label>
-                      <Input
-                        value={formData.profissao}
-                        onChange={(e) => setFormData(prev => ({ ...prev, profissao: e.target.value }))}
-                        placeholder="Sua profissão"
-                        className="h-12 text-base"
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       <div className="space-y-2">
                         <Label className="text-sm font-semibold">Patrimônio</Label>
                         <Input
@@ -617,7 +667,7 @@ export default function AccountVerification() {
                     <Button 
                       type="submit" 
                       size="lg"
-                      className="w-full mt-6 bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg h-12"
+                      className="w-full lg:w-auto lg:min-w-80 lg:mx-auto lg:block mt-8 bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg h-12 lg:h-14 text-base lg:text-lg"
                     >
                       Continuar
                       <ArrowRight className="ml-2 w-5 h-5" />
@@ -631,15 +681,15 @@ export default function AccountVerification() {
           {/* Validando */}
           {step === 'validating' && (
             <StepTransition stepKey="validating">
-            <Card className="shadow-2xl animate-fade-in">
-              <CardContent className="flex flex-col items-center justify-center py-16 space-y-6">
+            <Card className="shadow-2xl animate-fade-in max-w-2xl mx-auto">
+              <CardContent className="flex flex-col items-center justify-center py-16 lg:py-24 space-y-6">
                 <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse" />
-                  <Loader2 className="w-12 h-12 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" />
+                  <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse" />
+                  <Loader2 className="w-12 h-12 lg:w-16 lg:h-16 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" />
                 </div>
                 <div className="text-center space-y-2">
-                  <p className="text-xl font-semibold">Validando seus dados...</p>
-                  <p className="text-sm text-muted-foreground">Isso levará apenas alguns segundos</p>
+                  <p className="text-xl lg:text-2xl font-semibold">Validando seus dados...</p>
+                  <p className="text-sm lg:text-base text-muted-foreground">Isso levará apenas alguns segundos</p>
                 </div>
               </CardContent>
             </Card>
@@ -649,40 +699,44 @@ export default function AccountVerification() {
           {/* Tipo de Documento */}
           {step === 'kyc_doc_type' && (
             <StepTransition stepKey="doc_type">
-            <Card>
-            <CardHeader>
-              <CardTitle>Escolha o Tipo de Documento</CardTitle>
+            <Card className="max-w-3xl mx-auto shadow-2xl">
+            <CardHeader className="lg:px-8 lg:pt-8">
+              <CardTitle className="text-2xl lg:text-3xl">Escolha o Tipo de Documento</CardTitle>
+              <CardDescription className="text-sm lg:text-base mt-2">
+                Selecione o tipo de documento que você deseja enviar
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground mb-4">
-                Selecione o tipo de documento que você deseja enviar:
-              </p>
-              <Button
-                variant="outline"
-                className="w-full h-auto py-6"
-                onClick={() => {
-                  setDocumentType('cnh');
-                  setStep('kyc_cnh_format');
-                }}
-              >
-                <div className="text-left w-full">
-                  <p className="font-semibold mb-1">CNH - Carteira Nacional de Habilitação</p>
-                  <p className="text-xs text-muted-foreground">Versão aberta, fechada ou digital</p>
-                </div>
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full h-auto py-6"
-                onClick={() => {
-                  setDocumentType('rg');
-                  setStep('kyc_capture');
-                }}
-              >
-                <div className="text-left w-full">
-                  <p className="font-semibold mb-1">RG - Registro Geral</p>
-                  <p className="text-xs text-muted-foreground">Envie frente e verso</p>
-                </div>
-              </Button>
+            <CardContent className="space-y-4 lg:px-8 lg:pb-8 lg:space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  onClick={() => {
+                    setDocumentType('cnh');
+                    setStep('kyc_cnh_format');
+                  }}
+                >
+                  <div className="text-left w-full space-y-2">
+                    <p className="font-semibold text-base lg:text-lg">CNH</p>
+                    <p className="font-normal text-sm">Carteira Nacional de Habilitação</p>
+                    <p className="text-xs text-muted-foreground">Versão aberta, fechada ou digital</p>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  onClick={() => {
+                    setDocumentType('rg');
+                    setStep('kyc_capture');
+                  }}
+                >
+                  <div className="text-left w-full space-y-2">
+                    <p className="font-semibold text-base lg:text-lg">RG</p>
+                    <p className="font-normal text-sm">Registro Geral</p>
+                    <p className="text-xs text-muted-foreground">Envie frente e verso</p>
+                  </div>
+                </Button>
+              </div>
             </CardContent>
           </Card>
           </StepTransition>
@@ -690,59 +744,61 @@ export default function AccountVerification() {
 
         {step === 'kyc_cnh_format' && (
           <StepTransition stepKey="cnh_format">
-          <Card>
-            <CardHeader>
-              <CardTitle>Formato da CNH</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground mb-4">
+          <Card className="max-w-3xl mx-auto shadow-2xl">
+            <CardHeader className="lg:px-8 lg:pt-8">
+              <CardTitle className="text-2xl lg:text-3xl">Formato da CNH</CardTitle>
+              <CardDescription className="text-sm lg:text-base mt-2">
                 Como você deseja enviar sua CNH?
-              </p>
-              <Button
-                variant="outline"
-                className="w-full h-auto py-6"
-                onClick={() => {
-                  setCnhFormat('aberta');
-                  setStep('kyc_capture');
-                }}
-              >
-                <div className="text-left w-full">
-                  <p className="font-semibold mb-1">CNH Aberta</p>
-                  <p className="text-xs text-muted-foreground">Envie uma foto da CNH completamente aberta</p>
-                </div>
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full h-auto py-6"
-                onClick={() => {
-                  setCnhFormat('fechada');
-                  setStep('kyc_capture');
-                }}
-              >
-                <div className="text-left w-full">
-                  <p className="font-semibold mb-1">CNH Fechada</p>
-                  <p className="text-xs text-muted-foreground">Envie foto da frente e do verso separadamente</p>
-                </div>
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full h-auto py-6"
-                onClick={() => {
-                  setCnhFormat('digital');
-                  setStep('kyc_capture');
-                }}
-              >
-                <div className="text-left w-full">
-                  <p className="font-semibold mb-1">CNH Digital</p>
-                  <p className="text-xs text-muted-foreground">Envie o arquivo PDF da CNH digital</p>
-                </div>
-              </Button>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 lg:px-8 lg:pb-8 lg:space-y-5">
+              <div className="space-y-4">
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  onClick={() => {
+                    setCnhFormat('aberta');
+                    setStep('kyc_capture');
+                  }}
+                >
+                  <div className="text-left w-full space-y-1">
+                    <p className="font-semibold text-base lg:text-lg">CNH Aberta</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground">Envie uma foto da CNH completamente aberta</p>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  onClick={() => {
+                    setCnhFormat('fechada');
+                    setStep('kyc_capture');
+                  }}
+                >
+                  <div className="text-left w-full space-y-1">
+                    <p className="font-semibold text-base lg:text-lg">CNH Fechada</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground">Envie foto da frente e do verso separadamente</p>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full h-auto py-8 lg:py-10 hover:border-primary/50 hover:bg-primary/5 transition-all"
+                  onClick={() => {
+                    setCnhFormat('digital');
+                    setStep('kyc_capture');
+                  }}
+                >
+                  <div className="text-left w-full space-y-1">
+                    <p className="font-semibold text-base lg:text-lg">CNH Digital</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground">Envie o arquivo PDF da CNH digital</p>
+                  </div>
+                </Button>
+              </div>
               <Button
                 variant="ghost"
-                className="w-full"
+                className="w-full lg:w-auto lg:min-w-48 lg:mx-auto lg:block"
                 onClick={() => setStep('kyc_doc_type')}
               >
-                Voltar
+                 Voltar
               </Button>
             </CardContent>
           </Card>
