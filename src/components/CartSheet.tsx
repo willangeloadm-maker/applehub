@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router-dom";
 import { useCartAnimation } from "@/hooks/useCartAnimation";
+import OptimizedImage from "@/components/OptimizedImage";
 
 export const CartSheet = () => {
   const { cartItems, loading, updateQuantity, removeFromCart, getTotal, getItemCount } = useCart();
@@ -64,12 +65,14 @@ export const CartSheet = () => {
               <div className="flex-1 overflow-y-auto space-y-4 pr-2 scroll-smooth">
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex gap-4 border rounded-lg p-3 transition-all hover:shadow-md">
-                    <img
-                      src={item.products.imagens[0] || "/placeholder.svg"}
-                      alt={item.products.nome}
-                      className="w-20 h-20 object-cover rounded"
-                    />
-                    <div className="flex-1 space-y-2">
+                    <div className="w-20 h-20 rounded overflow-hidden shrink-0">
+                      <OptimizedImage
+                        src={item.products.imagens[0] || "/placeholder.svg"}
+                        alt={item.products.nome}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 space-y-2 min-w-0">
                       <h3 className="font-semibold text-sm line-clamp-2">{item.products.nome}</h3>
                       <p className="text-sm font-bold text-primary">
                         R$ {Number(item.products.preco_vista).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}

@@ -12,6 +12,7 @@ import { useWishlist } from "@/hooks/useWishlist";
 import { ProductReviews } from "@/components/ProductReviews";
 import { ArrowLeft, Minus, Plus, ShoppingCart, Shield, Truck, CreditCard, Heart } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
+import OptimizedImage from "@/components/OptimizedImage";
 
 type Product = Tables<"products">;
 
@@ -116,11 +117,13 @@ const ProductDetail = () => {
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Galeria de Imagens */}
             <div className="space-y-4">
-              <div className="aspect-square overflow-hidden rounded-xl bg-secondary border">
-                <img
+              <div className="overflow-hidden rounded-xl bg-secondary border">
+                <OptimizedImage
                   src={product.imagens[selectedImage] || "/placeholder.svg"}
                   alt={product.nome}
+                  aspectRatio="square"
                   className="w-full h-full object-cover"
+                  priority
                 />
               </div>
               {product.imagens.length > 1 && (
@@ -129,13 +132,18 @@ const ProductDetail = () => {
                     <button
                       key={idx}
                       onClick={() => setSelectedImage(idx)}
-                      className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                      className={`rounded-lg overflow-hidden border-2 transition-all ${
                         selectedImage === idx
                           ? "border-primary"
                           : "border-transparent hover:border-border"
                       }`}
                     >
-                      <img src={img} alt={`${product.nome} ${idx + 1}`} className="w-full h-full object-cover" />
+                      <OptimizedImage
+                        src={img}
+                        alt={`${product.nome} ${idx + 1}`}
+                        aspectRatio="square"
+                        className="w-full h-full object-cover"
+                      />
                     </button>
                   ))}
                 </div>
