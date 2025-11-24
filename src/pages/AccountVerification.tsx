@@ -196,42 +196,6 @@ export default function AccountVerification() {
     checkUser();
   }, []);
 
-  // Carregar dados salvos do localStorage
-  useEffect(() => {
-    const savedData = localStorage.getItem('verification_form_data');
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
-        // Só carrega se tiver dados não vazios dos campos extras (nome_mae, profissao, etc)
-        if (parsed.nome_mae || parsed.profissao || parsed.patrimonio || parsed.renda_mensal) {
-          setFormData(prev => ({
-            ...prev,
-            nome_mae: parsed.nome_mae || prev.nome_mae,
-            profissao: parsed.profissao || prev.profissao,
-            patrimonio: parsed.patrimonio || prev.patrimonio,
-            renda_mensal: parsed.renda_mensal || prev.renda_mensal
-          }));
-          toast({
-            description: "Dados salvos carregados! Continue de onde parou.",
-          });
-        }
-      } catch (e) {
-        console.error('Erro ao carregar dados salvos:', e);
-      }
-    }
-  }, [user]);
-
-  // Salvar automaticamente no localStorage quando formData mudar (com debounce)
-  useEffect(() => {
-    if (step === 'form' && user) {
-      const timeoutId = setTimeout(() => {
-        localStorage.setItem('verification_form_data', JSON.stringify(formData));
-      }, 500); // Debounce de 500ms
-      
-      return () => clearTimeout(timeoutId);
-    }
-  }, [formData, step, user]);
-
   const checkUser = async () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -258,15 +222,29 @@ export default function AccountVerification() {
           dataNascimentoFormatada = `${day}/${month}/${year}`;
         }
         
+        // Carregar dados salvos do localStorage
+        const savedData = localStorage.getItem('verification_form_data');
+        let savedFields = { nome_mae: '', profissao: '', patrimonio: '', renda_mensal: '' };
+        if (savedData) {
+          try {
+            const parsed = JSON.parse(savedData);
+            savedFields = {
+              nome_mae: parsed.nome_mae || '',
+              profissao: parsed.profissao || '',
+              patrimonio: parsed.patrimonio || '',
+              renda_mensal: parsed.renda_mensal || ''
+            };
+          } catch (e) {
+            console.error('Erro ao carregar dados salvos:', e);
+          }
+        }
+        
         setFormData({
           nome_completo: profileData.nome_completo || '',
           cpf: formatCPF(profileData.cpf || ''),
           data_nascimento: dataNascimentoFormatada,
           telefone: formatPhone(profileData.telefone || ''),
-          nome_mae: '',
-          profissao: '',
-          patrimonio: '',
-          renda_mensal: ''
+          ...savedFields
         });
       }
 
@@ -288,37 +266,77 @@ export default function AccountVerification() {
     }
   };
 
-  // Handlers de mudança de campo memoizados individualmente
+  // Handlers de mudança de campo sem dependências para evitar re-renders
   const handleNomeCompletoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, nome_completo: e.target.value }));
+    const value = e.target.value;
+    setFormData(prev => {
+      const newData = { ...prev, nome_completo: value };
+      localStorage.setItem('verification_form_data', JSON.stringify(newData));
+      return newData;
+    });
   }, []);
 
   const handleCPFChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, cpf: formatCPF(e.target.value) }));
+    const value = formatCPF(e.target.value);
+    setFormData(prev => {
+      const newData = { ...prev, cpf: value };
+      localStorage.setItem('verification_form_data', JSON.stringify(newData));
+      return newData;
+    });
   }, []);
 
   const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, data_nascimento: formatDate(e.target.value) }));
+    const value = formatDate(e.target.value);
+    setFormData(prev => {
+      const newData = { ...prev, data_nascimento: value };
+      localStorage.setItem('verification_form_data', JSON.stringify(newData));
+      return newData;
+    });
   }, []);
 
   const handlePhoneChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, telefone: formatPhone(e.target.value) }));
+    const value = formatPhone(e.target.value);
+    setFormData(prev => {
+      const newData = { ...prev, telefone: value };
+      localStorage.setItem('verification_form_data', JSON.stringify(newData));
+      return newData;
+    });
   }, []);
 
   const handleNomeMaeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, nome_mae: e.target.value }));
+    const value = e.target.value;
+    setFormData(prev => {
+      const newData = { ...prev, nome_mae: value };
+      localStorage.setItem('verification_form_data', JSON.stringify(newData));
+      return newData;
+    });
   }, []);
 
   const handleProfissaoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, profissao: e.target.value }));
+    const value = e.target.value;
+    setFormData(prev => {
+      const newData = { ...prev, profissao: value };
+      localStorage.setItem('verification_form_data', JSON.stringify(newData));
+      return newData;
+    });
   }, []);
 
   const handlePatrimonioChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, patrimonio: formatCurrency(e.target.value) }));
+    const value = formatCurrency(e.target.value);
+    setFormData(prev => {
+      const newData = { ...prev, patrimonio: value };
+      localStorage.setItem('verification_form_data', JSON.stringify(newData));
+      return newData;
+    });
   }, []);
 
   const handleRendaMensalChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, renda_mensal: formatCurrency(e.target.value) }));
+    const value = formatCurrency(e.target.value);
+    setFormData(prev => {
+      const newData = { ...prev, renda_mensal: value };
+      localStorage.setItem('verification_form_data', JSON.stringify(newData));
+      return newData;
+    });
   }, []);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
