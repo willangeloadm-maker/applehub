@@ -832,7 +832,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_email_by_cpf: { Args: { user_cpf: string }; Returns: string }
       get_user_email_by_id: { Args: { user_id: string }; Returns: string }
+      get_user_email_by_phone: { Args: { user_phone: string }; Returns: string }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
     }
     Enums: {
