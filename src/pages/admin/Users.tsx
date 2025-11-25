@@ -581,13 +581,13 @@ export default function AdminUsers() {
         {/* Modal de visualização em tela cheia */}
         {fullscreenImage && (
           <div 
-            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm"
             onClick={() => setFullscreenImage(null)}
           >
             <Button
               variant="ghost"
               size="icon"
-              className="absolute top-4 right-4 text-white hover:bg-white/20"
+              className="absolute top-4 right-4 text-white hover:bg-white/20 z-[10000]"
               onClick={() => setFullscreenImage(null)}
             >
               <X className="w-6 h-6" />
@@ -595,7 +595,7 @@ export default function AdminUsers() {
             <img 
               src={fullscreenImage} 
               alt="Visualização em tela cheia"
-              className="max-w-full max-h-full object-contain"
+              className="max-w-full max-h-full object-contain z-[9999]"
               onClick={(e) => e.stopPropagation()}
             />
           </div>
