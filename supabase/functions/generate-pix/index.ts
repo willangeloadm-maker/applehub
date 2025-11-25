@@ -101,6 +101,22 @@ serve(async (req) => {
     
     console.log("📱 DDD:", ddd, "Número:", number);
 
+    // Determinar tipo de transação baseado no order_id
+    let tipoTransacao = "pagamento_completo";
+    if (order_id) {
+      const { data: orderData } = await supabase
+        .from("orders")
+        .select("payment_type")
+        .eq("id", order_id)
+        .single();
+      
+      if (orderData?.payment_type === "parcelamento_applehub") {
+        tipoTransacao = "entrada";
+      }
+    }
+
+    console.log("💰 Tipo de transação:", tipoTransacao);
+
     // Chamar API da Pagar.me para gerar PIX
     const startTime = Date.now();
     const requestBody = {
@@ -186,7 +202,7 @@ serve(async (req) => {
     const { data: transactionData, error: transactionError } = await supabase.from("transactions").insert({
       user_id,
       order_id,
-      tipo: "entrada",
+      tipo: tipoTransacao,
       valor: amount,
       status: "pendente",
       metodo_pagamento: "pix",
