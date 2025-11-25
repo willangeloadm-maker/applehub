@@ -87,6 +87,47 @@ Deno.serve(async (req) => {
     // Deletar cada usuário
     for (const userRole of userRoles) {
       try {
+        console.log(`🗑️ Deletando dados relacionados do usuário ${userRole.user_id}...`);
+        
+        // Deletar dados relacionados primeiro
+        await supabaseAdmin.from('cart_items').delete().eq('user_id', userRole.user_id);
+        await supabaseAdmin.from('favorites').delete().eq('user_id', userRole.user_id);
+        await supabaseAdmin.from('product_reviews').delete().eq('user_id', userRole.user_id);
+        await supabaseAdmin.from('coupon_usage').delete().eq('user_id', userRole.user_id);
+        await supabaseAdmin.from('card_payment_attempts').delete().eq('user_id', userRole.user_id);
+        
+        // Deletar transações
+        await supabaseAdmin.from('transactions').delete().eq('user_id', userRole.user_id);
+        
+        // Deletar análises de crédito
+        await supabaseAdmin.from('credit_analyses').delete().eq('user_id', userRole.user_id);
+        
+        // Deletar items e histórico de pedidos, depois os pedidos
+        const { data: orders } = await supabaseAdmin
+          .from('orders')
+          .select('id')
+          .eq('user_id', userRole.user_id);
+        
+        if (orders && orders.length > 0) {
+          for (const order of orders) {
+            await supabaseAdmin.from('order_items').delete().eq('order_id', order.id);
+            await supabaseAdmin.from('order_status_history').delete().eq('order_id', order.id);
+          }
+          await supabaseAdmin.from('orders').delete().eq('user_id', userRole.user_id);
+        }
+        
+        // Deletar verificação de conta
+        await supabaseAdmin.from('account_verifications').delete().eq('user_id', userRole.user_id);
+        
+        // Deletar perfil
+        await supabaseAdmin.from('profiles').delete().eq('id', userRole.user_id);
+        
+        // Deletar roles
+        await supabaseAdmin.from('user_roles').delete().eq('user_id', userRole.user_id);
+        
+        console.log(`🗑️ Deletando usuário do auth...`);
+        
+        // Agora deletar o usuário do auth
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userRole.user_id);
         
         if (deleteError) {
