@@ -316,23 +316,24 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
           </div>
         )}
         
-        {/* Webcam em tela cheia */}
+        {/* Webcam em tela cheia - forçando 100% */}
         <Webcam
           ref={webcamRef}
           audio={false}
           screenshotFormat="image/jpeg"
           videoConstraints={videoConstraints}
           style={{
-            position: 'absolute',
+            position: 'fixed',
             top: 0,
             left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover'
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            objectFit: 'cover',
+            zIndex: 1
           }}
-          className={cn(
-            guideType === 'selfie' && "scale-x-[-1]"
-          )}
+          className={guideType === 'selfie' ? 'scale-x-[-1]' : ''}
           onUserMedia={() => {
             console.log('Câmera iniciada com sucesso');
             setCameraReady(true);
@@ -441,6 +442,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
         ref={fileInputRef}
         type="file"
         accept="image/*,application/pdf"
+        capture={guideType === 'document' ? 'environment' : undefined}
         onChange={handleFileUpload}
         className="hidden"
       />
@@ -457,7 +459,15 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               <Button
                 type="button"
-                onClick={() => setShowCamera(true)}
+                onClick={() => {
+                  // Para documentos, usa câmera nativa via input file
+                  if (guideType === 'document') {
+                    fileInputRef.current?.click();
+                  } else {
+                    // Para selfie, mantém a webcam customizada
+                    setShowCamera(true);
+                  }
+                }}
                 variant="default"
                 className="flex-1 h-12 bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white shadow-lg hover:shadow-xl hover:shadow-primary/30 transition-all hover:scale-105"
               >
