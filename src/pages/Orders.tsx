@@ -314,11 +314,11 @@ const Orders = () => {
                       <p className="text-sm text-amber-700 dark:text-amber-300">
                         Valor: {formatPrice(Number(pendingTransaction.valor))}
                       </p>
-                      {pendingTransaction.tipo === "entrada" && (
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                          Entrada do parcelamento
-                        </p>
-                      )}
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        {pendingTransaction.tipo === "entrada" 
+                          ? "Entrada do parcelamento" 
+                          : "Pagamento à vista"}
+                      </p>
                     </div>
                     <Button 
                       onClick={() => navigate(`/pagamento-pix?orderId=${selectedOrder.id}`)}
