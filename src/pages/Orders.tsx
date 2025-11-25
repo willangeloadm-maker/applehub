@@ -27,6 +27,7 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderHistory, setOrderHistory] = useState<OrderHistory[]>([]);
+  const [pendingTransaction, setPendingTransaction] = useState<any>(null);
 
   useEffect(() => {
     loadOrders();
@@ -89,9 +90,21 @@ const Orders = () => {
     }
   };
 
-  const handleSelectOrder = (order: Order) => {
+  const handleSelectOrder = async (order: Order) => {
     setSelectedOrder(order);
     loadOrderHistory(order.id);
+    
+    // Carregar transação pendente se existir
+    const { data: transaction } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("order_id", order.id)
+      .eq("status", "pendente")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    setPendingTransaction(transaction);
   };
 
   const formatPrice = (price: number) => {
@@ -290,6 +303,31 @@ const Orders = () => {
                     </p>
                   )}
                 </div>
+
+                {/* Mostrar botão de pagamento se houver transação pendente */}
+                {pendingTransaction && (
+                  <div className="mt-4 pt-4 border-t space-y-3">
+                    <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                      <p className="text-sm font-semibold text-amber-800 dark:text-amber-200 mb-1">
+                        Pagamento Pendente
+                      </p>
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        Valor: {formatPrice(Number(pendingTransaction.valor))}
+                      </p>
+                      {pendingTransaction.tipo === "entrada" && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          Entrada do parcelamento
+                        </p>
+                      )}
+                    </div>
+                    <Button 
+                      onClick={() => navigate(`/pagamento-pix?orderId=${selectedOrder.id}`)}
+                      className="w-full"
+                    >
+                      Pagar Agora
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

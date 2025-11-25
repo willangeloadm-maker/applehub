@@ -43,6 +43,16 @@ const Checkout = () => {
   const [cupomCode, setCupomCode] = useState("");
   const [cupomAplicado, setCupomAplicado] = useState<any>(null);
   const [loadingCupom, setLoadingCupom] = useState(false);
+  const [useNewAddress, setUseNewAddress] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    cep: "",
+    rua: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+  });
 
   useEffect(() => {
     loadProfile();
@@ -325,7 +335,7 @@ const Checkout = () => {
       const total = subtotal - desconto + frete;
       const numeroPedido = `APH${Date.now()}`;
 
-      const endereco = {
+      const endereco = useNewAddress ? newAddress : {
         cep: profile.cep,
         rua: profile.rua,
         numero: profile.numero,
@@ -621,13 +631,104 @@ const Checkout = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {profile && (
+              {profile && !useNewAddress && (
                 <div className="bg-secondary/50 rounded-lg p-4 text-sm">
                   <p className="font-semibold">{profile.nome_completo}</p>
                   <p>{profile.rua}, {profile.numero}</p>
                   {profile.complemento && <p>{profile.complemento}</p>}
                   <p>{profile.bairro} - {profile.cidade}/{profile.estado}</p>
                   <p>CEP: {profile.cep}</p>
+                </div>
+              )}
+
+              <Button
+                variant={useNewAddress ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setUseNewAddress(!useNewAddress);
+                  if (!useNewAddress) {
+                    setCepFrete("");
+                    setFrete(0);
+                  } else {
+                    setCepFrete(profile?.cep || "");
+                  }
+                }}
+                className="w-full"
+              >
+                {useNewAddress ? "Usar Endereço Cadastrado" : "Cadastrar Novo Endereço"}
+              </Button>
+
+              {useNewAddress && (
+                <div className="space-y-3 border-t pt-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>CEP</Label>
+                      <Input
+                        value={newAddress.cep}
+                        onChange={(e) => {
+                          let valor = e.target.value.replace(/\D/g, "");
+                          if (valor.length > 5) {
+                            valor = valor.slice(0, 5) + "-" + valor.slice(5, 8);
+                          }
+                          setNewAddress({ ...newAddress, cep: valor });
+                          setCepFrete(valor);
+                        }}
+                        placeholder="00000-000"
+                        maxLength={9}
+                      />
+                    </div>
+                    <div>
+                      <Label>Estado</Label>
+                      <Input
+                        value={newAddress.estado}
+                        onChange={(e) => setNewAddress({ ...newAddress, estado: e.target.value.toUpperCase().slice(0, 2) })}
+                        placeholder="SP"
+                        maxLength={2}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Cidade</Label>
+                    <Input
+                      value={newAddress.cidade}
+                      onChange={(e) => setNewAddress({ ...newAddress, cidade: e.target.value })}
+                      placeholder="São Paulo"
+                    />
+                  </div>
+                  <div>
+                    <Label>Bairro</Label>
+                    <Input
+                      value={newAddress.bairro}
+                      onChange={(e) => setNewAddress({ ...newAddress, bairro: e.target.value })}
+                      placeholder="Centro"
+                    />
+                  </div>
+                  <div>
+                    <Label>Rua</Label>
+                    <Input
+                      value={newAddress.rua}
+                      onChange={(e) => setNewAddress({ ...newAddress, rua: e.target.value })}
+                      placeholder="Rua Exemplo"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Número</Label>
+                      <Input
+                        value={newAddress.numero}
+                        onChange={(e) => setNewAddress({ ...newAddress, numero: e.target.value })}
+                        placeholder="123"
+                      />
+                    </div>
+                    <div>
+                      <Label>Complemento (opcional)</Label>
+                      <Input
+                        value={newAddress.complemento}
+                        onChange={(e) => setNewAddress({ ...newAddress, complemento: e.target.value })}
+                        placeholder="Apto 45"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
