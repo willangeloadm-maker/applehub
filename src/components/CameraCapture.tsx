@@ -407,7 +407,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
         )}
 
         {/* Botões de controle fixos na parte inferior */}
-        <div className="absolute bottom-0 left-0 right-0 safe-area-inset-bottom bg-gradient-to-t from-black via-black/95 to-black/90 backdrop-blur-xl border-t border-white/10 p-6 z-10 animate-slide-in-bottom">
+        <div className="absolute bottom-0 left-0 right-0 safe-area-inset-bottom bg-gradient-to-t from-black via-black/95 to-transparent backdrop-blur-xl border-t border-white/10 p-6 z-20 animate-slide-in-bottom">
           <div className="max-w-lg mx-auto flex gap-4">
             <Button
               type="button"
