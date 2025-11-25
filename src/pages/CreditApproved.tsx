@@ -60,16 +60,26 @@ const CreditApproved = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Atualizar pedido com informações de parcelamento
+      // Atualizar pedido com informações de parcelamento e status aprovado
       const { error: updateError } = await supabase
         .from("orders")
         .update({
           parcelas,
           valor_parcela: valorParcela,
+          status: "aprovado", // Muda para aprovado pois o crédito foi aprovado
         })
         .eq("id", orderId);
 
       if (updateError) throw updateError;
+
+      // Adicionar ao histórico que o crédito foi aprovado
+      await supabase
+        .from("order_status_history")
+        .insert({
+          order_id: orderId,
+          status: "aprovado",
+          observacao: `Crédito aprovado: ${formatPrice(valorAprovado)} - Aguardando pagamento da entrada`,
+        });
 
       // Gerar PIX para entrada via edge function
       const { data: pixData, error: pixError } = await supabase.functions.invoke("generate-pix", {
