@@ -304,124 +304,125 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   if (showCamera) {
     return (
       <div className="fixed inset-0 z-50 bg-black animate-fade-in">
-        <div className="relative w-full h-full flex flex-col">
-          <div className="flex-1 relative overflow-hidden">
-            {!cameraReady && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-black via-background/90 to-black z-10 animate-fade-in">
-                <div className="relative">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse-glow" />
-                  <Loader2 className="w-10 h-10 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" />
-                </div>
-                <p className="text-white text-base font-medium mt-6">Iniciando câmera...</p>
-                <p className="text-white/60 text-sm mt-2">Aguarde alguns segundos</p>
-              </div>
+        {/* Loading da câmera */}
+        {!cameraReady && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-black via-background/90 to-black z-20 animate-fade-in">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] animate-pulse-glow" />
+              <Loader2 className="w-10 h-10 animate-spin absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white" />
+            </div>
+            <p className="text-white text-base font-medium mt-6">Iniciando câmera...</p>
+            <p className="text-white/60 text-sm mt-2">Aguarde alguns segundos</p>
+          </div>
+        )}
+        
+        {/* Webcam em tela cheia absoluto */}
+        <div className="absolute inset-0">
+          <Webcam
+            ref={webcamRef}
+            audio={false}
+            screenshotFormat="image/jpeg"
+            videoConstraints={videoConstraints}
+            className={cn(
+              "absolute inset-0 w-full h-full object-cover",
+              guideType === 'selfie' && "scale-x-[-1]"
             )}
-            <Webcam
-              ref={webcamRef}
-              audio={false}
-              screenshotFormat="image/jpeg"
-              videoConstraints={videoConstraints}
-              className={cn(
-                "w-full h-full object-cover",
-                guideType === 'selfie' && "scale-x-[-1]"
-              )}
-              onUserMedia={() => {
-                console.log('Câmera iniciada com sucesso');
-                setCameraReady(true);
-              }}
-              onUserMediaError={(error) => {
-                console.error('Erro ao acessar câmera:', error);
-                toast({
-                  title: "Erro ao acessar câmera",
-                  description: "Verifique as permissões do navegador ou use a opção de anexar arquivo",
-                  variant: "destructive",
-                });
-                setShowCamera(false);
-              }}
-            />
-            
-            {cameraReady && guideType === 'selfie' && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none animate-fade-in">
-                {guideType === 'selfie' && (
-                  <div className="relative animate-scale-in">
-                    <div 
-                      className={cn(
-                        "w-72 h-96 border-4 rounded-full transition-all duration-500 backdrop-blur-sm",
-                        faceDetected 
-                          ? "border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.8)] scale-105" 
-                          : "border-white/80 shadow-2xl shadow-white/30"
-                      )}
-                    >
-                      {/* Grade de detecção facial */}
-                      {faceDetected && (
-                        <>
-                          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-3 h-3 bg-green-400 rounded-full animate-ping" />
-                          <div className="absolute top-1/3 left-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.2s' }} />
-                          <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.4s' }} />
-                          <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.6s' }} />
-                          <div className="absolute bottom-1/3 right-1/3 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.8s' }} />
-                        </>
-                      )}
-                    </div>
-                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
-                      <div className={cn(
-                        "inline-block px-6 py-3 rounded-2xl transition-all duration-300 backdrop-blur-md border shadow-2xl",
-                        faceDetected 
-                          ? "bg-gradient-to-r from-green-900/90 to-emerald-900/90 border-green-400/50" 
-                          : "bg-gradient-to-r from-black/90 to-black/80 border-white/20"
-                      )}>
-                        <span className={cn(
-                          "text-base font-semibold transition-colors",
-                          faceDetected ? "text-green-300" : "text-white"
-                        )}>
-                          {faceDetected ? "✓ Rosto detectado!" : "👤 Centralize seu rosto no círculo"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+            onUserMedia={() => {
+              console.log('Câmera iniciada com sucesso');
+              setCameraReady(true);
+            }}
+            onUserMediaError={(error) => {
+              console.error('Erro ao acessar câmera:', error);
+              toast({
+                title: "Erro ao acessar câmera",
+                description: "Verifique as permissões do navegador ou use a opção de anexar arquivo",
+                variant: "destructive",
+              });
+              setShowCamera(false);
+            }}
+          />
+        </div>
+        
+        {/* Overlays da câmera - Moldura para selfie */}
+        {cameraReady && guideType === 'selfie' && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 animate-fade-in">
+            <div className="relative animate-scale-in">
+              <div 
+                className={cn(
+                  "w-72 h-96 border-4 rounded-full transition-all duration-500 backdrop-blur-sm",
+                  faceDetected 
+                    ? "border-green-400 shadow-[0_0_40px_rgba(34,197,94,0.8)] scale-105" 
+                    : "border-white/80 shadow-2xl shadow-white/30"
+                )}
+              >
+                {/* Grade de detecção facial */}
+                {faceDetected && (
+                  <>
+                    <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-3 h-3 bg-green-400 rounded-full animate-ping" />
+                    <div className="absolute top-1/3 left-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.2s' }} />
+                    <div className="absolute top-1/3 right-1/4 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.4s' }} />
+                    <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.6s' }} />
+                    <div className="absolute bottom-1/3 right-1/3 w-2 h-2 bg-green-400 rounded-full animate-ping" style={{ animationDelay: '0.8s' }} />
+                  </>
                 )}
               </div>
-            )}
-            
-            {cameraReady && guideType === 'document' && (
-              <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 animate-fade-in">
-                <div className="inline-block bg-gradient-to-r from-black/90 to-black/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 shadow-2xl">
-                  <span className="text-white text-base font-semibold">
-                    📄 Posicione o documento e capture
+              <div className="absolute -top-16 left-1/2 -translate-x-1/2 text-center whitespace-nowrap">
+                <div className={cn(
+                  "inline-block px-6 py-3 rounded-2xl transition-all duration-300 backdrop-blur-md border shadow-2xl",
+                  faceDetected 
+                    ? "bg-gradient-to-r from-green-900/90 to-emerald-900/90 border-green-400/50" 
+                    : "bg-gradient-to-r from-black/90 to-black/80 border-white/20"
+                )}>
+                  <span className={cn(
+                    "text-base font-semibold transition-colors",
+                    faceDetected ? "text-green-300" : "text-white"
+                  )}>
+                    {faceDetected ? "✓ Rosto detectado!" : "👤 Centralize seu rosto no círculo"}
                   </span>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Botões com glassmorphism */}
-          <div className="safe-area-inset-bottom bg-gradient-to-t from-black via-black/95 to-black/90 backdrop-blur-xl border-t border-white/10 p-6 animate-slide-in-bottom">
-            <div className="max-w-lg mx-auto flex gap-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowCamera(false);
-                  setCameraReady(false);
-                  setFaceDetected(false);
-                }}
-                className="flex-1 h-14 text-base bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-sm transition-all hover:scale-105"
-                size="lg"
-              >
-                <X className="w-5 h-5 mr-2" />
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                onClick={capturePhoto}
-                disabled={!cameraReady}
-                className="flex-1 h-14 text-base bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] disabled:opacity-50 shadow-lg shadow-primary/50 transition-all hover:scale-105 disabled:hover:scale-100"
-                size="lg"
-              >
-                <Camera className="w-5 h-5 mr-2" />
-                Capturar
-              </Button>
             </div>
+          </div>
+        )}
+        
+        {/* Mensagem para documentos */}
+        {cameraReady && guideType === 'document' && (
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 animate-fade-in">
+            <div className="inline-block bg-gradient-to-r from-black/90 to-black/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 shadow-2xl">
+              <span className="text-white text-base font-semibold">
+                📄 Posicione o documento e capture
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Botões de controle fixos na parte inferior */}
+        <div className="absolute bottom-0 left-0 right-0 safe-area-inset-bottom bg-gradient-to-t from-black via-black/95 to-black/90 backdrop-blur-xl border-t border-white/10 p-6 z-10 animate-slide-in-bottom">
+          <div className="max-w-lg mx-auto flex gap-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowCamera(false);
+                setCameraReady(false);
+                setFaceDetected(false);
+              }}
+              className="flex-1 h-14 text-base bg-white/10 hover:bg-white/20 border-white/20 text-white backdrop-blur-sm transition-all hover:scale-105"
+              size="lg"
+            >
+              <X className="w-5 h-5 mr-2" />
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={capturePhoto}
+              disabled={!cameraReady}
+              className="flex-1 h-14 text-base bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] disabled:opacity-50 shadow-lg shadow-primary/50 transition-all hover:scale-105 disabled:hover:scale-100"
+              size="lg"
+            >
+              <Camera className="w-5 h-5 mr-2" />
+              Capturar
+            </Button>
           </div>
         </div>
       </div>
