@@ -705,6 +705,7 @@ export default function AccountVerification() {
                             onValueChange={(value) => handleFieldChange('nome_completo', value)}
                             placeholder="Seu nome completo"
                             className="h-12 text-base"
+                            disabled
                             required
                           />
                         </div>
@@ -727,6 +728,7 @@ export default function AccountVerification() {
                             placeholder="000.000.000-00"
                             maxLength={14}
                             className="h-12 text-base"
+                            disabled
                             required
                           />
                         </div>
@@ -742,6 +744,7 @@ export default function AccountVerification() {
                             placeholder="DD/MM/AAAA"
                             maxLength={10}
                             className="h-12 text-base"
+                            disabled
                             required
                           />
                         </div>
@@ -764,6 +767,7 @@ export default function AccountVerification() {
                             placeholder="(00) 00000-0000"
                             maxLength={15}
                             className="h-12 text-base"
+                            disabled
                             required
                           />
                         </div>
