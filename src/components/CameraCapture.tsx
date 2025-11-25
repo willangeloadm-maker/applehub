@@ -355,7 +355,7 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
         
         {/* Overlays da câmera - Moldura para selfie */}
         {cameraReady && guideType === 'selfie' && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 animate-fade-in">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 animate-fade-in pb-24">
             <div className="relative animate-scale-in">
               <div 
                 className={cn(
