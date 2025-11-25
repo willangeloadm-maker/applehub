@@ -191,7 +191,11 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
   const retake = () => {
     setPreview(null);
-    setShowCamera(true);
+    // Para documentos, não abre a webcam customizada (volta para a tela inicial)
+    // Para selfies, abre a webcam customizada
+    if (guideType === 'selfie') {
+      setShowCamera(true);
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -442,7 +446,6 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
         ref={fileInputRef}
         type="file"
         accept="image/*,application/pdf"
-        capture={guideType === 'document' ? 'environment' : undefined}
         onChange={handleFileUpload}
         className="hidden"
       />
@@ -460,9 +463,20 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
               <Button
                 type="button"
                 onClick={() => {
-                  // Para documentos, usa câmera nativa via input file
+                  // Para documentos, cria um input temporário com capture para abrir a câmera nativa
                   if (guideType === 'document') {
-                    fileInputRef.current?.click();
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*,application/pdf';
+                    input.capture = 'environment';
+                    input.onchange = (e: Event) => {
+                      const target = e.target as HTMLInputElement;
+                      const file = target.files?.[0];
+                      if (file) {
+                        handleFileUpload({ target: { files: [file] } } as any);
+                      }
+                    };
+                    input.click();
                   } else {
                     // Para selfie, mantém a webcam customizada
                     setShowCamera(true);
