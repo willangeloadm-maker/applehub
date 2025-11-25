@@ -116,7 +116,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <AppSidebar />
           
           {/* Main Content */}
-          <main className="flex-1 w-full max-w-full pb-20 lg:pb-0 overflow-x-hidden">
+          <main className="flex-1 w-full max-w-full pb-20 lg:pb-20 overflow-x-hidden">
             <div className="w-full lg:px-8 lg:py-6 lg:max-w-[1400px] lg:mx-auto">
               {children}
             </div>
@@ -166,6 +166,52 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             })}
           </div>
         </nav>
+
+        {/* Footer - Desktop Only */}
+        <footer className="hidden lg:block fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90">
+          <div className="max-w-[1400px] mx-auto px-8 py-4">
+            <div className="flex items-center justify-center gap-8">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.path);
+                
+                if (item.isCart) {
+                  return (
+                    <div key="cart" className="flex items-center gap-2">
+                      <CartSheet />
+                      <span className="text-sm font-medium text-muted-foreground">Carrinho</span>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:bg-accent ${
+                      active 
+                        ? "text-primary bg-accent" 
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <div className="relative">
+                      <Icon className="h-5 w-5" />
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="absolute -right-2 -top-2 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
+                        >
+                          {item.badge > 9 ? "9+" : item.badge}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </footer>
       </div>
     </SidebarProvider>
   );
