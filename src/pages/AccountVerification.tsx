@@ -355,7 +355,15 @@ export default function AccountVerification() {
 
   // Função auxiliar para fazer upload de arquivo para o storage
   const uploadFileToStorage = async (file: File, fileName: string): Promise<string> => {
+    console.log('📤 Iniciando upload:', fileName, 'Tipo:', file.type, 'Tamanho:', file.size);
+    
+    if (!file) {
+      console.error('❌ Arquivo inválido para upload');
+      throw new Error('Arquivo inválido');
+    }
+    
     const filePath = `${user.id}/${fileName}`;
+    console.log('📁 Caminho do arquivo:', filePath);
     
     const { error: uploadError } = await supabase.storage
       .from('verification-documents')
@@ -364,17 +372,22 @@ export default function AccountVerification() {
         upsert: true
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('❌ Erro no upload:', uploadError);
+      throw uploadError;
+    }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('verification-documents')
-      .getPublicUrl(filePath);
-
+    console.log('✅ Upload concluído com sucesso:', filePath);
     return filePath;
   };
 
   const handleKycSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log('📋 Verificando dados do KYC antes do envio:');
+    console.log('- Documento Frente:', kycData.documento_frente ? 'Presente' : 'Ausente');
+    console.log('- Documento Verso:', kycData.documento_verso ? 'Presente' : 'Ausente');
+    console.log('- Selfie:', kycData.selfie ? 'Presente' : 'Ausente');
 
     if (!kycData.documento_frente || !kycData.selfie) {
       toast({
@@ -389,21 +402,29 @@ export default function AccountVerification() {
 
     // Criar verificação no banco
     try {
+      console.log('🚀 Iniciando processo de upload dos documentos...');
+      
       // Upload dos arquivos para o storage
       const documentoFrentePath = await uploadFileToStorage(
         kycData.documento_frente, 
         `documento_frente_${Date.now()}.jpg`
       );
+      console.log('✅ Frente salva:', documentoFrentePath);
       
       const documentoVersoPath = kycData.documento_verso 
         ? await uploadFileToStorage(kycData.documento_verso, `documento_verso_${Date.now()}.jpg`)
         : null;
+      if (documentoVersoPath) {
+        console.log('✅ Verso salvo:', documentoVersoPath);
+      }
       
       const selfiePath = await uploadFileToStorage(
         kycData.selfie, 
         `selfie_${Date.now()}.jpg`
       );
+      console.log('✅ Selfie salva:', selfiePath);
 
+      console.log('💾 Salvando caminhos no banco de dados...');
       const { error } = await supabase
         .from('account_verifications')
         .upsert({
@@ -414,7 +435,12 @@ export default function AccountVerification() {
           selfie: selfiePath
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro ao salvar no banco:', error);
+        throw error;
+      }
+      
+      console.log('✅ Dados salvos no banco com sucesso!');
 
       // Simular verificação de 10 segundos
       setTimeout(async () => {

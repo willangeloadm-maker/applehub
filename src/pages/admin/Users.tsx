@@ -98,18 +98,15 @@ export default function AdminUsers() {
       return null;
     }
     
-    console.log('📸 Gerando URL para:', path);
+    console.log('📸 Gerando URL para caminho salvo:', path);
     
-    // Remover prefixo 'verification-documents/' se existir
-    const cleanPath = path.startsWith('verification-documents/') 
-      ? path.replace('verification-documents/', '') 
-      : path;
-    
+    // O caminho já vem limpo do banco de dados (formato: userId/filename.jpg)
+    // Não precisa remover nenhum prefixo
     const { data } = supabase.storage
       .from('verification-documents')
-      .getPublicUrl(cleanPath);
+      .getPublicUrl(path);
     
-    console.log('✅ URL gerada:', data.publicUrl);
+    console.log('✅ URL pública gerada:', data.publicUrl);
     
     return data.publicUrl;
   };
