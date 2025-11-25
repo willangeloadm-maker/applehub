@@ -22,6 +22,22 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
+  // Sincronizar preview com captured prop
+  useEffect(() => {
+    if (captured && !preview) {
+      if (captured.type === 'application/pdf') {
+        setPreview('pdf');
+      } else {
+        // Criar preview do arquivo capturado
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setPreview(e.target?.result as string);
+        };
+        reader.readAsDataURL(captured);
+      }
+    }
+  }, [captured]);
+
   useEffect(() => {
     if (!showCamera) {
       setCameraReady(false);
