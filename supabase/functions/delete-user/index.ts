@@ -63,8 +63,47 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Deletar usuário do auth (cascade vai deletar profile e outros dados relacionados)
+    console.log('🗑️ Deletando dados relacionados do usuário...');
+    
+    // Deletar dados relacionados primeiro para evitar conflitos de foreign key
+    await supabaseAdmin.from('cart_items').delete().eq('user_id', userId);
+    await supabaseAdmin.from('favorites').delete().eq('user_id', userId);
+    await supabaseAdmin.from('product_reviews').delete().eq('user_id', userId);
+    await supabaseAdmin.from('coupon_usage').delete().eq('user_id', userId);
+    await supabaseAdmin.from('card_payment_attempts').delete().eq('user_id', userId);
+    
+    // Deletar transações
+    await supabaseAdmin.from('transactions').delete().eq('user_id', userId);
+    
+    // Deletar análises de crédito
+    await supabaseAdmin.from('credit_analyses').delete().eq('user_id', userId);
+    
+    // Deletar items e histórico de pedidos, depois os pedidos
+    const { data: orders } = await supabaseAdmin
+      .from('orders')
+      .select('id')
+      .eq('user_id', userId);
+    
+    if (orders && orders.length > 0) {
+      for (const order of orders) {
+        await supabaseAdmin.from('order_items').delete().eq('order_id', order.id);
+        await supabaseAdmin.from('order_status_history').delete().eq('order_id', order.id);
+      }
+      await supabaseAdmin.from('orders').delete().eq('user_id', userId);
+    }
+    
+    // Deletar verificação de conta
+    await supabaseAdmin.from('account_verifications').delete().eq('user_id', userId);
+    
+    // Deletar perfil
+    await supabaseAdmin.from('profiles').delete().eq('id', userId);
+    
+    // Deletar roles
+    await supabaseAdmin.from('user_roles').delete().eq('user_id', userId);
+    
     console.log('🗑️ Deletando usuário do auth...');
+    
+    // Agora deletar o usuário do auth
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
     if (deleteError) {
