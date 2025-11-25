@@ -316,32 +316,37 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
           </div>
         )}
         
-        {/* Webcam em tela cheia absoluto */}
-        <div className="absolute inset-0">
-          <Webcam
-            ref={webcamRef}
-            audio={false}
-            screenshotFormat="image/jpeg"
-            videoConstraints={videoConstraints}
-            className={cn(
-              "absolute inset-0 w-full h-full object-cover",
-              guideType === 'selfie' && "scale-x-[-1]"
-            )}
-            onUserMedia={() => {
-              console.log('Câmera iniciada com sucesso');
-              setCameraReady(true);
-            }}
-            onUserMediaError={(error) => {
-              console.error('Erro ao acessar câmera:', error);
-              toast({
-                title: "Erro ao acessar câmera",
-                description: "Verifique as permissões do navegador ou use a opção de anexar arquivo",
-                variant: "destructive",
-              });
-              setShowCamera(false);
-            }}
-          />
-        </div>
+        {/* Webcam em tela cheia */}
+        <Webcam
+          ref={webcamRef}
+          audio={false}
+          screenshotFormat="image/jpeg"
+          videoConstraints={videoConstraints}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover'
+          }}
+          className={cn(
+            guideType === 'selfie' && "scale-x-[-1]"
+          )}
+          onUserMedia={() => {
+            console.log('Câmera iniciada com sucesso');
+            setCameraReady(true);
+          }}
+          onUserMediaError={(error) => {
+            console.error('Erro ao acessar câmera:', error);
+            toast({
+              title: "Erro ao acessar câmera",
+              description: "Verifique as permissões do navegador ou use a opção de anexar arquivo",
+              variant: "destructive",
+            });
+            setShowCamera(false);
+          }}
+        />
         
         {/* Overlays da câmera - Moldura para selfie */}
         {cameraReady && guideType === 'selfie' && (
