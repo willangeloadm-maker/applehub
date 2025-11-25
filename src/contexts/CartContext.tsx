@@ -139,10 +139,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       
       const userId = await getUserId();
       if (!userId) {
+        console.log("⚠️ fetchCart: Usuário não autenticado");
         setCartItems([]);
         clearCartCache();
         return;
       }
+
+      console.log("🛒 Buscando carrinho para userId:", userId);
 
       const { data, error } = await supabase
         .from("cart_items")
@@ -166,13 +169,21 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         `)
         .eq("user_id", userId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("❌ Erro ao buscar carrinho:", error);
+        throw error;
+      }
       
       const freshItems = data as CartItem[];
+      console.log(`✅ Carrinho carregado: ${freshItems.length} itens`);
       setCartItems(freshItems);
       saveCartToCache(freshItems, userId);
     } catch (error: any) {
-      console.error("Erro ao carregar carrinho:", error);
+      console.error("❌ Erro fatal ao carregar carrinho:", error);
+      // Não limpar o carrinho em caso de erro de rede
+      if (!error.message?.includes('Failed to fetch')) {
+        setCartItems([]);
+      }
     } finally {
       if (!silent) setLoading(false);
     }
@@ -182,6 +193,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     try {
       const userId = await getUserId();
       if (!userId) {
+        console.log("❌ addToCart: Usuário não autenticado");
         toast({
           title: "Faça login",
           description: "Você precisa estar logado para adicionar ao carrinho",
@@ -189,6 +201,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         });
         return false;
       }
+
+      console.log(`➕ Adicionando produto ${productId} ao carrinho (qty: ${quantidade})`);
 
       const existingItem = cartItems.find(item => item.product_id === productId);
 
@@ -207,6 +221,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
       if (existingItem) {
         const newQty = existingItem.quantidade + quantidade;
+        console.log(`📝 Atualizando item existente para qty: ${newQty}`);
         setCartItems(prev => 
           prev.map(item => 
             item.id === existingItem.id ? { ...item, quantidade: newQty } : item
@@ -218,14 +233,24 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           .update({ quantidade: newQty })
           .eq("id", existingItem.id)
           .then(({ error }) => {
-            if (error) fetchCart(true);
+            if (error) {
+              console.error("❌ Erro ao atualizar item existente:", error);
+              fetchCart(true);
+            } else {
+              console.log("✅ Item atualizado no banco");
+            }
           });
       } else {
-        const { data: product } = await supabase
+        const { data: product, error: productError } = await supabase
           .from("products")
           .select("id, nome, preco_vista, imagens, estado, estoque, capacidade, cor")
           .eq("id", productId)
           .single();
+
+        if (productError) {
+          console.error("❌ Erro ao buscar produto:", productError);
+          throw productError;
+        }
 
         if (product) {
           const tempItem: CartItem = {
@@ -238,17 +263,27 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             products: product as any,
           };
           
+          console.log("📦 Adicionando item temporário ao estado local");
           setCartItems(prev => [...prev, tempItem]);
 
           supabase
             .from("cart_items")
             .insert({ user_id: userId, product_id: productId, quantidade })
-            .select()
+            .select(`
+              id,
+              user_id,
+              product_id,
+              quantidade,
+              created_at,
+              updated_at
+            `)
             .single()
             .then(({ data, error }) => {
               if (error) {
+                console.error("❌ Erro ao inserir no banco:", error);
                 fetchCart(true);
               } else if (data) {
+                console.log("✅ Item inserido no banco com id:", data.id);
                 setCartItems(prev => 
                   prev.map(item => item.id === tempItem.id ? { ...item, id: data.id } : item)
                 );
@@ -259,6 +294,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       
       return true;
     } catch (error: any) {
+      console.error("❌ Erro fatal ao adicionar ao carrinho:", error);
       await fetchCart(true);
       toast({
         title: "Erro ao adicionar",
@@ -431,7 +467,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [processOfflineQueue, toast]);
 
-  // Fetch inicial e realtime subscription
+  // Fetch inicial
   useEffect(() => {
     fetchCart();
 
@@ -441,7 +477,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
     window.addEventListener('storage', handleStorageChange);
 
-    // Realtime subscription para sincronização entre devices
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [fetchCart]);
+
+  // Realtime subscription separada que depende do userId
+  useEffect(() => {
+    if (!cachedUserId) {
+      console.log("⚠️ Subscription ignorada: usuário não autenticado");
+      return;
+    }
+
+    console.log("🔄 Criando subscription do carrinho para userId:", cachedUserId);
+
     const channel = supabase
       .channel('cart_changes')
       .on(
@@ -452,14 +501,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           table: 'cart_items',
           filter: `user_id=eq.${cachedUserId}`,
         },
-        () => {
+        (payload) => {
+          console.log("📦 Mudança no carrinho detectada:", payload.eventType);
           fetchCart(true);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("🔌 Status da subscription:", status);
+      });
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      console.log("🔌 Removendo subscription do carrinho");
       supabase.removeChannel(channel);
     };
   }, [fetchCart]);
