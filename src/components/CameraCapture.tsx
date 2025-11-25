@@ -54,15 +54,17 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
 
   const videoConstraints = {
     facingMode: guideType === 'selfie' ? 'user' : 'environment',
-    width: { ideal: 1920 },
-    height: { ideal: 1080 }
+    width: { ideal: 3840, min: 1920 },
+    height: { ideal: 2160, min: 1080 },
+    aspectRatio: 16/9,
+    frameRate: { ideal: 30, min: 24 }
   };
 
 
   const compressImage = async (canvas: HTMLCanvasElement): Promise<{ blob: Blob; quality: number }> => {
-    const MAX_WIDTH = 1920;
-    const MAX_HEIGHT = 1920;
-    const TARGET_SIZE_KB = 500;
+    const MAX_WIDTH = 2560;
+    const MAX_HEIGHT = 2560;
+    const TARGET_SIZE_KB = 800;
 
     let width = canvas.width;
     let height = canvas.height;
@@ -86,10 +88,10 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       }
     }
 
-    let quality = 0.9;
+    let quality = 0.95;
     let blob: Blob | null = null;
 
-    while (quality > 0.5) {
+    while (quality > 0.7) {
       blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob((b) => resolve(b), 'image/jpeg', quality);
       });
@@ -97,11 +99,11 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
       if (!blob) break;
 
       const sizeKB = blob.size / 1024;
-      if (sizeKB <= TARGET_SIZE_KB || quality <= 0.5) {
+      if (sizeKB <= TARGET_SIZE_KB || quality <= 0.7) {
         break;
       }
 
-      quality -= 0.1;
+      quality -= 0.05;
     }
 
     return { blob: blob!, quality };
@@ -322,26 +324,8 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
               }}
             />
             
-            {cameraReady && (
+            {cameraReady && guideType === 'selfie' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none animate-fade-in">
-                {guideType === 'document' && (
-                  <div className="relative">
-                    <div className="w-[90%] max-w-lg h-[60vh] border-4 border-white/80 rounded-2xl shadow-2xl shadow-primary/30 backdrop-blur-sm">
-                      {/* Cantos decorativos animados */}
-                      <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-2xl animate-pulse" />
-                      <div className="absolute -top-1 -right-1 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-2xl animate-pulse" style={{ animationDelay: '0.2s' }} />
-                      <div className="absolute -bottom-1 -left-1 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-2xl animate-pulse" style={{ animationDelay: '0.4s' }} />
-                      <div className="absolute -bottom-1 -right-1 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-2xl animate-pulse" style={{ animationDelay: '0.6s' }} />
-                    </div>
-                    <div className="absolute -top-16 left-0 right-0 text-center">
-                      <div className="inline-block bg-gradient-to-r from-black/90 to-black/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 shadow-2xl">
-                        <span className="text-white text-base font-semibold">
-                          📄 Posicione o documento dentro do quadro
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
                 {guideType === 'selfie' && (
                   <div className="relative animate-scale-in">
                     <div 
@@ -380,6 +364,16 @@ export default function CameraCapture({ onCapture, label, guideType, captured }:
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+            
+            {cameraReady && guideType === 'document' && (
+              <div className="absolute top-6 left-1/2 -translate-x-1/2 z-10 animate-fade-in">
+                <div className="inline-block bg-gradient-to-r from-black/90 to-black/80 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/20 shadow-2xl">
+                  <span className="text-white text-base font-semibold">
+                    📄 Posicione o documento e capture
+                  </span>
+                </div>
               </div>
             )}
           </div>
