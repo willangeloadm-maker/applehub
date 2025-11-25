@@ -6,11 +6,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { Search, UserCheck, UserX, Eye, ZoomIn, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, UserCheck, UserX, Eye, ZoomIn, X, ChevronLeft, ChevronRight, Trash2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Pagination, PaginationContent, PaginationItem } from '@/components/ui/pagination';
 import { formatInTimeZone } from 'date-fns-tz';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface User {
   id: string;
@@ -43,6 +44,12 @@ export default function AdminUsers() {
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [deleteAllPassword, setDeleteAllPassword] = useState('');
+  const [deleteAllConfirmation, setDeleteAllConfirmation] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -167,6 +174,84 @@ export default function AdminUsers() {
     setCurrentPage(1);
   }, [searchTerm]);
 
+  const handleDeleteUser = async () => {
+    if (!deleteUserId || !deletePassword) return;
+    
+    setIsDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: {
+          userId: deleteUserId,
+          adminPassword: deletePassword
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Sucesso",
+        description: "Usuário excluído com sucesso",
+      });
+
+      setDeleteUserId(null);
+      setDeletePassword('');
+      loadUsers();
+    } catch (error: any) {
+      console.error('Erro ao excluir usuário:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao excluir usuário",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteAllUsers = async () => {
+    if (!deleteAllPassword || deleteAllConfirmation !== 'DELETAR TODOS') {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos corretamente",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('delete-all-users', {
+        body: {
+          adminPassword: deleteAllPassword,
+          confirmationText: deleteAllConfirmation
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Sucesso",
+        description: data.message || "Usuários excluídos com sucesso",
+      });
+
+      setShowDeleteAllDialog(false);
+      setDeleteAllPassword('');
+      setDeleteAllConfirmation('');
+      loadUsers();
+    } catch (error: any) {
+      console.error('Erro ao excluir usuários:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao excluir usuários",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const getVerificationBadge = (userId: string) => {
     const verification = verifications[userId];
     if (!verification) {
@@ -188,8 +273,18 @@ export default function AdminUsers() {
   return (
     <AppLayout>
       <div className="container mx-auto p-4 sm:p-6 max-w-full">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold">Gestão de Usuários</h1>
+          <Button
+            variant="destructive"
+            size="lg"
+            onClick={() => setShowDeleteAllDialog(true)}
+            disabled={users.length === 0}
+            className="w-full sm:w-auto"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Excluir Todos os Usuários
+          </Button>
         </div>
 
         {loading ? (
@@ -243,13 +338,22 @@ export default function AdminUsers() {
                         <TableCell>{getVerificationBadge(user.id)}</TableCell>
                         <TableCell>{formatInTimeZone(new Date(user.created_at), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm')}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => viewUserDetails(user)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => viewUserDetails(user)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setDeleteUserId(user.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -600,6 +704,120 @@ export default function AdminUsers() {
             />
           </div>
         )}
+
+        {/* Dialog de confirmação para deletar usuário individual */}
+        <AlertDialog open={!!deleteUserId} onOpenChange={() => setDeleteUserId(null)}>
+          <AlertDialogContent className="bg-background border-2">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                Confirmar Exclusão de Usuário
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4">
+                <p>Esta ação é <strong>irreversível</strong>. Todos os dados do usuário serão permanentemente excluídos, incluindo:</p>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li>Perfil e informações pessoais</li>
+                  <li>Pedidos e histórico de compras</li>
+                  <li>Análises de crédito</li>
+                  <li>Transações financeiras</li>
+                  <li>Documentos de verificação</li>
+                </ul>
+                <div className="pt-4">
+                  <label className="text-sm font-medium">Digite a senha de administrador para confirmar:</label>
+                  <Input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Senha de admin"
+                    className="mt-2"
+                    disabled={isDeleting}
+                  />
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteUser}
+                disabled={!deletePassword || isDeleting}
+              >
+                {isDeleting ? 'Excluindo...' : 'Excluir Usuário'}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Dialog de confirmação para deletar todos os usuários */}
+        <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+          <AlertDialogContent className="bg-background border-2 max-w-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive text-xl">
+                <AlertTriangle className="w-6 h-6" />
+                ⚠️ ATENÇÃO: Exclusão em Massa
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-4">
+                <div className="bg-destructive/10 border-2 border-destructive rounded-lg p-4">
+                  <p className="font-bold text-destructive text-base">ESTA É UMA OPERAÇÃO EXTREMAMENTE PERIGOSA!</p>
+                  <p className="mt-2">Você está prestes a excluir <strong>TODOS OS USUÁRIOS CLIENTES</strong> do sistema permanentemente.</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="font-semibold">Serão excluídos permanentemente:</p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Todos os perfis de usuários clientes</li>
+                    <li>Todos os pedidos e históricos de compras</li>
+                    <li>Todas as análises de crédito</li>
+                    <li>Todas as transações financeiras</li>
+                    <li>Todos os documentos de verificação</li>
+                    <li>Todas as contas de autenticação</li>
+                  </ul>
+                </div>
+
+                <div className="bg-yellow-500/10 border border-yellow-500 rounded p-3">
+                  <p className="text-sm font-medium">⚠️ Usuários com role "admin" NÃO serão excluídos</p>
+                </div>
+
+                <div className="space-y-3 pt-4">
+                  <div>
+                    <label className="text-sm font-medium">Digite a senha de administrador:</label>
+                    <Input
+                      type="password"
+                      value={deleteAllPassword}
+                      onChange={(e) => setDeleteAllPassword(e.target.value)}
+                      placeholder="Senha de admin"
+                      className="mt-2"
+                      disabled={isDeleting}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-sm font-medium">Digite exatamente "DELETAR TODOS" para confirmar:</label>
+                    <Input
+                      type="text"
+                      value={deleteAllConfirmation}
+                      onChange={(e) => setDeleteAllConfirmation(e.target.value)}
+                      placeholder="DELETAR TODOS"
+                      className="mt-2"
+                      disabled={isDeleting}
+                    />
+                  </div>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAllUsers}
+                disabled={!deleteAllPassword || deleteAllConfirmation !== 'DELETAR TODOS' || isDeleting}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                {isDeleting ? 'Excluindo...' : 'EXCLUIR TODOS OS USUÁRIOS'}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AppLayout>
   );
