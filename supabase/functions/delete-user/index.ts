@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
     // Deletar análises de crédito
     await supabaseAdmin.from('credit_analyses').delete().eq('user_id', userId);
     
-    // Deletar items e histórico de pedidos, depois os pedidos
+    // Buscar pedidos do usuário para deletar dados relacionados
     const { data: orders } = await supabaseAdmin
       .from('orders')
       .select('id')
@@ -86,11 +86,19 @@ Deno.serve(async (req) => {
     
     if (orders && orders.length > 0) {
       for (const order of orders) {
+        // Deletar logs da API Pagar.me relacionados ao pedido
+        await supabaseAdmin.from('pagarme_api_logs').delete().eq('order_id', order.id);
+        // Deletar itens do pedido
         await supabaseAdmin.from('order_items').delete().eq('order_id', order.id);
+        // Deletar histórico de status
         await supabaseAdmin.from('order_status_history').delete().eq('order_id', order.id);
       }
+      // Agora deletar os pedidos
       await supabaseAdmin.from('orders').delete().eq('user_id', userId);
     }
+    
+    // Deletar logs da API Pagar.me relacionados ao usuário
+    await supabaseAdmin.from('pagarme_api_logs').delete().eq('user_id', userId);
     
     // Deletar verificação de conta
     await supabaseAdmin.from('account_verifications').delete().eq('user_id', userId);

@@ -26,47 +26,59 @@ serve(async (req) => {
     console.log("Iniciando limpeza de dados...");
 
     // Deletar na ordem correta devido às foreign keys
-    // 1. Histórico de status de pedidos
+    // 1. Logs da API Pagar.me (tem FK para orders e transactions)
+    await supabase.from("pagarme_api_logs").delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    console.log("Logs da API Pagar.me apagados");
+
+    // 2. Histórico de status de pedidos
     await supabase.from("order_status_history").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Histórico de status apagado");
 
-    // 2. Itens de pedidos
+    // 3. Itens de pedidos
     await supabase.from("order_items").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Itens de pedidos apagados");
 
-    // 3. Transações
+    // 4. Avaliações de produtos
+    await supabase.from("product_reviews").delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    console.log("Avaliações de produtos apagadas");
+
+    // 5. Uso de cupons
+    await supabase.from("coupon_usage").delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    console.log("Uso de cupons apagado");
+
+    // 6. Transações
     await supabase.from("transactions").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Transações apagadas");
 
-    // 4. Análises de crédito
+    // 7. Análises de crédito
     await supabase.from("credit_analyses").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Análises de crédito apagadas");
 
-    // 5. Pedidos
+    // 8. Pedidos
     await supabase.from("orders").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Pedidos apagados");
 
-    // 6. Itens do carrinho
+    // 9. Itens do carrinho
     await supabase.from("cart_items").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Itens do carrinho apagados");
 
-    // 7. Favoritos
+    // 10. Favoritos
     await supabase.from("favorites").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Favoritos apagados");
 
-    // 8. Verificações de conta
+    // 11. Verificações de conta
     await supabase.from("account_verifications").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Verificações apagadas");
 
-    // 9. Tentativas de pagamento com cartão
+    // 12. Tentativas de pagamento com cartão
     await supabase.from("card_payment_attempts").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Tentativas de pagamento apagadas");
 
-    // 10. Perfis de usuários
+    // 13. Perfis de usuários
     await supabase.from("profiles").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Perfis apagados");
 
-    // 11. Roles de usuários
+    // 14. Roles de usuários
     await supabase.from("user_roles").delete().neq('id', '00000000-0000-0000-0000-000000000000');
     console.log("Roles de usuários apagadas");
 
