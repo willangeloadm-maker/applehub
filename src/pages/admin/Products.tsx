@@ -212,48 +212,76 @@ export default function AdminProducts() {
     if (previewImages.length === 0) return;
 
     setUploadingImages(true);
+    
     try {
-      const uploadPromises = previewImages.map(async ({ file }) => {
-        // Comprimir imagem
-        const compressedFile = await compressImage(file);
-        
-        const fileExt = compressedFile.name.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `products/${fileName}`;
+      // Verificar autenticação do usuário
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        throw new Error("Você precisa estar autenticado como administrador");
+      }
 
-        const { error: uploadError } = await supabase.storage
-          .from('product-images')
-          .upload(filePath, compressedFile, {
-            cacheControl: '3600',
-            upsert: false
-          });
+      console.log("Iniciando upload de", previewImages.length, "imagens...");
+      
+      const uploadedUrls: string[] = [];
+      
+      // Upload sequencial para melhor controle de erros
+      for (const { file } of previewImages) {
+        try {
+          // Comprimir imagem
+          const compressedFile = await compressImage(file);
+          
+          const fileExt = compressedFile.name.split('.').pop();
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const filePath = `products/${fileName}`;
 
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          throw new Error(`Erro ao fazer upload de ${file.name}: ${uploadError.message}`);
+          console.log("Enviando arquivo:", filePath);
+
+          const { data, error: uploadError } = await supabase.storage
+            .from('product-images')
+            .upload(filePath, compressedFile, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadError) {
+            console.error('Erro detalhado do upload:', uploadError);
+            throw new Error(`Falha ao enviar ${file.name}: ${uploadError.message}`);
+          }
+
+          console.log("Upload bem-sucedido:", data);
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(filePath);
+
+          uploadedUrls.push(publicUrl);
+          console.log("URL pública gerada:", publicUrl);
+          
+        } catch (fileError: any) {
+          console.error("Erro ao processar arquivo:", file.name, fileError);
+          throw fileError;
         }
+      }
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('product-images')
-          .getPublicUrl(filePath);
-
-        return publicUrl;
-      });
-
-      const urls = await Promise.all(uploadPromises);
-      setUploadedImages(prev => [...prev, ...urls]);
+      setUploadedImages(prev => [...prev, ...uploadedUrls]);
       
       // Limpar previews
       previewImages.forEach(({ preview }) => URL.revokeObjectURL(preview));
       setPreviewImages([]);
       
-      toast({ description: `${urls.length} imagem(ns) enviada(s) e comprimida(s) com sucesso` });
+      toast({ 
+        description: `${uploadedUrls.length} imagem(ns) enviada(s) com sucesso!`,
+        duration: 3000
+      });
+      
     } catch (error: any) {
-      console.error('Erro ao fazer upload:', error);
+      console.error('Erro completo ao fazer upload:', error);
       toast({
         title: "Erro ao enviar imagens",
-        description: error.message || "Verifique se você está autenticado como administrador",
-        variant: "destructive"
+        description: error.message || "Erro desconhecido ao fazer upload",
+        variant: "destructive",
+        duration: 5000
       });
     } finally {
       setUploadingImages(false);
