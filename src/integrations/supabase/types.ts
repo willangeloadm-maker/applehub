@@ -444,6 +444,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          codigo_rastreio: string | null
           created_at: string | null
           endereco_entrega: Json
           frete: number
@@ -460,6 +461,7 @@ export type Database = {
           valor_parcela: number | null
         }
         Insert: {
+          codigo_rastreio?: string | null
           created_at?: string | null
           endereco_entrega: Json
           frete?: number
@@ -476,6 +478,7 @@ export type Database = {
           valor_parcela?: number | null
         }
         Update: {
+          codigo_rastreio?: string | null
           created_at?: string | null
           endereco_entrega?: Json
           frete?: number
@@ -944,6 +947,9 @@ export type Database = {
         | "em_transporte"
         | "entregue"
         | "cancelado"
+        | "pedido_enviado"
+        | "pedido_entregue"
+        | "entrega_nao_realizada"
       payment_type: "pix" | "cartao" | "parcelamento_applehub"
       product_state: "novo" | "seminovo" | "usado"
     }
@@ -1082,6 +1088,9 @@ export const Constants = {
         "em_transporte",
         "entregue",
         "cancelado",
+        "pedido_enviado",
+        "pedido_entregue",
+        "entrega_nao_realizada",
       ],
       payment_type: ["pix", "cartao", "parcelamento_applehub"],
       product_state: ["novo", "seminovo", "usado"],

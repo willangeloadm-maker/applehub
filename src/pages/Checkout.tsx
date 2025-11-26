@@ -334,6 +334,10 @@ const Checkout = () => {
       const desconto = calcularDesconto();
       const total = subtotal - desconto + frete;
       const numeroPedido = `APH${Date.now()}`;
+      
+      // Importar função de geração de código de rastreio
+      const { generateTrackingCode } = await import("@/lib/trackingCode");
+      const codigoRastreio = generateTrackingCode();
 
       const endereco = useNewAddress ? newAddress : {
         cep: profile.cep,
@@ -345,12 +349,13 @@ const Checkout = () => {
         estado: profile.estado,
       };
 
-      // Criar pedido
+      // Criar pedido com código de rastreio e status inicial "em_separacao"
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
           user_id: user.id,
           numero_pedido: numeroPedido,
+          codigo_rastreio: codigoRastreio,
           subtotal,
           frete,
           total,
@@ -358,7 +363,7 @@ const Checkout = () => {
           parcelas: paymentType === "parcelamento_applehub" ? parcelas : null,
           valor_parcela: paymentType === "parcelamento_applehub" ? calcularValorParcela(total, parcelas) : null,
           endereco_entrega: endereco,
-          status: paymentType === "parcelamento_applehub" ? "em_analise" : "em_analise",
+          status: "em_separacao",
         })
         .select()
         .single();
@@ -381,15 +386,13 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // Criar histórico de status
+      // Criar histórico de status inicial
       const { error: historyError } = await supabase
         .from("order_status_history")
         .insert({
           order_id: order.id,
-          status: "em_analise",
-          observacao: paymentType === "parcelamento_applehub" 
-            ? "Pedido em análise de crédito"
-            : "Aguardando pagamento PIX",
+          status: "em_separacao",
+          observacao: "Pedido confirmado. Dentro de algumas horas o pedido sairá para envio.",
         });
 
       if (historyError) throw historyError;
@@ -465,12 +468,8 @@ const Checkout = () => {
       // Limpar carrinho
       await clearCart();
 
-      toast({
-        title: "Pedido realizado!",
-        description: `Número do pedido: ${numeroPedido}`,
-      });
-
-      navigate("/pedidos");
+      // Redirecionar para página de confirmação
+      navigate(`/confirmacao-pedido?order=${order.id}`);
     } catch (error: any) {
       toast({
         title: "Erro ao finalizar pedido",

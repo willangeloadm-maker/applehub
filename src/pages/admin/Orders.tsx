@@ -16,10 +16,11 @@ import { Search, Filter } from 'lucide-react';
 interface Order {
   id: string;
   numero_pedido: string;
-  status: 'em_analise' | 'aprovado' | 'reprovado' | 'em_separacao' | 'em_transporte' | 'entregue' | 'cancelado' | 'pagamento_confirmado';
+  status: 'em_analise' | 'aprovado' | 'reprovado' | 'em_separacao' | 'em_transporte' | 'entregue' | 'cancelado' | 'pagamento_confirmado' | 'pedido_enviado' | 'pedido_entregue' | 'entrega_nao_realizada';
   total: number;
   created_at: string;
   user_id: string;
+  codigo_rastreio?: string;
 }
 
 interface OrderWithProfile extends Order {
@@ -32,9 +33,11 @@ const statusOptions = [
   { value: 'em_analise', label: 'Em Análise' },
   { value: 'aprovado', label: 'Aprovado' },
   { value: 'reprovado', label: 'Reprovado' },
-  { value: 'em_separacao', label: 'Em Separação' },
-  { value: 'em_transporte', label: 'Em Transporte' },
-  { value: 'entregue', label: 'Entregue' },
+  { value: 'pagamento_confirmado', label: 'Pagamento Confirmado' },
+  { value: 'em_separacao', label: 'Separando o Pedido' },
+  { value: 'pedido_enviado', label: 'Pedido Enviado' },
+  { value: 'pedido_entregue', label: 'Pedido Entregue' },
+  { value: 'entrega_nao_realizada', label: 'Não foi possível entregar' },
   { value: 'cancelado', label: 'Cancelado' }
 ];
 
@@ -44,7 +47,7 @@ export default function AdminOrders() {
   const [filteredOrders, setFilteredOrders] = useState<OrderWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderWithProfile | null>(null);
-  const [newStatus, setNewStatus] = useState<'em_analise' | 'aprovado' | 'reprovado' | 'em_separacao' | 'em_transporte' | 'entregue' | 'cancelado' | 'pagamento_confirmado'>('em_analise');
+  const [newStatus, setNewStatus] = useState<Order['status']>('em_analise');
   const [observacao, setObservacao] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,7 +61,7 @@ export default function AdminOrders() {
     try {
       const { data, error } = await supabase
         .from('orders')
-        .select('id, numero_pedido, status, total, created_at, user_id')
+        .select('id, numero_pedido, status, total, created_at, user_id, codigo_rastreio')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -212,6 +215,7 @@ export default function AdminOrders() {
                   <TableRow>
                     <TableHead>Número</TableHead>
                     <TableHead>Cliente</TableHead>
+                    <TableHead>Rastreio</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Data</TableHead>
@@ -221,15 +225,16 @@ export default function AdminOrders() {
                 <TableBody>
                   {filteredOrders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         Nenhum pedido encontrado
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredOrders.map((order) => (
                     <TableRow key={order.id}>
-                      <TableCell className="font-mono">{order.numero_pedido}</TableCell>
+                      <TableCell className="font-mono text-xs">{order.numero_pedido}</TableCell>
                       <TableCell>{order.profiles?.nome_completo}</TableCell>
+                      <TableCell className="font-mono text-xs">{order.codigo_rastreio || '-'}</TableCell>
                       <TableCell>R$ {order.total.toFixed(2)}</TableCell>
                       <TableCell>
                         <span className="px-2 py-1 rounded-full text-xs bg-secondary">
