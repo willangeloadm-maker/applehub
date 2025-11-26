@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import { toast } from "sonner";
 
@@ -162,84 +162,147 @@ export const ProductReviews = ({ productId }: ProductReviewsProps) => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Avaliações dos Clientes</h2>
-          {reviews.length > 0 && (
-            <div className="flex items-center gap-2 mt-2">
-              {renderStars(Math.round(parseFloat(averageRating)))}
-              <span className="text-lg font-semibold">{averageRating}</span>
-              <span className="text-muted-foreground">
-                ({reviews.length} {reviews.length === 1 ? "avaliação" : "avaliações"})
-              </span>
+    <div className="space-y-6 mt-12">
+      {/* Cabeçalho com estatísticas */}
+      <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h2 className="text-2xl lg:text-3xl font-bold mb-2">Avaliações dos Clientes</h2>
+              {reviews.length > 0 && (
+                <div className="flex items-center gap-3">
+                  {renderStars(Math.round(parseFloat(averageRating)))}
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold text-primary">{averageRating}</span>
+                    <span className="text-muted-foreground text-sm">
+                      de 5
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+            {reviews.length > 0 && (
+              <div className="text-center md:text-right">
+                <div className="text-4xl font-bold text-primary">{reviews.length}</div>
+                <div className="text-sm text-muted-foreground">
+                  {reviews.length === 1 ? "avaliação" : "avaliações"}
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Formulário de avaliação */}
       {userPurchases.length > 0 && !hasReviewed && (
-        <Card className="p-6 space-y-4">
-          <h3 className="font-semibold">Deixe sua avaliação</h3>
-          <div>
-            <label className="text-sm font-medium mb-2 block">Sua nota:</label>
-            {renderStars(rating, true)}
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              Comentário (opcional):
-            </label>
-            <Textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Compartilhe sua experiência com este produto..."
-              className="min-h-[100px]"
-              maxLength={500}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              {comment.length}/500 caracteres
-            </p>
-          </div>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="w-full"
-          >
-            {isSubmitting ? "Enviando..." : "Enviar Avaliação"}
-          </Button>
+        <Card className="border-2 border-primary/20 shadow-lg">
+          <CardContent className="p-6 space-y-5">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-6 bg-primary rounded-full" />
+              <h3 className="text-lg font-bold">Deixe sua avaliação</h3>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Sua nota:</label>
+              <div className="bg-secondary/50 rounded-lg p-4 w-fit">
+                {renderStars(rating, true)}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">
+                Comentário (opcional):
+              </label>
+              <Textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Compartilhe sua experiência com este produto..."
+                className="min-h-[120px] resize-none"
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground">
+                {comment.length}/500 caracteres
+              </p>
+            </div>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="w-full h-12 text-base font-semibold"
+              size="lg"
+            >
+              {isSubmitting ? "Enviando..." : "Publicar Avaliação"}
+            </Button>
+          </CardContent>
         </Card>
       )}
 
       {/* Lista de avaliações */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {reviews.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            Seja o primeiro a avaliar este produto!
-          </p>
-        ) : (
-          reviews.map((review) => (
-            <Card key={review.id} className="p-4">
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <p className="font-semibold">
-                    {review.profiles?.nome_completo || "Cliente AppleHub"}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {renderStars(review.rating)}
-                    <span className="text-sm text-muted-foreground">
-                      {new Date(review.created_at).toLocaleDateString("pt-BR")}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              {review.comment && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  {review.comment}
+          <Card className="border-dashed">
+            <CardContent className="py-12">
+              <div className="text-center space-y-2">
+                <Star className="w-12 h-12 mx-auto text-muted-foreground/50" />
+                <p className="text-lg font-medium text-muted-foreground">
+                  Nenhuma avaliação ainda
                 </p>
-              )}
-            </Card>
-          ))
+                <p className="text-sm text-muted-foreground">
+                  Seja o primeiro a compartilhar sua opinião!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-sm font-medium text-muted-foreground">
+                {reviews.length} {reviews.length === 1 ? "avaliação" : "avaliações"}
+              </span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+            {reviews.map((review, index) => (
+              <Card 
+                key={review.id} 
+                className="hover:shadow-md transition-shadow duration-200 overflow-hidden"
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-4">
+                    {/* Avatar placeholder */}
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center flex-shrink-0">
+                      <span className="text-lg font-bold text-primary">
+                        {(review.profiles?.nome_completo || "C")[0].toUpperCase()}
+                      </span>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                        <div>
+                          <p className="font-semibold text-base">
+                            {review.profiles?.nome_completo || "Cliente AppleHub"}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {renderStars(review.rating)}
+                          </div>
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(review.created_at).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric"
+                          })}
+                        </span>
+                      </div>
+                      
+                      {review.comment && (
+                        <p className="text-sm leading-relaxed text-foreground/80 mt-3 bg-secondary/30 rounded-lg p-3">
+                          "{review.comment}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </>
         )}
       </div>
     </div>
