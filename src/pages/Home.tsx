@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
-import iphone17Hero from "@/assets/iphone-17-pro-max-hero.jpg";
+import iphone17Hero from "@/assets/iphone-17-pro-max-colors.png";
 
 interface Product {
   id: string;
