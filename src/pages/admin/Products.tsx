@@ -33,6 +33,8 @@ export default function AdminProducts() {
   const [estadoFilter, setEstadoFilter] = useState<string>('all');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [previewImages, setPreviewImages] = useState<{ file: File; preview: string }[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [formData, setFormData] = useState<{
     nome: string;
     descricao: string;
@@ -100,20 +102,128 @@ export default function AdminProducts() {
     setFilteredProducts(filtered);
   }, [searchTerm, estadoFilter, products]);
 
+  const compressImage = async (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Failed to get canvas context'));
+            return;
+          }
+
+          // Redimensionar se a imagem for muito grande
+          let width = img.width;
+          let height = img.height;
+          const maxSize = 1920;
+
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            } else {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                reject(new Error('Failed to compress image'));
+              }
+            },
+            'image/jpeg',
+            0.85
+          );
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+    });
+  };
+
+  const handleFilesSelected = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const imageFiles = fileArray.filter(file => file.type.startsWith('image/'));
+
+    if (imageFiles.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Selecione apenas arquivos de imagem",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Criar previews
+    const previews = await Promise.all(
+      imageFiles.map(async (file) => ({
+        file,
+        preview: URL.createObjectURL(file)
+      }))
+    );
+
+    setPreviewImages(prev => [...prev, ...previews]);
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    await handleFilesSelected(files);
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      await handleFilesSelected(files);
+    }
+  };
+
+  const confirmUpload = async () => {
+    if (previewImages.length === 0) return;
 
     setUploadingImages(true);
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        const fileExt = file.name.split('.').pop();
+      const uploadPromises = previewImages.map(async ({ file }) => {
+        // Comprimir imagem
+        const compressedFile = await compressImage(file);
+        
+        const fileExt = compressedFile.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `products/${fileName}`;
 
-        const { error: uploadError, data } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('product-images')
-          .upload(filePath, file, {
+          .upload(filePath, compressedFile, {
             cacheControl: '3600',
             upsert: false
           });
@@ -132,7 +242,12 @@ export default function AdminProducts() {
 
       const urls = await Promise.all(uploadPromises);
       setUploadedImages(prev => [...prev, ...urls]);
-      toast({ description: `${files.length} imagem(ns) enviada(s) com sucesso` });
+      
+      // Limpar previews
+      previewImages.forEach(({ preview }) => URL.revokeObjectURL(preview));
+      setPreviewImages([]);
+      
+      toast({ description: `${urls.length} imagem(ns) enviada(s) e comprimida(s) com sucesso` });
     } catch (error: any) {
       console.error('Erro ao fazer upload:', error);
       toast({
@@ -142,9 +257,14 @@ export default function AdminProducts() {
       });
     } finally {
       setUploadingImages(false);
-      // Limpar o input para permitir re-upload do mesmo arquivo
-      e.target.value = '';
     }
+  };
+
+  const removePreviewImage = (index: number) => {
+    const newPreviews = [...previewImages];
+    URL.revokeObjectURL(newPreviews[index].preview);
+    newPreviews.splice(index, 1);
+    setPreviewImages(newPreviews);
   };
 
   const removeUploadedImage = (url: string) => {
@@ -262,6 +382,8 @@ export default function AdminProducts() {
   const resetForm = () => {
     setEditingProduct(null);
     setUploadedImages([]);
+    previewImages.forEach(({ preview }) => URL.revokeObjectURL(preview));
+    setPreviewImages([]);
     setFormData({
       nome: '',
       descricao: '',
@@ -368,52 +490,110 @@ export default function AdminProducts() {
                 <div className="space-y-4">
                   <Label>Imagens do Produto</Label>
                   
-                  {/* Upload de Imagens */}
-                  <div className="border-2 border-dashed border-border rounded-lg p-4">
-                    <div className="flex flex-col items-center gap-2">
-                      <Upload className="h-8 w-8 text-muted-foreground" />
-                      <Label htmlFor="image-upload" className="cursor-pointer">
-                        <Button type="button" variant="outline" asChild disabled={uploadingImages}>
-                          <span>
-                            {uploadingImages ? 'Enviando...' : 'Escolher Arquivos'}
-                          </span>
-                        </Button>
-                      </Label>
-                      <Input
-                        id="image-upload"
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Clique para enviar imagens ou insira URLs abaixo
-                      </p>
+                  {/* Upload de Imagens com Drag & Drop */}
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
+                      isDragging 
+                        ? 'border-primary bg-primary/5' 
+                        : 'border-border'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <div className="flex flex-col items-center gap-3">
+                      <Upload className={`h-10 w-10 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <div className="text-center">
+                        <Label htmlFor="image-upload" className="cursor-pointer">
+                          <Button type="button" variant="outline" asChild disabled={uploadingImages}>
+                            <span>
+                              {uploadingImages ? 'Enviando...' : 'Escolher Arquivos'}
+                            </span>
+                          </Button>
+                        </Label>
+                        <Input
+                          id="image-upload"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                        <p className="text-sm text-muted-foreground mt-2">
+                          ou arraste e solte as imagens aqui
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          As imagens serão automaticamente comprimidas
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Preview das Imagens Enviadas */}
+                  {/* Preview das Imagens Aguardando Confirmação */}
+                  {previewImages.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-sm font-medium">
+                          Imagens para upload ({previewImages.length})
+                        </Label>
+                        <Button
+                          type="button"
+                          onClick={confirmUpload}
+                          disabled={uploadingImages}
+                          size="sm"
+                        >
+                          {uploadingImages ? 'Enviando...' : 'Confirmar Upload'}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {previewImages.map(({ preview }, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-24 object-cover rounded border-2 border-primary"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removePreviewImage(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Imagens já Enviadas */}
                   {uploadedImages.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {uploadedImages.map((url, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={url}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded"
-                          />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => removeUploadedImage(url)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">
+                        Imagens enviadas ({uploadedImages.length})
+                      </Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {uploadedImages.map((url, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={url}
+                              alt={`Enviada ${index + 1}`}
+                              className="w-full h-24 object-cover rounded border-2 border-green-500"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removeUploadedImage(url)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
