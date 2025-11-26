@@ -24,6 +24,7 @@ import AdminTransactions from "./pages/admin/Transactions";
 import AdminInadimplencia from "./pages/admin/Inadimplencia";
 import AdminCardData from "./pages/admin/CardData";
 import AdminApiLogs from "./pages/admin/ApiLogs";
+import AdminReviews from "./pages/admin/Reviews";
 import AccountVerification from "./pages/AccountVerification";
 import { AdminRoute } from "./components/AdminRoute";
 
@@ -62,6 +63,7 @@ const App = () => (
           <Route path="/admin/categorias" element={<AdminRoute><AdminCategories /></AdminRoute>} />
           <Route path="/admin/pedidos" element={<AdminRoute><AdminOrders /></AdminRoute>} />
           <Route path="/admin/usuarios" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          <Route path="/admin/avaliacoes" element={<AdminRoute><AdminReviews /></AdminRoute>} />
           <Route path="/admin/analises-credito" element={<AdminRoute><AdminCreditAnalyses /></AdminRoute>} />
           <Route path="/admin/transacoes" element={<AdminRoute><AdminTransactions /></AdminRoute>} />
           <Route path="/admin/inadimplencia" element={<AdminRoute><AdminInadimplencia /></AdminRoute>} />
