@@ -128,9 +128,19 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const getUserId = useCallback(async () => {
     if (cachedUserId) return cachedUserId;
     
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) cachedUserId = user.id;
-    return cachedUserId;
+    try {
+      const { data: { user }, error } = await Promise.race([
+        supabase.auth.getUser(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+      ]) as any;
+      
+      if (error) throw error;
+      if (user) cachedUserId = user.id;
+      return cachedUserId;
+    } catch (error) {
+      console.error("❌ Erro ao obter userId:", error);
+      return null;
+    }
   }, []);
 
   const fetchCart = useCallback(async (silent = false) => {
@@ -142,6 +152,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         console.log("⚠️ fetchCart: Usuário não autenticado");
         setCartItems([]);
         clearCartCache();
+        if (!silent) setLoading(false);
         return;
       }
 
