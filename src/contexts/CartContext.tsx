@@ -129,10 +129,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     if (cachedUserId) return cachedUserId;
     
     try {
-      const { data: { user }, error } = await Promise.race([
-        supabase.auth.getUser(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
-      ]) as any;
+      const { data: { user }, error } = await supabase.auth.getUser();
       
       if (error) throw error;
       if (user) cachedUserId = user.id;
@@ -478,9 +475,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [processOfflineQueue, toast]);
 
-  // Fetch inicial
+  // Fetch inicial - não bloquear a aplicação
   useEffect(() => {
-    fetchCart();
+    fetchCart(true); // Silent para não bloquear o carregamento inicial
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === CART_CACHE_KEY) fetchCart(true);
