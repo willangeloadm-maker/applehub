@@ -24,11 +24,13 @@ interface Product {
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [iphone17ProMaxId, setIphone17ProMaxId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     loadFeaturedProducts();
+    loadIphone17ProMax();
   }, []);
 
   const loadFeaturedProducts = async () => {
@@ -51,6 +53,23 @@ const Home = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadIphone17ProMax = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id")
+        .ilike("nome", "%iPhone 17 Pro Max%")
+        .eq("ativo", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) setIphone17ProMaxId(data.id);
+    } catch (error) {
+      console.error("Erro ao carregar iPhone 17 Pro Max:", error);
     }
   };
 
@@ -146,8 +165,8 @@ const Home = () => {
                         {(banner as any).footnote && (
                           <p className="text-xs lg:text-sm opacity-80 italic drop-shadow-md">{(banner as any).footnote}</p>
                         )}
-                        {(banner as any).highlight && (
-                          <Link to="/produtos">
+                        {(banner as any).highlight && iphone17ProMaxId && (
+                          <Link to={`/produtos/${iphone17ProMaxId}`}>
                             <Button size="lg" className="mt-4 bg-white text-orange-600 hover:bg-gray-100 font-bold shadow-lg">
                               Ver agora
                             </Button>
