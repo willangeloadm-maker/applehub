@@ -144,6 +144,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          atributos_permitidos: string[] | null
           created_at: string | null
           descricao: string | null
           id: string
@@ -152,6 +153,7 @@ export type Database = {
           slug: string
         }
         Insert: {
+          atributos_permitidos?: string[] | null
           created_at?: string | null
           descricao?: string | null
           id?: string
@@ -160,6 +162,7 @@ export type Database = {
           slug: string
         }
         Update: {
+          atributos_permitidos?: string[] | null
           created_at?: string | null
           descricao?: string | null
           id?: string
@@ -577,6 +580,38 @@ export type Database = {
         }
         Relationships: []
       }
+      product_attributes: {
+        Row: {
+          attribute_name: string
+          attribute_value: string
+          created_at: string | null
+          id: string
+          product_id: string
+        }
+        Insert: {
+          attribute_name: string
+          attribute_value: string
+          created_at?: string | null
+          id?: string
+          product_id: string
+        }
+        Update: {
+          attribute_name?: string
+          attribute_value?: string
+          created_at?: string | null
+          id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_attributes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_reviews: {
         Row: {
           comment: string | null
@@ -625,6 +660,57 @@ export type Database = {
           },
         ]
       }
+      product_variants: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          estoque: number
+          id: string
+          parent_product_id: string
+          preco_ajuste: number | null
+          sku: string | null
+          updated_at: string | null
+          variant_product_id: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          estoque?: number
+          id?: string
+          parent_product_id: string
+          preco_ajuste?: number | null
+          sku?: string | null
+          updated_at?: string | null
+          variant_product_id: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          estoque?: number
+          id?: string
+          parent_product_id?: string
+          preco_ajuste?: number | null
+          sku?: string | null
+          updated_at?: string | null
+          variant_product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_variants_variant_product_id_fkey"
+            columns: ["variant_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           ativo: boolean | null
@@ -641,6 +727,7 @@ export type Database = {
           id: string
           imagens: string[]
           nome: string
+          parent_product_id: string | null
           preco_vista: number
           tags: string[] | null
           updated_at: string | null
@@ -660,6 +747,7 @@ export type Database = {
           id?: string
           imagens?: string[]
           nome: string
+          parent_product_id?: string | null
           preco_vista: number
           tags?: string[] | null
           updated_at?: string | null
@@ -679,6 +767,7 @@ export type Database = {
           id?: string
           imagens?: string[]
           nome?: string
+          parent_product_id?: string | null
           preco_vista?: number
           tags?: string[] | null
           updated_at?: string | null
@@ -689,6 +778,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -832,6 +928,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_product_total_stock: { Args: { product_id: string }; Returns: number }
       get_user_email_by_cpf: { Args: { user_cpf: string }; Returns: string }
       get_user_email_by_id: { Args: { user_id: string }; Returns: string }
       get_user_email_by_phone: { Args: { user_phone: string }; Returns: string }
