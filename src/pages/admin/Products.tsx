@@ -108,14 +108,20 @@ export default function AdminProducts() {
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-        const filePath = `${fileName}`;
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `products/${fileName}`;
 
         const { error: uploadError, data } = await supabase.storage
           .from('product-images')
-          .upload(filePath, file);
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          throw new Error(`Erro ao fazer upload de ${file.name}: ${uploadError.message}`);
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('product-images')
@@ -127,15 +133,17 @@ export default function AdminProducts() {
       const urls = await Promise.all(uploadPromises);
       setUploadedImages(prev => [...prev, ...urls]);
       toast({ description: `${files.length} imagem(ns) enviada(s) com sucesso` });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao fazer upload:', error);
       toast({
-        title: "Erro",
-        description: "Erro ao enviar imagens",
+        title: "Erro ao enviar imagens",
+        description: error.message || "Verifique se você está autenticado como administrador",
         variant: "destructive"
       });
     } finally {
       setUploadingImages(false);
+      // Limpar o input para permitir re-upload do mesmo arquivo
+      e.target.value = '';
     }
   };
 
