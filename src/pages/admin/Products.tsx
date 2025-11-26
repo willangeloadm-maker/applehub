@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Filter, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Product {
@@ -31,6 +31,8 @@ export default function AdminProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('all');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [formData, setFormData] = useState<{
     nome: string;
     descricao: string;
@@ -98,10 +100,57 @@ export default function AdminProducts() {
     setFilteredProducts(filtered);
   }, [searchTerm, estadoFilter, products]);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingImages(true);
+    try {
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { error: uploadError, data } = await supabase.storage
+          .from('product-images')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(filePath);
+
+        return publicUrl;
+      });
+
+      const urls = await Promise.all(uploadPromises);
+      setUploadedImages(prev => [...prev, ...urls]);
+      toast({ description: `${files.length} imagem(ns) enviada(s) com sucesso` });
+    } catch (error) {
+      console.error('Erro ao fazer upload:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao enviar imagens",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const removeUploadedImage = (url: string) => {
+    setUploadedImages(prev => prev.filter(img => img !== url));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
+      // Combinar URLs digitadas com imagens enviadas
+      const manualUrls = formData.imagens ? formData.imagens.split(',').map(url => url.trim()).filter(url => url) : [];
+      const allImages = [...uploadedImages, ...manualUrls];
+
       const productData = {
         nome: formData.nome,
         descricao: formData.descricao,
@@ -110,7 +159,7 @@ export default function AdminProducts() {
         estoque: parseInt(formData.estoque),
         capacidade: formData.capacidade || null,
         cor: formData.cor || null,
-        imagens: formData.imagens ? formData.imagens.split(',').map(url => url.trim()) : [],
+        imagens: allImages,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
         destaque: formData.destaque,
         ativo: formData.ativo
@@ -136,10 +185,11 @@ export default function AdminProducts() {
       setDialogOpen(false);
       resetForm();
       loadProducts();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao salvar produto:', error);
       toast({
         title: "Erro",
-        description: "Erro ao salvar produto",
+        description: error.message || "Erro ao salvar produto",
         variant: "destructive"
       });
     }
@@ -203,6 +253,7 @@ export default function AdminProducts() {
 
   const resetForm = () => {
     setEditingProduct(null);
+    setUploadedImages([]);
     setFormData({
       nome: '',
       descricao: '',
@@ -306,13 +357,70 @@ export default function AdminProducts() {
                     placeholder="ex: Preto"
                   />
                 </div>
-                <div>
-                  <Label>URLs das Imagens (separadas por vírgula)</Label>
-                  <Textarea
-                    value={formData.imagens}
-                    onChange={(e) => setFormData({ ...formData, imagens: e.target.value })}
-                    placeholder="https://exemplo.com/imagem1.jpg, https://exemplo.com/imagem2.jpg"
-                  />
+                <div className="space-y-4">
+                  <Label>Imagens do Produto</Label>
+                  
+                  {/* Upload de Imagens */}
+                  <div className="border-2 border-dashed border-border rounded-lg p-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <Label htmlFor="image-upload" className="cursor-pointer">
+                        <Button type="button" variant="outline" asChild disabled={uploadingImages}>
+                          <span>
+                            {uploadingImages ? 'Enviando...' : 'Escolher Arquivos'}
+                          </span>
+                        </Button>
+                      </Label>
+                      <Input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Clique para enviar imagens ou insira URLs abaixo
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Preview das Imagens Enviadas */}
+                  {uploadedImages.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {uploadedImages.map((url, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-24 object-cover rounded"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeUploadedImage(url)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* URLs Manuais */}
+                  <div>
+                    <Label className="text-sm text-muted-foreground">
+                      Ou insira URLs (separadas por vírgula)
+                    </Label>
+                    <Textarea
+                      value={formData.imagens}
+                      onChange={(e) => setFormData({ ...formData, imagens: e.target.value })}
+                      placeholder="https://exemplo.com/imagem1.jpg, https://exemplo.com/imagem2.jpg"
+                      rows={2}
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label>Tags (separadas por vírgula)</Label>
