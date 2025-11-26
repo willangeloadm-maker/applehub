@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Search, Filter, Upload, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Filter, Upload, X, Layers } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Product {
@@ -515,6 +515,14 @@ export default function AdminProducts() {
                       <TableCell>{product.ativo ? 'Ativo' : 'Inativo'}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => navigate(`/admin/produtos/${product.id}/variantes`)}
+                            title="Gerenciar Variantes"
+                          >
+                            <Layers className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"

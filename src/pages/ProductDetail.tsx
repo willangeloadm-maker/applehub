@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { ProductReviews } from "@/components/ProductReviews";
+import VariantSelector from "@/components/VariantSelector";
 import { ArrowLeft, Minus, Plus, ShoppingCart, Shield, Truck, CreditCard, Heart } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import OptimizedImage from "@/components/OptimizedImage";
@@ -28,6 +29,9 @@ const ProductDetail = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantidade, setQuantidade] = useState(1);
   const [adding, setAdding] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [finalPrice, setFinalPrice] = useState(0);
+  const [availableStock, setAvailableStock] = useState(0);
 
   const isFavorite = product ? isInWishlist(product.id) : false;
 
@@ -62,9 +66,22 @@ const ProductDetail = () => {
   const handleAddToCart = async () => {
     if (!product) return;
     setAdding(true);
-    await addToCart(product.id, quantidade);
+    // Se tem variante selecionada, adiciona a variante, senão adiciona o produto pai
+    const productIdToAdd = selectedVariantId || product.id;
+    await addToCart(productIdToAdd, quantidade);
     setAdding(false);
   };
+
+  const handleVariantSelect = (variantId: string | null, price: number, stock: number) => {
+    setSelectedVariantId(variantId);
+    setFinalPrice(price);
+    setAvailableStock(stock);
+    setQuantidade(1); // Reset quantidade quando mudar variante
+  };
+
+  // Determinar qual estoque usar (variante ou produto pai)
+  const displayStock = selectedVariantId ? availableStock : product?.estoque || 0;
+  const displayPrice = selectedVariantId ? finalPrice : (product?.preco_vista || 0);
 
   const handleToggleFavorite = async () => {
     if (!product) return;
@@ -213,10 +230,19 @@ const ProductDetail = () => {
 
               <Separator />
 
+              {/* Seletor de Variantes */}
+              <VariantSelector
+                productId={product.id}
+                basePrice={product.preco_vista}
+                onVariantSelect={handleVariantSelect}
+              />
+
+              <Separator />
+
               {/* Preço e Compra */}
               <div className="space-y-4">
                 <div>
-                  <p className="text-3xl font-bold text-primary">{formatPrice(Number(product.preco_vista))}</p>
+                  <p className="text-3xl font-bold text-primary">{formatPrice(displayPrice)}</p>
                   <p className="text-sm text-muted-foreground mt-1">
                     ou parcele em até 24x com análise de crédito*
                   </p>
@@ -238,13 +264,13 @@ const ProductDetail = () => {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => setQuantidade(Math.min(product.estoque, quantidade + 1))}
-                      disabled={quantidade >= product.estoque}
+                      onClick={() => setQuantidade(Math.min(displayStock, quantidade + 1))}
+                      disabled={quantidade >= displayStock}
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
                     <span className="text-sm text-muted-foreground ml-2">
-                      ({product.estoque} disponíveis)
+                      ({displayStock} disponíveis)
                     </span>
                   </div>
                 </div>
