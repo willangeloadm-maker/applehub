@@ -352,9 +352,36 @@ export default function AdminProducts() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    if (!confirm('Tem certeza que deseja excluir este produto? Isso também removerá todas as referências associadas.')) return;
 
     try {
+      // Remover referências em outras tabelas primeiro
+      await supabase.from('cart_items').delete().eq('product_id', id);
+      await supabase.from('favorites').delete().eq('product_id', id);
+      await supabase.from('product_attributes').delete().eq('product_id', id);
+      await supabase.from('product_reviews').delete().eq('product_id', id);
+      
+      // Remover variantes que usam este produto como parent
+      const { data: variants } = await supabase
+        .from('product_variants')
+        .select('variant_product_id')
+        .eq('parent_product_id', id);
+      
+      if (variants && variants.length > 0) {
+        for (const v of variants) {
+          await supabase.from('product_attributes').delete().eq('product_id', v.variant_product_id);
+        }
+        await supabase.from('product_variants').delete().eq('parent_product_id', id);
+        // Deletar os produtos variantes
+        for (const v of variants) {
+          await supabase.from('products').delete().eq('id', v.variant_product_id);
+        }
+      }
+      
+      // Remover variantes onde este produto é a variante
+      await supabase.from('product_variants').delete().eq('variant_product_id', id);
+
+      // Finalmente, deletar o produto
       const { error } = await supabase
         .from('products')
         .delete()
@@ -363,10 +390,11 @@ export default function AdminProducts() {
       if (error) throw error;
       toast({ description: "Produto excluído com sucesso" });
       loadProducts();
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erro ao excluir produto:', error);
       toast({
-        title: "Erro",
-        description: "Erro ao excluir produto",
+        title: "Erro ao excluir produto",
+        description: error.message || "O produto pode estar vinculado a pedidos existentes e não pode ser excluído.",
         variant: "destructive"
       });
     }
