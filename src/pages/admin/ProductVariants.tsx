@@ -49,9 +49,20 @@ export default function ProductVariants() {
         .from('products')
         .select('*, categories(*)')
         .eq('id', productId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      
+      if (!data) {
+        toast({
+          title: "Erro",
+          description: "Produto não encontrado",
+          variant: "destructive"
+        });
+        navigate('/admin/produtos');
+        return;
+      }
+      
       setProduct(data);
       setCategory(data.categories);
     } catch (error: any) {
@@ -60,6 +71,7 @@ export default function ProductVariants() {
         description: error.message,
         variant: "destructive"
       });
+      navigate('/admin/produtos');
     }
   };
 
@@ -194,7 +206,27 @@ export default function ProductVariants() {
     });
   };
 
-  if (loading) return <div className="text-center py-12">Carregando...</div>;
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="text-center py-12">Carregando...</div>
+      </AppLayout>
+    );
+  }
+
+  if (!product) {
+    return (
+      <AppLayout>
+        <div className="container mx-auto p-4 text-center py-12">
+          <p className="text-muted-foreground mb-4">Produto não encontrado</p>
+          <Button onClick={() => navigate('/admin/produtos')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar para Produtos
+          </Button>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
