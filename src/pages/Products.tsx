@@ -60,6 +60,12 @@ const Products = () => {
         case "maior-preco":
           query = query.order("preco_vista", { ascending: false });
           break;
+        case "destaque":
+          query = query.eq("destaque", true).order("created_at", { ascending: false });
+          break;
+        case "mais-vendidos":
+          query = query.order("created_at", { ascending: false });
+          break;
         default:
           query = query.order("created_at", { ascending: false });
       }
@@ -135,12 +141,20 @@ const Products = () => {
                           <Label htmlFor="recentes" className="font-normal">Mais recentes</Label>
                         </div>
                         <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="mais-vendidos" id="mais-vendidos" />
+                          <Label htmlFor="mais-vendidos" className="font-normal">Mais vendidos</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
                           <RadioGroupItem value="menor-preco" id="menor-preco" />
                           <Label htmlFor="menor-preco" className="font-normal">Menor preço</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="maior-preco" id="maior-preco" />
                           <Label htmlFor="maior-preco" className="font-normal">Maior preço</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="destaque" id="destaque" />
+                          <Label htmlFor="destaque" className="font-normal">Em destaque</Label>
                         </div>
                       </RadioGroup>
                     </div>
