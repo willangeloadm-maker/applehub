@@ -424,6 +424,26 @@ export default function AdminProducts() {
       // Remover variantes onde este produto é a variante
       await supabase.from('product_variants').delete().eq('variant_product_id', id);
 
+      // Remover produtos filhos que referenciam este como parent_product_id
+      const { data: childProducts } = await supabase
+        .from('products')
+        .select('id')
+        .eq('parent_product_id', id);
+
+      if (childProducts && childProducts.length > 0) {
+        for (const child of childProducts) {
+          // Limpar referências dos produtos filhos
+          await supabase.from('cart_items').delete().eq('product_id', child.id);
+          await supabase.from('favorites').delete().eq('product_id', child.id);
+          await supabase.from('product_attributes').delete().eq('product_id', child.id);
+          await supabase.from('product_reviews').delete().eq('product_id', child.id);
+          await supabase.from('product_variants').delete().eq('variant_product_id', child.id);
+          await supabase.from('product_variants').delete().eq('parent_product_id', child.id);
+        }
+        // Deletar os produtos filhos
+        await supabase.from('products').delete().eq('parent_product_id', id);
+      }
+
       // Finalmente, deletar o produto
       const { error } = await supabase
         .from('products')
