@@ -156,9 +156,6 @@ export default function AdminProducts() {
             outputType,
             0.85
           );
-            'image/jpeg',
-            0.85
-          );
         };
         img.onerror = () => reject(new Error('Failed to load image'));
       };
