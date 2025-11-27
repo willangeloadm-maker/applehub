@@ -214,10 +214,9 @@ export default function AdminProducts() {
     setUploadingImages(true);
     
     try {
-      // Verificar autenticação do usuário
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
+      // Verificar se está autenticado como admin via localStorage
+      const isAdminAuth = localStorage.getItem("admin_authenticated") === "true";
+      if (!isAdminAuth) {
         throw new Error("Você precisa estar autenticado como administrador");
       }
 
