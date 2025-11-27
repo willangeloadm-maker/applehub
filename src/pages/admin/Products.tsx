@@ -351,15 +351,44 @@ export default function AdminProducts() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este produto? Isso também removerá todas as referências associadas (incluindo itens de pedidos).')) return;
-
     try {
+      // Verificar se o produto tem pedidos associados
+      const { data: orderItems, error: checkError } = await supabase
+        .from('order_items')
+        .select('id')
+        .eq('product_id', id)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (orderItems && orderItems.length > 0) {
+        // Produto tem pedidos - oferecer desativar ao invés de deletar
+        const shouldDeactivate = confirm(
+          'Este produto possui pedidos associados e não pode ser excluído permanentemente.\n\n' +
+          'Deseja DESATIVAR o produto? Ele não aparecerá mais para os clientes, mas o histórico de pedidos será preservado.'
+        );
+        
+        if (shouldDeactivate) {
+          const { error: updateError } = await supabase
+            .from('products')
+            .update({ ativo: false })
+            .eq('id', id);
+          
+          if (updateError) throw updateError;
+          toast({ description: "Produto desativado com sucesso" });
+          loadProducts();
+        }
+        return;
+      }
+
+      // Produto sem pedidos - pode ser deletado
+      if (!confirm('Tem certeza que deseja excluir este produto permanentemente?')) return;
+
       // Remover referências em outras tabelas primeiro
       await supabase.from('cart_items').delete().eq('product_id', id);
       await supabase.from('favorites').delete().eq('product_id', id);
       await supabase.from('product_attributes').delete().eq('product_id', id);
       await supabase.from('product_reviews').delete().eq('product_id', id);
-      await supabase.from('order_items').delete().eq('product_id', id);
       
       // Remover variantes que usam este produto como parent
       const { data: variants } = await supabase
@@ -369,15 +398,12 @@ export default function AdminProducts() {
       
       if (variants && variants.length > 0) {
         for (const v of variants) {
-          // Remover todas as referências das variantes
           await supabase.from('cart_items').delete().eq('product_id', v.variant_product_id);
           await supabase.from('favorites').delete().eq('product_id', v.variant_product_id);
           await supabase.from('product_attributes').delete().eq('product_id', v.variant_product_id);
           await supabase.from('product_reviews').delete().eq('product_id', v.variant_product_id);
-          await supabase.from('order_items').delete().eq('product_id', v.variant_product_id);
         }
         await supabase.from('product_variants').delete().eq('parent_product_id', id);
-        // Deletar os produtos variantes
         for (const v of variants) {
           await supabase.from('products').delete().eq('id', v.variant_product_id);
         }
@@ -399,7 +425,7 @@ export default function AdminProducts() {
       console.error('Erro ao excluir produto:', error);
       toast({
         title: "Erro ao excluir produto",
-        description: error.message || "O produto pode estar vinculado a pedidos existentes e não pode ser excluído.",
+        description: error.message,
         variant: "destructive"
       });
     }
