@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import iphone17Hero from "@/assets/iphone-17-pro-max-colors.png";
+import iphone17Banner from "@/assets/iphone-17-banner.jpg";
 
 interface Product {
   id: string;
@@ -40,7 +40,7 @@ const Home = () => {
       setLoading(true);
       let query = supabase
         .from("products")
-        .select("id, nome, preco_vista, imagens, estado, tags, capacidade, cor")
+        .select("id, nome, preco_vista, imagens, estado, tags, capacidade, cor, destaque")
         .eq("ativo", true)
         .is("parent_product_id", null);
 
@@ -50,6 +50,13 @@ const Home = () => {
           break;
         case "maior-preco":
           query = query.order("preco_vista", { ascending: false });
+          break;
+        case "destaque":
+          query = query.eq("destaque", true).order("created_at", { ascending: false });
+          break;
+        case "mais-vendidos":
+          // For now, order by created_at as a placeholder (ideally would use sales data)
+          query = query.order("created_at", { ascending: false });
           break;
         default:
           query = query.order("created_at", { ascending: false });
@@ -132,9 +139,9 @@ const Home = () => {
     {
       title: "iPhone 17 Pro Max",
       subtitle: "Lançamento! Preço imperdível e parcele em até 24x*",
-      gradient: "from-orange-600 via-orange-500 to-amber-600",
+      gradient: "from-slate-800 via-slate-700 to-rose-900",
       footnote: "*Sujeito a análise de crédito",
-      image: iphone17Hero,
+      image: iphone17Banner,
       highlight: true
     },
     {
@@ -149,6 +156,12 @@ const Home = () => {
     },
   ];
 
+  const handleBannerClick = (index: number) => {
+    if (index === 0 && iphone17ProMaxId) {
+      navigate(`/produtos/${iphone17ProMaxId}`);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="min-h-screen bg-background">
@@ -158,34 +171,51 @@ const Home = () => {
             <CarouselContent>
               {banners.map((banner, index) => (
                 <CarouselItem key={index}>
-                  <Card className="border-0 shadow-xl overflow-hidden">
-                    <CardContent className={`flex ${(banner as any).highlight ? 'aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[2/1]'} items-center justify-center p-8 lg:p-12 bg-gradient-to-br ${banner.gradient} text-white relative`}>
+                  <Card 
+                    className={`border-0 shadow-xl overflow-hidden ${index === 0 && iphone17ProMaxId ? 'cursor-pointer' : ''}`}
+                    onClick={() => handleBannerClick(index)}
+                  >
+                    <CardContent className={`flex ${(banner as any).highlight ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[2/1]'} items-end justify-center p-0 bg-gradient-to-br ${banner.gradient} text-white relative overflow-hidden`}>
                       {(banner as any).image && (
                         <div 
-                          className="absolute inset-0 bg-cover bg-center"
+                          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
                           style={{ 
                             backgroundImage: `url(${(banner as any).image})`,
-                            opacity: (banner as any).highlight ? '0.85' : '0.40'
                           }}
                         />
                       )}
-                      <div className={`${(banner as any).highlight ? 'text-left max-w-xl' : 'text-center'} space-y-3 lg:space-y-4 relative z-10`}>
-                        <Sparkles className={`${(banner as any).highlight ? 'h-8 w-8 lg:h-10 lg:w-10 mb-2' : 'hidden'} animate-pulse`} />
-                        <h2 className={`${(banner as any).highlight ? 'text-4xl lg:text-6xl' : 'text-2xl sm:text-3xl'} font-bold tracking-tight drop-shadow-2xl`}>
-                          {banner.title}
-                        </h2>
-                        <p className={`${(banner as any).highlight ? 'text-base lg:text-xl' : 'text-sm sm:text-base'} opacity-95 drop-shadow-lg`}>
-                          {banner.subtitle}
-                        </p>
-                        {(banner as any).footnote && (
-                          <p className="text-xs lg:text-sm opacity-80 italic drop-shadow-md">{(banner as any).footnote}</p>
+                      {/* Gradient overlay for text readability */}
+                      {(banner as any).highlight && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                      )}
+                      <div className={`${(banner as any).highlight ? 'text-center w-full pb-6 px-4' : 'text-center p-8'} space-y-2 relative z-10`}>
+                        {!(banner as any).highlight && (
+                          <>
+                            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight drop-shadow-2xl">
+                              {banner.title}
+                            </h2>
+                            <p className="text-sm sm:text-base opacity-95 drop-shadow-lg">
+                              {banner.subtitle}
+                            </p>
+                          </>
                         )}
-                        {(banner as any).highlight && iphone17ProMaxId && (
-                          <Link to={`/produtos/${iphone17ProMaxId}`}>
-                            <Button size="lg" className="mt-4 bg-white text-orange-600 hover:bg-gray-100 font-bold shadow-lg">
-                              Ver agora
-                            </Button>
-                          </Link>
+                        {(banner as any).highlight && (
+                          <>
+                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight drop-shadow-2xl uppercase" style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.8)' }}>
+                              {banner.title}
+                            </h2>
+                            <p className="text-sm sm:text-base lg:text-lg font-semibold drop-shadow-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-1 rounded-full inline-block">
+                              {banner.subtitle}
+                            </p>
+                            {(banner as any).footnote && (
+                              <p className="text-xs opacity-80 italic drop-shadow-md">{(banner as any).footnote}</p>
+                            )}
+                            {iphone17ProMaxId && (
+                              <Button size="lg" className="mt-2 bg-white text-orange-600 hover:bg-gray-100 font-bold shadow-lg">
+                                Ver agora
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </CardContent>
@@ -248,13 +278,15 @@ const Home = () => {
           <div className="flex items-center gap-2 mb-4">
             <span className="text-sm text-muted-foreground">Ordenar:</span>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[160px] h-9">
+              <SelectTrigger className="w-[180px] h-9">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="recentes">Mais recentes</SelectItem>
+                <SelectItem value="mais-vendidos">Mais vendidos</SelectItem>
                 <SelectItem value="menor-preco">Menor preço</SelectItem>
                 <SelectItem value="maior-preco">Maior preço</SelectItem>
+                <SelectItem value="destaque">Em destaque</SelectItem>
               </SelectContent>
             </Select>
           </div>
