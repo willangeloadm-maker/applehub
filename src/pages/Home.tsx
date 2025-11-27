@@ -22,29 +22,28 @@ interface Product {
 }
 
 const Home = () => {
-  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [iphone17ProMaxId, setIphone17ProMaxId] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    loadFeaturedProducts();
+    loadAllProducts();
     loadIphone17ProMax();
   }, []);
 
-  const loadFeaturedProducts = async () => {
+  const loadAllProducts = async () => {
     try {
       const { data, error } = await supabase
         .from("products")
         .select("id, nome, preco_vista, imagens, estado, tags, capacidade, cor")
         .eq("ativo", true)
-        .eq("destaque", true)
-        .limit(4)
+        .is("parent_product_id", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setFeaturedProducts(data || []);
+      setAllProducts(data || []);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar produtos",
@@ -106,6 +105,7 @@ const Home = () => {
   };
 
   const categories = [
+    { icon: Sparkles, label: "Todos", slug: "", gradient: "from-[#8b5cf6] to-[#a855f7]" },
     { icon: Smartphone, label: "iPhone", slug: "iphone", gradient: "from-[#ff6b35] to-[#ff5722]" },
     { icon: Tablet, label: "iPad", slug: "ipad", gradient: "from-[#ff4757] to-[#ff3545]" },
     { icon: Watch, label: "Watch", slug: "apple-watch", gradient: "from-[#6b3d3d] to-[#8b4d4d]" },
@@ -192,8 +192,8 @@ const Home = () => {
           <div className="grid grid-cols-3 gap-3">
             {categories.map((category, index) => (
               <Link
-                key={category.slug}
-                to={`/produtos?categoria=${category.slug}`}
+                key={category.slug || 'todos'}
+                to={category.slug ? `/produtos?categoria=${category.slug}` : '/produtos'}
                 className="group animate-fade-in"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
@@ -214,16 +214,16 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Featured Products */}
+        {/* All Products */}
         <section className="px-4 pb-6 animate-fade-in-up">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-xl font-bold">Destaques</h2>
-              <p className="text-xs text-muted-foreground">Produtos em destaque</p>
+              <h2 className="text-xl font-bold">Todos os Produtos</h2>
+              <p className="text-xs text-muted-foreground">Confira nosso catálogo completo</p>
             </div>
             <Link to="/produtos" className="group">
               <Button variant="ghost" size="sm" className="gap-1 text-xs hover:scale-105 transition-transform">
-                Ver todos
+                Ver mais
                 <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
@@ -231,24 +231,24 @@ const Home = () => {
 
           {loading ? (
             <div className="grid grid-cols-2 gap-3">
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div
                   key={i}
                   className="h-72 animate-pulse rounded-xl bg-muted"
                 />
               ))}
             </div>
-          ) : featuredProducts.length === 0 ? (
+          ) : allProducts.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="p-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Nenhum produto em destaque
+                  Nenhum produto cadastrado
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {featuredProducts.slice(0, 4).map((product) => (
+              {allProducts.map((product) => (
                 <ProductCard key={product.id} {...product} />
               ))}
             </div>
