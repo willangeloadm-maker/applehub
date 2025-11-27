@@ -136,11 +136,16 @@ export default function AdminProducts() {
           canvas.height = height;
           ctx.drawImage(img, 0, 0, width, height);
 
+          // Determinar tipo de saída baseado no arquivo original
+          const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          const extension = outputType === 'image/png' ? 'png' : 'jpeg';
+          
           canvas.toBlob(
             (blob) => {
               if (blob) {
-                const compressedFile = new File([blob], file.name, {
-                  type: 'image/jpeg',
+                const newFileName = file.name.replace(/\.[^/.]+$/, `.${extension}`);
+                const compressedFile = new File([blob], newFileName, {
+                  type: outputType,
                   lastModified: Date.now(),
                 });
                 resolve(compressedFile);
@@ -148,6 +153,9 @@ export default function AdminProducts() {
                 reject(new Error('Failed to compress image'));
               }
             },
+            outputType,
+            0.85
+          );
             'image/jpeg',
             0.85
           );
@@ -306,10 +314,17 @@ export default function AdminProducts() {
       const manualUrls = formData.imagens ? formData.imagens.split(',').map(url => url.trim()).filter(url => url) : [];
       const allImages = [...uploadedImages, ...manualUrls];
 
+      // Converter preço de formato BR (12.600,00) para número
+      const parsedPrice = parseFloat(
+        formData.preco_vista
+          .replace(/\./g, '')  // Remove pontos de milhar
+          .replace(',', '.')   // Troca vírgula por ponto decimal
+      );
+      
       const productData = {
         nome: formData.nome,
         descricao: formData.descricao,
-        preco_vista: parseFloat(formData.preco_vista),
+        preco_vista: isNaN(parsedPrice) ? 0 : parsedPrice,
         estado: formData.estado,
         estoque: parseInt(formData.estoque),
         capacidade: formData.capacidade || null,
