@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +11,22 @@ import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { ProductReviews } from "@/components/ProductReviews";
 import VariantSelector from "@/components/VariantSelector";
-import { ArrowLeft, Minus, Plus, ShoppingCart, Shield, Truck, CreditCard, Heart } from "lucide-react";
+import ProductCard from "@/components/ProductCard";
+import { ArrowLeft, Minus, Plus, ShoppingCart, Shield, Truck, CreditCard, Heart, ChevronDown, ChevronUp } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
-import OptimizedImage from "@/components/OptimizedImage";
 
 type Product = Tables<"products">;
+
+interface RelatedProduct {
+  id: string;
+  nome: string;
+  preco_vista: number;
+  imagens: string[];
+  estado: "novo" | "seminovo" | "usado";
+  tags: string[] | null;
+  capacidade: string | null;
+  cor: string | null;
+}
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -32,17 +43,31 @@ const ProductDetail = () => {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [finalPrice, setFinalPrice] = useState(0);
   const [availableStock, setAvailableStock] = useState(0);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
+  const [siblingProducts, setSiblingProducts] = useState<RelatedProduct[]>([]);
+  const [imageKey, setImageKey] = useState(0);
 
   const isFavorite = product ? isInWishlist(product.id) : false;
 
   useEffect(() => {
     if (id) {
       loadProduct();
+      setSelectedImage(0);
+      setImageKey(prev => prev + 1);
     }
   }, [id]);
 
+  useEffect(() => {
+    if (product) {
+      loadRelatedProducts();
+      loadSiblingProducts();
+    }
+  }, [product]);
+
   const loadProduct = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from("products")
         .select("*")
@@ -63,10 +88,57 @@ const ProductDetail = () => {
     }
   };
 
+  const loadRelatedProducts = async () => {
+    if (!product) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("products")
+        .select("id, nome, preco_vista, imagens, estado, tags, capacidade, cor")
+        .eq("ativo", true)
+        .eq("category_id", product.category_id)
+        .neq("id", product.id)
+        .is("parent_product_id", null)
+        .limit(4);
+
+      if (error) throw error;
+      setRelatedProducts(data || []);
+    } catch (error) {
+      console.error("Erro ao carregar produtos relacionados:", error);
+    }
+  };
+
+  const loadSiblingProducts = async () => {
+    if (!product) return;
+    
+    try {
+      // Buscar produtos "irmãos" - mesmo produto base com diferentes cores/capacidades
+      let siblingQuery = supabase
+        .from("products")
+        .select("id, nome, preco_vista, imagens, estado, tags, capacidade, cor")
+        .eq("ativo", true)
+        .neq("id", product.id);
+
+      // Se o produto tem parent_product_id, buscar outros filhos do mesmo pai
+      if (product.parent_product_id) {
+        siblingQuery = siblingQuery.eq("parent_product_id", product.parent_product_id);
+      } else {
+        // Se é um produto pai, buscar seus filhos
+        siblingQuery = siblingQuery.eq("parent_product_id", product.id);
+      }
+
+      const { data, error } = await siblingQuery.limit(6);
+
+      if (error) throw error;
+      setSiblingProducts(data || []);
+    } catch (error) {
+      console.error("Erro ao carregar variações:", error);
+    }
+  };
+
   const handleAddToCart = async () => {
     if (!product) return;
     setAdding(true);
-    // Se tem variante selecionada, adiciona a variante, senão adiciona o produto pai
     const productIdToAdd = selectedVariantId || product.id;
     await addToCart(productIdToAdd, quantidade);
     setAdding(false);
@@ -76,10 +148,9 @@ const ProductDetail = () => {
     setSelectedVariantId(variantId);
     setFinalPrice(price);
     setAvailableStock(stock);
-    setQuantidade(1); // Reset quantidade quando mudar variante
+    setQuantidade(1);
   };
 
-  // Determinar qual estoque usar (variante ou produto pai)
   const displayStock = selectedVariantId ? availableStock : product?.estoque || 0;
   const displayPrice = selectedVariantId ? finalPrice : (product?.preco_vista || 0);
 
@@ -97,6 +168,11 @@ const ProductDetail = () => {
       style: "currency",
       currency: "BRL",
     }).format(price);
+  };
+
+  const truncateDescription = (text: string, maxLength: number = 150) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + "...";
   };
 
   if (loading) {
@@ -119,6 +195,9 @@ const ProductDetail = () => {
     );
   }
 
+  const descriptionText = product.descricao || "";
+  const shouldTruncate = descriptionText.length > 150;
+
   return (
     <AppLayout>
       <div className="min-h-screen bg-background">
@@ -135,12 +214,15 @@ const ProductDetail = () => {
             {/* Galeria de Imagens */}
             <div className="space-y-4">
               <div className="overflow-hidden rounded-xl bg-secondary border">
-                <OptimizedImage
+                <img
+                  key={`main-${imageKey}-${selectedImage}`}
                   src={product.imagens[selectedImage] || "/placeholder.svg"}
                   alt={product.nome}
-                  aspectRatio="square"
-                  className="w-full h-full object-cover"
-                  priority
+                  className="w-full aspect-square object-cover"
+                  loading="eager"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/placeholder.svg";
+                  }}
                 />
               </div>
               {product.imagens.length > 1 && (
@@ -155,11 +237,14 @@ const ProductDetail = () => {
                           : "border-transparent hover:border-border"
                       }`}
                     >
-                      <OptimizedImage
+                      <img
                         src={img}
                         alt={`${product.nome} ${idx + 1}`}
-                        aspectRatio="square"
-                        className="w-full h-full object-cover"
+                        className="w-full aspect-square object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/placeholder.svg";
+                        }}
                       />
                     </button>
                   ))}
@@ -183,10 +268,63 @@ const ProductDetail = () => {
                   )}
                 </div>
                 <h1 className="text-2xl lg:text-3xl font-bold mb-2">{product.nome}</h1>
-                <p className="text-muted-foreground text-sm lg:text-base">{product.descricao}</p>
+                
+                {/* Descrição com truncamento */}
+                <div className="text-muted-foreground text-sm lg:text-base">
+                  <p>
+                    {showFullDescription ? descriptionText : truncateDescription(descriptionText)}
+                  </p>
+                  {shouldTruncate && (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="p-0 h-auto text-primary"
+                      onClick={() => setShowFullDescription(!showFullDescription)}
+                    >
+                      {showFullDescription ? (
+                        <>Ver menos <ChevronUp className="w-4 h-4 ml-1" /></>
+                      ) : (
+                        <>Ver mais <ChevronDown className="w-4 h-4 ml-1" /></>
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <Separator />
+
+              {/* Outras Cores/Modelos disponíveis */}
+              {siblingProducts.length > 0 && (
+                <>
+                  <div>
+                    <h2 className="text-lg font-semibold mb-3">Outras opções disponíveis</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {siblingProducts.map((sibling) => (
+                        <Link
+                          key={sibling.id}
+                          to={`/produtos/${sibling.id}`}
+                          className="border rounded-lg p-2 hover:border-primary transition-all flex items-center gap-2"
+                        >
+                          <img
+                            src={sibling.imagens[0] || "/placeholder.svg"}
+                            alt={sibling.nome}
+                            className="w-12 h-12 object-cover rounded"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "/placeholder.svg";
+                            }}
+                          />
+                          <div className="text-xs">
+                            {sibling.cor && <p className="font-medium">{sibling.cor}</p>}
+                            {sibling.capacidade && <p className="text-muted-foreground">{sibling.capacidade}</p>}
+                            <p className="text-primary font-semibold">{formatPrice(sibling.preco_vista)}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              )}
 
               {/* Especificações */}
               <div>
@@ -316,11 +454,33 @@ const ProductDetail = () => {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Seção de Avaliações */}
-      <div className="max-w-6xl mx-auto p-4 lg:p-6">
-        <ProductReviews productId={id!} />
+        {/* Seção de Avaliações */}
+        <div className="max-w-6xl mx-auto p-4 lg:p-6">
+          <ProductReviews productId={id!} />
+        </div>
+
+        {/* Produtos Relacionados */}
+        {relatedProducts.length > 0 && (
+          <div className="max-w-6xl mx-auto p-4 lg:p-6">
+            <h2 className="text-xl font-bold mb-4">Produtos Relacionados</h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {relatedProducts.map((relProduct) => (
+                <ProductCard
+                  key={relProduct.id}
+                  id={relProduct.id}
+                  nome={relProduct.nome}
+                  preco_vista={relProduct.preco_vista}
+                  imagens={relProduct.imagens}
+                  estado={relProduct.estado}
+                  tags={relProduct.tags || []}
+                  capacidade={relProduct.capacidade}
+                  cor={relProduct.cor}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </AppLayout>
   );

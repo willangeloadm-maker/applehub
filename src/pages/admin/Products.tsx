@@ -35,6 +35,18 @@ export default function AdminProducts() {
   const [uploadingImages, setUploadingImages] = useState(false);
   const [previewImages, setPreviewImages] = useState<{ file: File; preview: string }[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  
+  // Estados para criação de variações
+  const [variantDialogOpen, setVariantDialogOpen] = useState(false);
+  const [newProductId, setNewProductId] = useState<string | null>(null);
+  const [newProductName, setNewProductName] = useState('');
+  const [variantData, setVariantData] = useState({
+    cor: '',
+    capacidade: '',
+    preco_ajuste: '',
+    estoque: ''
+  });
+  
   const [formData, setFormData] = useState<{
     nome: string;
     descricao: string;
@@ -340,23 +352,121 @@ export default function AdminProducts() {
 
         if (error) throw error;
         toast({ description: "Produto atualizado com sucesso" });
+        setDialogOpen(false);
+        resetForm();
+        loadProducts();
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('products')
-          .insert([productData]);
+          .insert([productData])
+          .select('id, nome')
+          .single();
 
         if (error) throw error;
-        toast({ description: "Produto criado com sucesso" });
+        
+        setDialogOpen(false);
+        resetForm();
+        loadProducts();
+        
+        // Perguntar se quer criar variações
+        const wantsVariants = confirm(
+          `Produto "${data.nome}" criado com sucesso!\n\nDeseja cadastrar variações deste produto? (outras cores, capacidades, etc.)`
+        );
+        
+        if (wantsVariants) {
+          setNewProductId(data.id);
+          setNewProductName(data.nome);
+          setVariantDialogOpen(true);
+        } else {
+          toast({ description: "Produto criado com sucesso" });
+        }
       }
-
-      setDialogOpen(false);
-      resetForm();
-      loadProducts();
     } catch (error: any) {
       console.error('Erro ao salvar produto:', error);
       toast({
         title: "Erro",
         description: error.message || "Erro ao salvar produto",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleCreateVariant = async () => {
+    if (!newProductId) return;
+    
+    try {
+      // Buscar dados do produto pai
+      const { data: parentProduct, error: fetchError } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', newProductId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+
+      // Criar produto variante com dados do pai + variações
+      const variantProductData = {
+        nome: `${parentProduct.nome} ${variantData.cor || ''} ${variantData.capacidade || ''}`.trim(),
+        descricao: parentProduct.descricao,
+        preco_vista: parentProduct.preco_vista + parseFloat(variantData.preco_ajuste || '0'),
+        estado: parentProduct.estado,
+        estoque: parseInt(variantData.estoque || '0'),
+        capacidade: variantData.capacidade || parentProduct.capacidade,
+        cor: variantData.cor || parentProduct.cor,
+        imagens: parentProduct.imagens,
+        tags: parentProduct.tags,
+        destaque: false,
+        ativo: true,
+        parent_product_id: newProductId,
+        category_id: parentProduct.category_id
+      };
+
+      const { data: variantProduct, error: insertError } = await supabase
+        .from('products')
+        .insert([variantProductData])
+        .select('id')
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Criar registro na tabela product_variants
+      const { error: variantError } = await supabase
+        .from('product_variants')
+        .insert([{
+          parent_product_id: newProductId,
+          variant_product_id: variantProduct.id,
+          estoque: parseInt(variantData.estoque || '0'),
+          preco_ajuste: parseFloat(variantData.preco_ajuste || '0'),
+          ativo: true
+        }]);
+
+      if (variantError) throw variantError;
+
+      toast({ description: "Variação criada com sucesso!" });
+      
+      // Limpar formulário de variação mas manter diálogo aberto para mais variações
+      setVariantData({
+        cor: '',
+        capacidade: '',
+        preco_ajuste: '',
+        estoque: ''
+      });
+      
+      loadProducts();
+      
+      // Perguntar se quer adicionar mais variações
+      const addMore = confirm("Deseja adicionar mais uma variação?");
+      if (!addMore) {
+        setVariantDialogOpen(false);
+        setNewProductId(null);
+        setNewProductName('');
+      }
+      
+    } catch (error: any) {
+      console.error('Erro ao criar variação:', error);
+      toast({
+        title: "Erro ao criar variação",
+        description: error.message,
         variant: "destructive"
       });
     }
@@ -853,6 +963,81 @@ export default function AdminProducts() {
             </CardContent>
           </Card>
         )}
+
+        {/* Dialog para criar variações */}
+        <Dialog open={variantDialogOpen} onOpenChange={setVariantDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Criar Variação</DialogTitle>
+              <p className="text-sm text-muted-foreground">
+                Produto base: {newProductName}
+              </p>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Cor da Variação</Label>
+                <Input
+                  value={variantData.cor}
+                  onChange={(e) => setVariantData({ ...variantData, cor: e.target.value })}
+                  placeholder="ex: Azul, Preto, Dourado"
+                />
+              </div>
+              <div>
+                <Label>Capacidade/Tamanho</Label>
+                <Input
+                  value={variantData.capacidade}
+                  onChange={(e) => setVariantData({ ...variantData, capacidade: e.target.value })}
+                  placeholder="ex: 128GB, 256GB, 512GB"
+                />
+              </div>
+              <div>
+                <Label>Ajuste de Preço (R$)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={variantData.preco_ajuste}
+                  onChange={(e) => setVariantData({ ...variantData, preco_ajuste: e.target.value })}
+                  placeholder="0 = mesmo preço, 100 = +R$100"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Valor adicionado ao preço base. Use 0 para manter o mesmo preço.
+                </p>
+              </div>
+              <div>
+                <Label>Estoque desta variação</Label>
+                <Input
+                  type="number"
+                  value={variantData.estoque}
+                  onChange={(e) => setVariantData({ ...variantData, estoque: e.target.value })}
+                  placeholder="Quantidade em estoque"
+                  required
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setVariantDialogOpen(false);
+                    setNewProductId(null);
+                    setNewProductName('');
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1"
+                  onClick={handleCreateVariant}
+                  disabled={!variantData.estoque}
+                >
+                  Criar Variação
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
