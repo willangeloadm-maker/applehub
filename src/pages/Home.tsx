@@ -3,11 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles } from "lucide-react";
+import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import iphone17Hero from "@/assets/iphone-17-pro-max-colors.png";
 
 interface Product {
@@ -25,22 +26,36 @@ const Home = () => {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [iphone17ProMaxId, setIphone17ProMaxId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState("recentes");
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     loadAllProducts();
     loadIphone17ProMax();
-  }, []);
+  }, [sortBy]);
 
   const loadAllProducts = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      let query = supabase
         .from("products")
         .select("id, nome, preco_vista, imagens, estado, tags, capacidade, cor")
         .eq("ativo", true)
-        .is("parent_product_id", null)
-        .order("created_at", { ascending: false });
+        .is("parent_product_id", null);
+
+      switch (sortBy) {
+        case "menor-preco":
+          query = query.order("preco_vista", { ascending: true });
+          break;
+        case "maior-preco":
+          query = query.order("preco_vista", { ascending: false });
+          break;
+        default:
+          query = query.order("created_at", { ascending: false });
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setAllProducts(data || []);
@@ -227,6 +242,21 @@ const Home = () => {
                 <ChevronRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
+          </div>
+          
+          {/* Sort Filter */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-sm text-muted-foreground">Ordenar:</span>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[160px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recentes">Mais recentes</SelectItem>
+                <SelectItem value="menor-preco">Menor preço</SelectItem>
+                <SelectItem value="maior-preco">Maior preço</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {loading ? (
