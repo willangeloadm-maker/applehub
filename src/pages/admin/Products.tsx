@@ -339,6 +339,20 @@ export default function AdminProducts() {
       });
       return;
     }
+
+    // Combinar URLs digitadas com imagens enviadas para validação
+    const manualUrlsForValidation = formData.imagens ? formData.imagens.split(',').map(url => url.trim()).filter(url => url) : [];
+    const allImagesForValidation = [...manualUrlsForValidation, ...uploadedImages];
+    
+    // Validar imagens obrigatórias
+    if (allImagesForValidation.length === 0) {
+      toast({
+        title: "Erro",
+        description: "Adicione pelo menos uma imagem do produto",
+        variant: "destructive"
+      });
+      return;
+    }
     
     try {
       // Combinar URLs digitadas com imagens enviadas
