@@ -26,6 +26,7 @@ export default function AdminProducts() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<{ id: string; nome: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -59,6 +60,7 @@ export default function AdminProducts() {
     tags: string;
     destaque: boolean;
     ativo: boolean;
+    category_id: string;
   }>({
     nome: '',
     descricao: '',
@@ -70,12 +72,22 @@ export default function AdminProducts() {
     imagens: '',
     tags: '',
     destaque: false,
-    ativo: true
+    ativo: true,
+    category_id: ''
   });
 
   useEffect(() => {
     loadProducts();
+    loadCategories();
   }, []);
+
+  const loadCategories = async () => {
+    const { data } = await supabase
+      .from('categories')
+      .select('id, nome')
+      .order('nome');
+    setCategories(data || []);
+  };
 
   const loadProducts = async () => {
     try {
@@ -318,6 +330,16 @@ export default function AdminProducts() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validar categoria obrigatória
+    if (!formData.category_id) {
+      toast({
+        title: "Erro",
+        description: "Selecione uma categoria para o produto",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       // Combinar URLs digitadas com imagens enviadas
       const manualUrls = formData.imagens ? formData.imagens.split(',').map(url => url.trim()).filter(url => url) : [];
@@ -341,7 +363,8 @@ export default function AdminProducts() {
         imagens: allImages,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
         destaque: formData.destaque,
-        ativo: formData.ativo
+        ativo: formData.ativo,
+        category_id: formData.category_id
       };
 
       if (editingProduct) {
@@ -602,7 +625,8 @@ export default function AdminProducts() {
         imagens: data.imagens.join(', '),
         tags: data.tags?.join(', ') || '',
         destaque: data.destaque,
-        ativo: data.ativo
+        ativo: data.ativo,
+        category_id: data.category_id || ''
       });
       setDialogOpen(true);
     }
@@ -624,7 +648,8 @@ export default function AdminProducts() {
       imagens: '',
       tags: '',
       destaque: false,
-      ativo: true
+      ativo: true,
+      category_id: ''
     });
   };
 
@@ -663,6 +688,24 @@ export default function AdminProducts() {
                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                     required
                   />
+                </div>
+                <div>
+                  <Label>Categoria *</Label>
+                  <Select 
+                    value={formData.category_id} 
+                    onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+                  >
+                    <SelectTrigger className={!formData.category_id ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Selecione uma categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.nome}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
