@@ -40,13 +40,26 @@ const Products = () => {
   const loadProducts = async () => {
     try {
       setLoading(true);
+      
+      // If category filter is set, first get the category ID
+      let categoryId: string | null = null;
+      if (categoria) {
+        const { data: categoryData } = await supabase
+          .from("categories")
+          .select("id")
+          .eq("slug", categoria)
+          .maybeSingle();
+        categoryId = categoryData?.id || null;
+      }
+
       let query = supabase
         .from("products")
-        .select("*, categories(slug)")
-        .eq("ativo", true);
+        .select("*")
+        .eq("ativo", true)
+        .is("parent_product_id", null);
 
-      if (categoria) {
-        query = query.eq("categories.slug", categoria);
+      if (categoryId) {
+        query = query.eq("category_id", categoryId);
       }
 
       if (filterEstado !== "todos") {
