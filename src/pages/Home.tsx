@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IPhoneHeroBanner } from "@/components/IPhoneHeroBanner";
@@ -135,53 +134,13 @@ const Home = () => {
     { icon: Cable, label: "Acessórios", slug: "acessorios", gradient: "from-[#ff6b35] to-[#6b3d3d]" },
   ];
 
-  const secondaryBanners = [
-    {
-      title: "Parcele em 24x",
-      subtitle: "Com análise de crédito facilitada",
-      gradient: "from-[#ff6b35] to-[#ff4757]",
-    },
-    {
-      title: "AirPods Pro",
-      subtitle: "Som imersivo de nova geração",
-      gradient: "from-[#6b3d3d] via-[#8b4d4d] to-[#ab5d5d]",
-    },
-  ];
-
   return (
     <AppLayout>
       <div className="min-h-screen bg-background">
         {/* Hero iPhone Banner with Shader Animation */}
-        <section className="px-4 pt-6 pb-4">
+        <section className="px-4 pt-6 pb-6">
           <IPhoneHeroBanner productId={iphone17ProMaxId} />
         </section>
-
-        {/* Secondary Banners Carousel */}
-        <section className="px-4 pb-4">
-          <Carousel className="w-full">
-            <CarouselContent>
-              {secondaryBanners.map((banner, index) => (
-                <CarouselItem key={index} className="md:basis-1/2">
-                  <Card className="border-0 shadow-xl overflow-hidden">
-                    <CardContent className={`flex aspect-[2/1] items-end justify-center p-0 bg-gradient-to-br ${banner.gradient} text-white relative overflow-hidden`}>
-                      <div className="text-center p-8 space-y-2 relative z-10">
-                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight drop-shadow-2xl">
-                          {banner.title}
-                        </h2>
-                        <p className="text-sm sm:text-base opacity-95 drop-shadow-lg">
-                          {banner.subtitle}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-            <CarouselPrevious className="left-2" />
-            <CarouselNext className="right-2" />
-          </Carousel>
-        </section>
-
 
         {/* Categories */}
         <section className="px-4 pb-6 animate-fade-in">
