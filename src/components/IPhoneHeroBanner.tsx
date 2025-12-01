@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ShaderAnimation } from "@/components/ShaderAnimation";
-import iphoneColors from "@/assets/iphone-17-pro-max-colors.png";
+import iphoneColors from "@/assets/iphone-17-pro-max-nobg.png";
 
 interface IPhoneHeroBannerProps {
   productId: string | null;
@@ -20,7 +20,7 @@ export function IPhoneHeroBanner({ productId }: IPhoneHeroBannerProps) {
         <img 
           src={iphoneColors} 
           alt="iPhone 17 Pro Max em várias cores"
-          className="w-[70%] sm:w-[50%] lg:w-[40%] max-w-[600px] object-contain drop-shadow-2xl"
+          className="w-[90%] sm:w-[70%] lg:w-[60%] max-w-[800px] object-contain drop-shadow-2xl"
         />
       </div>
       
