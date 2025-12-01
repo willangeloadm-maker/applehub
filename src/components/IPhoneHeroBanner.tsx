@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ShaderAnimation } from "@/components/ShaderAnimation";
+import iphoneColors from "@/assets/iphone-17-pro-max-colors.png";
 
 interface IPhoneHeroBannerProps {
   productId: string | null;
@@ -14,12 +15,20 @@ export function IPhoneHeroBanner({ productId }: IPhoneHeroBannerProps) {
         <ShaderAnimation />
       </div>
       
+      {/* iPhone Image Layer */}
+      <div className="absolute inset-0 z-[1] flex items-center justify-center">
+        <img 
+          src={iphoneColors} 
+          alt="iPhone 17 Pro Max em várias cores"
+          className="w-[70%] sm:w-[50%] lg:w-[40%] max-w-[600px] object-contain drop-shadow-2xl"
+        />
+      </div>
+      
       {/* Gradient overlays for depth */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-[1]" />
-      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30 z-[1]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-[2]" />
       
       {/* Content Overlay */}
-      <div className="absolute inset-0 z-[3] flex flex-col items-center justify-end pb-8 sm:pb-12 px-4">
+      <div className="absolute inset-0 z-[3] flex flex-col items-center justify-end pb-6 sm:pb-10 px-4">
         {/* Badge */}
         <div className="mb-3 animate-pulse">
           <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full uppercase tracking-wider shadow-lg">
