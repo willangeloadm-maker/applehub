@@ -10,6 +10,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShaderAnimation } from "@/components/ShaderAnimation";
+import iphone17Banner from "@/assets/iphone-17-banner.jpg";
 
 interface Product {
   id: string;
@@ -142,6 +143,7 @@ const Home = () => {
       gradient: "from-slate-800 via-slate-700 to-rose-900",
       footnote: "*Sujeito a análise de crédito",
       useShader: true,
+      image: iphone17Banner,
       highlight: true
     },
     {
@@ -176,8 +178,18 @@ const Home = () => {
                     onClick={() => handleBannerClick(index)}
                   >
                     <CardContent className={`flex ${(banner as any).highlight ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[2/1]'} items-end justify-center p-0 bg-gradient-to-br ${banner.gradient} text-white relative overflow-hidden`}>
+                      {/* Shader animation as background layer */}
                       {(banner as any).useShader && (
                         <ShaderAnimation />
+                      )}
+                      {/* Image on top of shader */}
+                      {(banner as any).image && (
+                        <div 
+                          className="absolute inset-0 bg-contain bg-center bg-no-repeat z-[1]"
+                          style={{ 
+                            backgroundImage: `url(${(banner as any).image})`,
+                          }}
+                        />
                       )}
                       {/* Gradient overlay for text readability */}
                       {(banner as any).highlight && (
