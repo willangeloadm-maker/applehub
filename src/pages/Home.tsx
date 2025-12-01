@@ -9,8 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShaderAnimation } from "@/components/ShaderAnimation";
-import iphone17Banner from "@/assets/iphone-17-banner.jpg";
+import { IPhoneHeroBanner } from "@/components/IPhoneHeroBanner";
 
 interface Product {
   id: string;
@@ -136,16 +135,7 @@ const Home = () => {
     { icon: Cable, label: "Acessórios", slug: "acessorios", gradient: "from-[#ff6b35] to-[#6b3d3d]" },
   ];
 
-  const banners = [
-    {
-      title: "iPhone 17 Pro Max",
-      subtitle: "Lançamento! Preço imperdível e parcele em até 24x*",
-      gradient: "from-slate-800 via-slate-700 to-rose-900",
-      footnote: "*Sujeito a análise de crédito",
-      useShader: true,
-      image: iphone17Banner,
-      highlight: true
-    },
+  const secondaryBanners = [
     {
       title: "Parcele em 24x",
       subtitle: "Com análise de crédito facilitada",
@@ -158,80 +148,29 @@ const Home = () => {
     },
   ];
 
-  const handleBannerClick = (index: number) => {
-    if (index === 0 && iphone17ProMaxId) {
-      navigate(`/produtos/${iphone17ProMaxId}`);
-    }
-  };
-
   return (
     <AppLayout>
       <div className="min-h-screen bg-background">
-        {/* Hero Carousel */}
+        {/* Hero iPhone Banner with Shader Animation */}
         <section className="px-4 pt-6 pb-4">
+          <IPhoneHeroBanner productId={iphone17ProMaxId} />
+        </section>
+
+        {/* Secondary Banners Carousel */}
+        <section className="px-4 pb-4">
           <Carousel className="w-full">
             <CarouselContent>
-              {banners.map((banner, index) => (
-                <CarouselItem key={index}>
-                  <Card 
-                    className={`border-0 shadow-xl overflow-hidden ${index === 0 && iphone17ProMaxId ? 'cursor-pointer' : ''}`}
-                    onClick={() => handleBannerClick(index)}
-                  >
-                    <CardContent className={`flex ${(banner as any).highlight ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[2/1]'} items-end justify-center p-0 text-white relative overflow-hidden`}>
-                      {/* Shader animation as base background */}
-                      {(banner as any).useShader && (
-                        <div className="absolute inset-0">
-                          <ShaderAnimation />
-                        </div>
-                      )}
-                      {/* Fallback gradient for non-shader banners */}
-                      {!(banner as any).useShader && (
-                        <div className={`absolute inset-0 bg-gradient-to-br ${banner.gradient}`} />
-                      )}
-                      {/* Image on top with transparency to show shader through */}
-                      {(banner as any).image && (
-                        <div 
-                          className="absolute inset-0 bg-cover bg-center bg-no-repeat z-[1]"
-                          style={{ 
-                            backgroundImage: `url(${(banner as any).image})`,
-                          }}
-                        />
-                      )}
-                      {/* Gradient overlay for text readability */}
-                      {(banner as any).highlight && (
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-[2]" />
-                      )}
-                      <div className={`${(banner as any).highlight ? 'text-center w-full pb-6 px-4' : 'text-center p-8'} space-y-2 relative z-[3]`}>
-                        {!(banner as any).highlight && (
-                          <>
-                            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight drop-shadow-2xl">
-                              {banner.title}
-                            </h2>
-                            <p className="text-sm sm:text-base opacity-95 drop-shadow-lg">
-                              {banner.subtitle}
-                            </p>
-                          </>
-                        )}
-                        {(banner as any).highlight && (
-                          <>
-                            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight drop-shadow-2xl uppercase" style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.8)' }}>
-                              {banner.title}
-                            </h2>
-                            <p className="text-sm sm:text-base lg:text-lg font-semibold drop-shadow-lg bg-gradient-to-r from-orange-500 to-red-500 px-4 py-1 rounded-full inline-block">
-                              {banner.subtitle}
-                            </p>
-                            {(banner as any).footnote && (
-                              <p className="text-xs opacity-80 italic drop-shadow-md">{(banner as any).footnote}</p>
-                            )}
-                            {iphone17ProMaxId && (
-                              <Link to={`/produtos/${iphone17ProMaxId}`}>
-                                <Button size="lg" className="mt-2 bg-white text-orange-600 hover:bg-gray-100 font-bold shadow-lg">
-                                  Ver agora
-                                </Button>
-                              </Link>
-                            )}
-                          </>
-                        )}
+              {secondaryBanners.map((banner, index) => (
+                <CarouselItem key={index} className="md:basis-1/2">
+                  <Card className="border-0 shadow-xl overflow-hidden">
+                    <CardContent className={`flex aspect-[2/1] items-end justify-center p-0 bg-gradient-to-br ${banner.gradient} text-white relative overflow-hidden`}>
+                      <div className="text-center p-8 space-y-2 relative z-10">
+                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight drop-shadow-2xl">
+                          {banner.title}
+                        </h2>
+                        <p className="text-sm sm:text-base opacity-95 drop-shadow-lg">
+                          {banner.subtitle}
+                        </p>
                       </div>
                     </CardContent>
                   </Card>
