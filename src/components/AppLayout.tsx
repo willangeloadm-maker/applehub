@@ -9,7 +9,8 @@ import { CartSheet } from "@/components/CartSheet";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 interface AppLayoutProps {
   children: ReactNode;
   cartItemsCount?: number;
@@ -124,18 +125,44 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </div>
 
         {/* Bottom Navigation - Mobile Only */}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90 lg:hidden safe-area-pb">
-          <div className="flex items-center justify-around h-16">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden safe-area-pb px-3 pb-2">
+          <div className="flex items-center justify-center gap-1 h-16 rounded-2xl border border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90 shadow-lg px-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
               
               if (item.isCart) {
                 return (
-                  <div key="cart" className="flex flex-col items-center justify-center flex-1 h-full gap-1">
-                    <CartSheet />
-                    <span className="text-[10px] font-medium text-muted-foreground">Carrinho</span>
-                  </div>
+                  <motion.div 
+                    key="cart" 
+                    className="flex items-center justify-center h-full"
+                    initial={false}
+                    animate={{
+                      paddingLeft: active ? "0.75rem" : "0.5rem",
+                      paddingRight: active ? "0.75rem" : "0.5rem",
+                    }}
+                    transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                  >
+                    <div className={cn(
+                      "flex items-center gap-2 rounded-xl px-3 py-2 transition-colors",
+                      active ? "bg-primary/10 text-primary" : "text-muted-foreground"
+                    )}>
+                      <CartSheet />
+                      <AnimatePresence initial={false}>
+                        {active && (
+                          <motion.span
+                            initial={{ width: 0, opacity: 0 }}
+                            animate={{ width: "auto", opacity: 1 }}
+                            exit={{ width: 0, opacity: 0 }}
+                            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                            className="text-xs font-medium overflow-hidden whitespace-nowrap"
+                          >
+                            Carrinho
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
                 );
               }
               
@@ -143,56 +170,20 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors ${
-                    active 
-                      ? "text-primary" 
-                      : "text-muted-foreground"
-                  }`}
                 >
-                  <div className="relative">
-                    <Icon className="h-5 w-5" />
-                    {item.badge !== undefined && item.badge > 0 && (
-                      <Badge 
-                        variant="destructive" 
-                        className="absolute -right-2 -top-2 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
-                      >
-                        {item.badge > 9 ? "9+" : item.badge}
-                      </Badge>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-medium">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-
-        {/* Footer - Desktop Only */}
-        <footer className="hidden lg:block fixed bottom-0 left-0 right-0 z-40 border-t border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90">
-          <div className="max-w-[1400px] mx-auto px-8 py-4">
-            <div className="flex items-center justify-center gap-8">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.path);
-                
-                if (item.isCart) {
-                  return (
-                    <div key="cart" className="flex items-center gap-2">
-                      <CartSheet />
-                      <span className="text-sm font-medium text-muted-foreground">Carrinho</span>
-                    </div>
-                  );
-                }
-                
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:bg-accent ${
+                  <motion.div
+                    initial={false}
+                    animate={{
+                      paddingLeft: active ? "0.75rem" : "0.5rem",
+                      paddingRight: active ? "0.75rem" : "0.5rem",
+                    }}
+                    transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl px-3 py-2 transition-colors",
                       active 
-                        ? "text-primary bg-accent" 
-                        : "text-muted-foreground"
-                    }`}
+                        ? "bg-primary/10 text-primary" 
+                        : "text-muted-foreground hover:bg-accent"
+                    )}
                   >
                     <div className="relative">
                       <Icon className="h-5 w-5" />
@@ -205,11 +196,115 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                         </Badge>
                       )}
                     </div>
-                    <span className="text-sm font-medium">{item.label}</span>
-                  </Link>
+                    <AnimatePresence initial={false}>
+                      {active && (
+                        <motion.span
+                          initial={{ width: 0, opacity: 0 }}
+                          animate={{ width: "auto", opacity: 1 }}
+                          exit={{ width: 0, opacity: 0 }}
+                          transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                          className="text-xs font-medium overflow-hidden whitespace-nowrap"
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+
+        {/* Footer - Desktop Only */}
+        <footer className="hidden lg:block fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+          <div className="flex items-center gap-2 rounded-2xl border border-border/40 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/90 shadow-lg p-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.path);
+              
+              if (item.isCart) {
+                return (
+                  <motion.div 
+                    key="cart" 
+                    initial={false}
+                    animate={{
+                      gap: active ? "0.5rem" : "0",
+                      paddingLeft: active ? "1rem" : "0.5rem",
+                      paddingRight: active ? "1rem" : "0.5rem",
+                    }}
+                    transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                    className={cn(
+                      "flex items-center rounded-xl px-3 py-2 transition-colors",
+                      active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent"
+                    )}
+                  >
+                    <CartSheet />
+                    <AnimatePresence initial={false}>
+                      {active && (
+                        <motion.span
+                          initial={{ width: 0, opacity: 0 }}
+                          animate={{ width: "auto", opacity: 1 }}
+                          exit={{ width: 0, opacity: 0 }}
+                          transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                          className="text-sm font-medium overflow-hidden whitespace-nowrap"
+                        >
+                          Carrinho
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
                 );
-              })}
-            </div>
+              }
+              
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                >
+                  <motion.div
+                    initial={false}
+                    animate={{
+                      gap: active ? "0.5rem" : "0",
+                      paddingLeft: active ? "1rem" : "0.5rem",
+                      paddingRight: active ? "1rem" : "0.5rem",
+                    }}
+                    transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                    className={cn(
+                      "flex items-center rounded-xl px-3 py-2 transition-colors",
+                      active 
+                        ? "bg-primary/10 text-primary" 
+                        : "text-muted-foreground hover:bg-accent"
+                    )}
+                  >
+                    <div className="relative">
+                      <Icon className="h-5 w-5" />
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="absolute -right-2 -top-2 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
+                        >
+                          {item.badge > 9 ? "9+" : item.badge}
+                        </Badge>
+                      )}
+                    </div>
+                    <AnimatePresence initial={false}>
+                      {active && (
+                        <motion.span
+                          initial={{ width: 0, opacity: 0 }}
+                          animate={{ width: "auto", opacity: 1 }}
+                          exit={{ width: 0, opacity: 0 }}
+                          transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+                          className="text-sm font-medium overflow-hidden whitespace-nowrap"
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                </Link>
+              );
+            })}
           </div>
         </footer>
       </div>
