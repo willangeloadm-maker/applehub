@@ -30,7 +30,7 @@ export function IPhoneHeroBanner({ productId }: IPhoneHeroBannerProps) {
       {/* Content Overlay */}
       <div className="absolute inset-0 z-[3] flex flex-col items-center justify-end pb-6 sm:pb-10 px-4">
         {/* Badge */}
-        <div className="mb-3 animate-pulse">
+        <div className="mb-5 sm:mb-6 animate-pulse">
           <span className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-xs sm:text-sm font-bold px-4 py-1.5 rounded-full uppercase tracking-wider shadow-lg">
             Lançamento 2025
           </span>
