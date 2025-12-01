@@ -177,15 +177,21 @@ const Home = () => {
                     className={`border-0 shadow-xl overflow-hidden ${index === 0 && iphone17ProMaxId ? 'cursor-pointer' : ''}`}
                     onClick={() => handleBannerClick(index)}
                   >
-                    <CardContent className={`flex ${(banner as any).highlight ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[2/1]'} items-end justify-center p-0 bg-gradient-to-br ${banner.gradient} text-white relative overflow-hidden`}>
-                      {/* Shader animation as background layer */}
+                    <CardContent className={`flex ${(banner as any).highlight ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[2/1]'} items-end justify-center p-0 text-white relative overflow-hidden`}>
+                      {/* Shader animation as base background */}
                       {(banner as any).useShader && (
-                        <ShaderAnimation />
+                        <div className="absolute inset-0">
+                          <ShaderAnimation />
+                        </div>
                       )}
-                      {/* Image on top of shader */}
+                      {/* Fallback gradient for non-shader banners */}
+                      {!(banner as any).useShader && (
+                        <div className={`absolute inset-0 bg-gradient-to-br ${banner.gradient}`} />
+                      )}
+                      {/* Image on top with transparency to show shader through */}
                       {(banner as any).image && (
                         <div 
-                          className="absolute inset-0 bg-contain bg-center bg-no-repeat z-[1]"
+                          className="absolute inset-0 bg-cover bg-center bg-no-repeat z-[1]"
                           style={{ 
                             backgroundImage: `url(${(banner as any).image})`,
                           }}
@@ -193,9 +199,9 @@ const Home = () => {
                       )}
                       {/* Gradient overlay for text readability */}
                       {(banner as any).highlight && (
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-[2]" />
                       )}
-                      <div className={`${(banner as any).highlight ? 'text-center w-full pb-6 px-4' : 'text-center p-8'} space-y-2 relative z-10`}>
+                      <div className={`${(banner as any).highlight ? 'text-center w-full pb-6 px-4' : 'text-center p-8'} space-y-2 relative z-[3]`}>
                         {!(banner as any).highlight && (
                           <>
                             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight drop-shadow-2xl">
