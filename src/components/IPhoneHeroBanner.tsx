@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ShaderAnimation } from "@/components/ShaderAnimation";
-import iphoneColors from "@/assets/iphone-17-pro-max-nobg.png";
+import iphoneColors from "@/assets/iphone-17-hero.png";
 
 interface IPhoneHeroBannerProps {
   productId: string | null;
