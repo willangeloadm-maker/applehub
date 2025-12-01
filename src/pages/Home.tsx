@@ -3,13 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles, ChevronDown } from "lucide-react";
+import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import iphone17Banner from "@/assets/iphone-17-banner.jpg";
+import { ShaderAnimation } from "@/components/ShaderAnimation";
 
 interface Product {
   id: string;
@@ -141,7 +141,7 @@ const Home = () => {
       subtitle: "Lançamento! Preço imperdível e parcele em até 24x*",
       gradient: "from-slate-800 via-slate-700 to-rose-900",
       footnote: "*Sujeito a análise de crédito",
-      image: iphone17Banner,
+      useShader: true,
       highlight: true
     },
     {
@@ -176,13 +176,8 @@ const Home = () => {
                     onClick={() => handleBannerClick(index)}
                   >
                     <CardContent className={`flex ${(banner as any).highlight ? 'aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9]' : 'aspect-[2/1]'} items-end justify-center p-0 bg-gradient-to-br ${banner.gradient} text-white relative overflow-hidden`}>
-                      {(banner as any).image && (
-                        <div 
-                          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                          style={{ 
-                            backgroundImage: `url(${(banner as any).image})`,
-                          }}
-                        />
+                      {(banner as any).useShader && (
+                        <ShaderAnimation />
                       )}
                       {/* Gradient overlay for text readability */}
                       {(banner as any).highlight && (
@@ -211,9 +206,11 @@ const Home = () => {
                               <p className="text-xs opacity-80 italic drop-shadow-md">{(banner as any).footnote}</p>
                             )}
                             {iphone17ProMaxId && (
-                              <Button size="lg" className="mt-2 bg-white text-orange-600 hover:bg-gray-100 font-bold shadow-lg">
-                                Ver agora
-                              </Button>
+                              <Link to={`/produtos/${iphone17ProMaxId}`}>
+                                <Button size="lg" className="mt-2 bg-white text-orange-600 hover:bg-gray-100 font-bold shadow-lg">
+                                  Ver agora
+                                </Button>
+                              </Link>
                             )}
                           </>
                         )}
