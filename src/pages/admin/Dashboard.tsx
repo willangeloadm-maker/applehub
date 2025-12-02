@@ -60,6 +60,8 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<OrderWithProfile[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<OrderWithProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Ativar notificações em tempo real de novos pedidos
   useOrderNotifications();
@@ -165,7 +167,15 @@ export default function AdminDashboard() {
       );
     }
     setFilteredOrders(filtered);
+    setCurrentPage(1); // Reset to first page when filtering
   }, [searchTerm, orders]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleQuickDeliveryStatusChange = async (order: OrderWithProfile, newDeliveryStatus: string) => {
     try {
@@ -509,14 +519,14 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredOrders.length === 0 ? (
+                    {paginatedOrders.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           Nenhum pedido ativo encontrado
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredOrders.map((order) => (
+                      paginatedOrders.map((order) => (
                         <TableRow key={order.id}>
                           <TableCell className="font-mono text-xs">{order.numero_pedido}</TableCell>
                           <TableCell>{order.profiles?.nome_completo || '-'}</TableCell>
@@ -553,6 +563,58 @@ export default function AdminDashboard() {
                     )}
                   </TableBody>
                 </Table>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                      Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredOrders.length)} de {filteredOrders.length} pedidos
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Anterior
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          return (
+                            <Button
+                              key={pageNum}
+                              variant={currentPage === pageNum ? "default" : "outline"}
+                              size="sm"
+                              className="w-8 h-8 p-0"
+                              onClick={() => setCurrentPage(pageNum)}
+                            >
+                              {pageNum}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Próximo
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>
