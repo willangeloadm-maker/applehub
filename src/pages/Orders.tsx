@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Truck, MapPin, Receipt, PackageCheck, Send, Navigation } from "lucide-react";
+import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Truck, MapPin, Receipt, PackageCheck, Send, Navigation, CreditCard } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { formatDateTimeBrasilia } from "@/lib/dateUtils";
 import { motion } from "framer-motion";
@@ -529,48 +529,76 @@ const Orders = () => {
             </Card>
           ) : (
             <div className="space-y-4">
-              {orders.map((order) => (
-                <Card
-                  key={order.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => handleSelectOrder(order)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <p className="font-semibold">Pedido #{order.numero_pedido}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDateTimeBrasilia(order.created_at!)}
-                        </p>
-                      </div>
-                      {getStatusBadge(order.status)}
-                    </div>
-
-                    <div className="flex gap-2 mb-3 overflow-x-auto">
-                      {order.order_items.slice(0, 3).map((item) => (
-                        <img
-                          key={item.id}
-                          src={item.products.imagens[0] || "/placeholder.svg"}
-                          alt={item.nome_produto}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                      ))}
-                      {order.order_items.length > 3 && (
-                        <div className="w-16 h-16 rounded-lg bg-secondary flex items-center justify-center text-sm font-semibold">
-                          +{order.order_items.length - 3}
+              {orders.map((order) => {
+                const isPendingPayment = order.status === "em_analise" && 
+                  (order.payment_type === "pix" || order.payment_type === "parcelamento_applehub");
+                
+                return (
+                  <Card
+                    key={order.id}
+                    className={`cursor-pointer hover:shadow-md transition-shadow ${isPendingPayment ? 'border-amber-500/50' : ''}`}
+                    onClick={() => handleSelectOrder(order)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="font-semibold">Pedido #{order.numero_pedido}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDateTimeBrasilia(order.created_at!)}
+                          </p>
                         </div>
-                      )}
-                    </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {getStatusBadge(order.status)}
+                          {isPendingPayment && (
+                            <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Aguardando Pagamento
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
 
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm text-muted-foreground">
-                        {order.order_items.length} {order.order_items.length === 1 ? "item" : "itens"}
-                      </p>
-                      <p className="font-bold text-primary">{formatPrice(Number(order.total))}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex gap-2 mb-3 overflow-x-auto">
+                        {order.order_items.slice(0, 3).map((item) => (
+                          <img
+                            key={item.id}
+                            src={item.products.imagens[0] || "/placeholder.svg"}
+                            alt={item.nome_produto}
+                            className="w-16 h-16 object-cover rounded-lg"
+                          />
+                        ))}
+                        {order.order_items.length > 3 && (
+                          <div className="w-16 h-16 rounded-lg bg-secondary flex items-center justify-center text-sm font-semibold">
+                            +{order.order_items.length - 3}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-muted-foreground">
+                          {order.order_items.length} {order.order_items.length === 1 ? "item" : "itens"}
+                        </p>
+                        <p className="font-bold text-primary">{formatPrice(Number(order.total))}</p>
+                      </div>
+
+                      {/* Botão de pagamento para pedidos pendentes */}
+                      {isPendingPayment && (
+                        <Button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/pagamento-pix?orderId=${order.id}`);
+                          }}
+                          className="w-full mt-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                          size="sm"
+                        >
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Finalizar Pagamento PIX
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
