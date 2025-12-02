@@ -29,3 +29,6 @@ verify_jwt = true
 
 [functions.save-payment-settings]
 verify_jwt = true
+
+[functions.cancel-expired-pix]
+verify_jwt = false
