@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
-import { CheckCircle2, XCircle, Mail, Apple, Eye, EyeOff, Shield, AlertCircle, Lock } from "lucide-react";
+import { CheckCircle2, XCircle, Mail, Apple, Eye, EyeOff, Shield, AlertCircle, Lock, ArrowLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const loginSchema = z.object({
@@ -440,6 +440,16 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-[#1e3a52] to-[#6b3d3d] overflow-y-auto">
       <div className="w-full max-w-md my-8">
+        {/* Botão Voltar */}
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/')}
+          className="mb-4 text-white hover:bg-white/10"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Voltar para início
+        </Button>
+
         {/* Logo */}
         <div className="mb-6 sm:mb-8 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#ff6b35] to-[#ff4757] mb-3 sm:mb-4 shadow-xl">
