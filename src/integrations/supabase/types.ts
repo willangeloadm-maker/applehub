@@ -931,6 +931,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_active_orders: {
+        Args: never
+        Returns: {
+          cliente_nome: string
+          codigo_rastreio: string
+          created_at: string
+          id: string
+          numero_pedido: string
+          status: string
+          total: number
+          user_id: string
+        }[]
+      }
       get_product_total_stock: { Args: { product_id: string }; Returns: number }
       get_user_email_by_cpf: { Args: { user_cpf: string }; Returns: string }
       get_user_email_by_id: { Args: { user_id: string }; Returns: string }
