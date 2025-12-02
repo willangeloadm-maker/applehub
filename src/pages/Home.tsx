@@ -3,12 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles, Laptop } from "lucide-react";
+import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles, Laptop, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { IPhoneHeroBanner } from "@/components/IPhoneHeroBanner";
+import { Input } from "@/components/ui/input";
 
 interface Product {
   id: string;
@@ -23,8 +24,10 @@ interface Product {
 
 const Home = () => {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState("recentes");
+  const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState<any[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -108,6 +111,7 @@ const Home = () => {
 
       if (error) throw error;
       setAllProducts(data || []);
+      setFilteredProducts(data || []);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar produtos",
@@ -118,6 +122,21 @@ const Home = () => {
       setLoading(false);
     }
   };
+
+  // Filter products by search query
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredProducts(allProducts);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = allProducts.filter(product =>
+        product.nome.toLowerCase().includes(query) ||
+        (product.capacidade && product.capacidade.toLowerCase().includes(query)) ||
+        (product.cor && product.cor.toLowerCase().includes(query))
+      );
+      setFilteredProducts(filtered);
+    }
+  }, [searchQuery, allProducts]);
 
 
   const handleParcelamentoClick = async () => {
@@ -206,6 +225,17 @@ const Home = () => {
             </Link>
           </div>
           
+          {/* Search Input */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar produtos por nome..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
           {/* Sort Filter */}
           <div className="flex items-center gap-2 mb-4">
             <span className="text-sm text-muted-foreground">Ordenar:</span>
@@ -232,17 +262,17 @@ const Home = () => {
                 />
               ))}
             </div>
-          ) : allProducts.length === 0 ? (
+          ) : filteredProducts.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="p-8 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Nenhum produto cadastrado
+                  {searchQuery ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {allProducts.map((product) => (
+              {filteredProducts.map((product) => (
                 <ProductCard key={product.id} {...product} />
               ))}
             </div>
