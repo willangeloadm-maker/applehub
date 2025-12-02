@@ -7,9 +7,49 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Truck, MapPin } from "lucide-react";
+import { ArrowLeft, Package, Clock, CheckCircle, XCircle, Truck, MapPin, Receipt, PackageCheck, Send, Navigation } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { formatDateTimeBrasilia } from "@/lib/dateUtils";
+import { motion } from "framer-motion";
+
+// Order fulfillment steps for paid orders
+const orderFulfillmentSteps = [
+  { 
+    id: "faturado",
+    title: "Pedido Faturado", 
+    description: "Pagamento confirmado",
+    icon: Receipt,
+    statuses: ["pagamento_confirmado", "em_separacao", "em_transporte", "entregue", "pedido_enviado", "pedido_entregue"]
+  },
+  { 
+    id: "separacao",
+    title: "Em Separação", 
+    description: "Preparando seus produtos",
+    icon: PackageCheck,
+    statuses: ["em_separacao", "em_transporte", "entregue", "pedido_enviado", "pedido_entregue"]
+  },
+  { 
+    id: "enviado",
+    title: "Enviado p/ Transportadora", 
+    description: "Saiu do nosso centro",
+    icon: Send,
+    statuses: ["em_transporte", "pedido_enviado", "pedido_entregue"]
+  },
+  { 
+    id: "transporte",
+    title: "Saiu para Entrega", 
+    description: "A caminho do destino",
+    icon: Navigation,
+    statuses: ["pedido_enviado", "pedido_entregue"]
+  },
+  { 
+    id: "entregue",
+    title: "Pedido Entregue", 
+    description: "Chegou no endereço",
+    icon: CheckCircle,
+    statuses: ["entregue", "pedido_entregue"]
+  },
+];
 
 type Order = Tables<"orders"> & {
   order_items: (Tables<"order_items"> & {
@@ -190,39 +230,170 @@ const Orders = () => {
               </CardContent>
             </Card>
 
-            {/* Timeline */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Histórico do Pedido</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {orderHistory.map((item, idx) => (
-                    <div key={item.id} className="flex gap-4">
-                      <div className="flex flex-col items-center">
-                        <div className="rounded-full p-2 bg-primary/10">
-                          {getStatusIcon(item.status)}
-                        </div>
-                        {idx < orderHistory.length - 1 && (
-                          <div className="w-0.5 h-full bg-border mt-2" />
-                        )}
-                      </div>
-                      <div className="flex-1 pb-4">
-                        <div className="flex items-center gap-2 mb-1">
-                          {getStatusBadge(item.status)}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDateTimeBrasilia(item.created_at!)}
-                        </p>
-                        {item.observacao && (
-                          <p className="text-sm mt-1">{item.observacao}</p>
-                        )}
+            {/* Visual Progress Timeline for Paid Orders */}
+            {["pagamento_confirmado", "em_separacao", "em_transporte", "entregue", "pedido_enviado", "pedido_entregue"].includes(selectedOrder.status) && (
+              <Card className="overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-primary/10 to-destructive/10">
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-primary" />
+                    Acompanhe seu Pedido
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {/* Desktop Timeline */}
+                  <div className="hidden md:block">
+                    <div className="relative">
+                      {/* Progress Line Background */}
+                      <div className="absolute top-8 left-0 right-0 h-1 bg-muted rounded-full" />
+                      
+                      {/* Progress Line Active */}
+                      {(() => {
+                        const currentIdx = orderFulfillmentSteps.findIndex(s => !s.statuses.includes(selectedOrder.status));
+                        const progressPercent = currentIdx === -1 ? 100 : (currentIdx / (orderFulfillmentSteps.length - 1)) * 100;
+                        return (
+                          <motion.div 
+                            initial={{ width: "0%" }}
+                            animate={{ width: `${Math.min(100, progressPercent)}%` }}
+                            transition={{ duration: 1, ease: "easeOut" }}
+                            className="absolute top-8 left-0 h-1 bg-gradient-to-r from-primary to-destructive rounded-full"
+                          />
+                        );
+                      })()}
+
+                      {/* Steps */}
+                      <div className="relative flex justify-between">
+                        {orderFulfillmentSteps.map((step, index) => {
+                          const Icon = step.icon;
+                          const isCompleted = step.statuses.includes(selectedOrder.status);
+                          const currentStepIndex = orderFulfillmentSteps.findIndex(s => !s.statuses.includes(selectedOrder.status));
+                          const isCurrent = currentStepIndex === -1 
+                            ? index === orderFulfillmentSteps.length - 1 
+                            : index === currentStepIndex - 1;
+                          const isPending = !isCompleted;
+
+                          return (
+                            <motion.div
+                              key={step.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.1 + index * 0.1 }}
+                              className="flex flex-col items-center text-center"
+                            >
+                              <div className={`
+                                relative z-10 w-14 h-14 rounded-full flex items-center justify-center
+                                transition-all duration-500
+                                ${isCompleted ? 'bg-gradient-to-br from-primary to-destructive text-white shadow-lg shadow-primary/30' : ''}
+                                ${isCurrent && isCompleted ? 'ring-4 ring-primary/30 animate-pulse' : ''}
+                                ${isPending ? 'bg-muted text-muted-foreground' : ''}
+                              `}>
+                                <Icon className={`w-6 h-6`} />
+                                {isCurrent && isCompleted && (
+                                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full animate-ping" />
+                                )}
+                              </div>
+                              <h3 className={`mt-3 font-semibold text-xs ${isPending ? 'text-muted-foreground' : ''}`}>
+                                {step.title}
+                              </h3>
+                              <p className="text-xs text-muted-foreground mt-1 max-w-[80px]">
+                                {step.description}
+                              </p>
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+
+                  {/* Mobile Timeline */}
+                  <div className="md:hidden space-y-3">
+                    {orderFulfillmentSteps.map((step, index) => {
+                      const Icon = step.icon;
+                      const isCompleted = step.statuses.includes(selectedOrder.status);
+                      const currentStepIndex = orderFulfillmentSteps.findIndex(s => !s.statuses.includes(selectedOrder.status));
+                      const isCurrent = currentStepIndex === -1 
+                        ? index === orderFulfillmentSteps.length - 1 
+                        : index === currentStepIndex - 1;
+                      const isPending = !isCompleted;
+                      const isLast = index === orderFulfillmentSteps.length - 1;
+
+                      return (
+                        <motion.div
+                          key={step.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.1 + index * 0.1 }}
+                          className="flex gap-3"
+                        >
+                          <div className="flex flex-col items-center">
+                            <div className={`
+                              w-10 h-10 rounded-full flex items-center justify-center
+                              ${isCompleted ? 'bg-gradient-to-br from-primary to-destructive text-white shadow-lg shadow-primary/30' : ''}
+                              ${isCurrent && isCompleted ? 'ring-2 ring-primary/30' : ''}
+                              ${isPending ? 'bg-muted text-muted-foreground' : ''}
+                            `}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            {!isLast && (
+                              <div className={`w-0.5 h-6 mt-1 ${isCompleted ? 'bg-gradient-to-b from-primary to-destructive' : 'bg-muted'}`} />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className={`font-semibold text-sm ${isPending ? 'text-muted-foreground' : ''}`}>
+                              {step.title}
+                            </h3>
+                            <p className="text-xs text-muted-foreground">
+                              {step.description}
+                            </p>
+                            {isCurrent && isCompleted && (
+                              <span className="inline-flex items-center gap-1 mt-1 text-xs text-primary font-medium">
+                                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                                Etapa atual
+                              </span>
+                            )}
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* History Timeline for Non-Paid Orders */}
+            {!["pagamento_confirmado", "em_separacao", "em_transporte", "entregue", "pedido_enviado", "pedido_entregue"].includes(selectedOrder.status) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Histórico do Pedido</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {orderHistory.map((item, idx) => (
+                      <div key={item.id} className="flex gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className="rounded-full p-2 bg-primary/10">
+                            {getStatusIcon(item.status)}
+                          </div>
+                          {idx < orderHistory.length - 1 && (
+                            <div className="w-0.5 h-full bg-border mt-2" />
+                          )}
+                        </div>
+                        <div className="flex-1 pb-4">
+                          <div className="flex items-center gap-2 mb-1">
+                            {getStatusBadge(item.status)}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDateTimeBrasilia(item.created_at!)}
+                          </p>
+                          {item.observacao && (
+                            <p className="text-sm mt-1">{item.observacao}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Itens do Pedido */}
             <Card>
