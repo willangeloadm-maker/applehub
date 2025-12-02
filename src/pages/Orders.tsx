@@ -213,6 +213,9 @@ const Orders = () => {
       em_transporte: { label: "Em Transporte", variant: "default" },
       entregue: { label: "Entregue", variant: "outline" },
       cancelado: { label: "Cancelado", variant: "destructive" },
+      pedido_enviado: { label: "Enviado", variant: "default" },
+      pedido_entregue: { label: "Entregue", variant: "outline" },
+      entrega_nao_realizada: { label: "Entrega não Realizada", variant: "destructive" },
     };
     
     const status_info = statusMap[status] || { label: status, variant: "outline" as const };
@@ -229,11 +232,14 @@ const Orders = () => {
       case "em_separacao":
         return <Package className="w-5 h-5 text-blue-600" />;
       case "em_transporte":
+      case "pedido_enviado":
         return <Truck className="w-5 h-5 text-blue-600" />;
       case "entregue":
+      case "pedido_entregue":
         return <MapPin className="w-5 h-5 text-green-600" />;
       case "reprovado":
       case "cancelado":
+      case "entrega_nao_realizada":
         return <XCircle className="w-5 h-5 text-red-600" />;
       default:
         return <Clock className="w-5 h-5" />;
