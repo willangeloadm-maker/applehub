@@ -235,7 +235,7 @@ export default function AdminDashboard() {
       title: "Pedidos Ativos",
       description: "Gerenciar entregas",
       icon: Package,
-      path: "/admin/pedidos",
+      scrollTo: "pedidos-ativos",
       gradient: "from-amber-500 to-orange-500"
     },
     {
@@ -267,6 +267,17 @@ export default function AdminDashboard() {
       gradient: "from-slate-600 to-slate-700"
     },
   ];
+
+  const handleQuickActionClick = (action: typeof quickActions[0]) => {
+    if ('scrollTo' in action && action.scrollTo) {
+      const element = document.getElementById(action.scrollTo);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } else if ('path' in action && action.path) {
+      navigate(action.path);
+    }
+  };
 
   return (
     <AppLayout>
@@ -305,11 +316,11 @@ export default function AdminDashboard() {
             Ações Rápidas
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {quickActions.map((action) => (
+            {quickActions.map((action, index) => (
               <Card 
-                key={action.path}
+                key={index}
                 className="group cursor-pointer border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 overflow-hidden"
-                onClick={() => navigate(action.path)}
+                onClick={() => handleQuickActionClick(action)}
               >
                 <CardContent className="p-6 relative">
                   <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
@@ -469,7 +480,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Pedidos Ativos */}
-            <div className="mb-8">
+            <div id="pedidos-ativos" className="mb-8 scroll-mt-4">
               <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <Package className="w-5 h-5 text-primary" />
                 Pedidos Ativos
