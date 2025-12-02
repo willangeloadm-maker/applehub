@@ -3,10 +3,43 @@ import AppLayout from '@/components/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, ShoppingCart, Users, TrendingUp, DollarSign, Plus, Clock, CheckCircle2, AlertCircle, Settings, BarChart3, AlertTriangle, CreditCard, MessageSquare } from 'lucide-react';
+import { Package, ShoppingCart, Users, TrendingUp, DollarSign, Plus, Clock, CheckCircle2, AlertCircle, Settings, BarChart3, AlertTriangle, CreditCard, MessageSquare, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useOrderNotifications } from '@/hooks/useOrderNotifications';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { toast } from '@/hooks/use-toast';
+
+interface Order {
+  id: string;
+  numero_pedido: string;
+  status: 'em_analise' | 'aprovado' | 'reprovado' | 'em_separacao' | 'em_transporte' | 'entregue' | 'cancelado' | 'pagamento_confirmado' | 'pedido_enviado' | 'pedido_entregue' | 'entrega_nao_realizada';
+  total: number;
+  created_at: string;
+  user_id: string;
+  codigo_rastreio?: string;
+}
+
+interface OrderWithProfile extends Order {
+  profiles: {
+    nome_completo: string;
+  } | null;
+}
+
+const deliveryStatusOptions = [
+  { value: 'pagamento_confirmado', label: 'Pedido Faturado' },
+  { value: 'em_separacao', label: 'Em Separação' },
+  { value: 'pedido_enviado', label: 'Enviado p/ Transportadora' },
+  { value: 'em_transporte', label: 'Saiu para Entrega' },
+  { value: 'pedido_entregue', label: 'Pedido Entregue' },
+  { value: 'entrega_nao_realizada', label: 'Entrega não realizada' }
+];
+
+const isPaidOrder = (status: string) => {
+  return ['pagamento_confirmado', 'em_separacao', 'pedido_enviado', 'em_transporte', 'pedido_entregue'].includes(status);
+};
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -20,12 +53,16 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [salesData, setSalesData] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [orders, setOrders] = useState<OrderWithProfile[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<OrderWithProfile[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Ativar notificações em tempo real de novos pedidos
   useOrderNotifications();
 
   useEffect(() => {
     loadStats();
+    loadOrders();
   }, []);
 
   const loadStats = async () => {
@@ -85,6 +122,92 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('id, numero_pedido, status, total, created_at, user_id, codigo_rastreio')
+        .in('status', ['pagamento_confirmado', 'em_separacao', 'pedido_enviado', 'em_transporte', 'pedido_entregue'])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const ordersWithProfiles = await Promise.all(
+        (data || []).map(async (order) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('nome_completo')
+            .eq('id', order.user_id)
+            .single();
+
+          return {
+            ...order,
+            profiles: profile
+          };
+        })
+      );
+
+      setOrders(ordersWithProfiles);
+      setFilteredOrders(ordersWithProfiles);
+    } catch (error) {
+      console.error('Erro ao carregar pedidos:', error);
+    }
+  };
+
+  useEffect(() => {
+    let filtered = orders;
+    if (searchTerm) {
+      filtered = filtered.filter(order =>
+        order.numero_pedido.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.profiles?.nome_completo.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    setFilteredOrders(filtered);
+  }, [searchTerm, orders]);
+
+  const handleQuickDeliveryStatusChange = async (order: OrderWithProfile, newDeliveryStatus: string) => {
+    try {
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ status: newDeliveryStatus as Order['status'] })
+        .eq('id', order.id);
+
+      if (orderError) throw orderError;
+
+      await supabase
+        .from('order_status_history')
+        .insert({
+          order_id: order.id,
+          status: newDeliveryStatus as Order['status'],
+          observacao: 'Status atualizado via ação rápida'
+        });
+
+      try {
+        await supabase.functions.invoke('send-order-notification', {
+          body: {
+            orderId: order.id,
+            status: newDeliveryStatus
+          }
+        });
+      } catch (emailError) {
+        console.error('Erro ao enviar email:', emailError);
+      }
+
+      toast({ description: "Status de entrega atualizado!" });
+      loadOrders();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar status",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    return deliveryStatusOptions.find(opt => opt.value === status)?.label || status;
   };
 
   const COLORS = ['#ff6b35', '#ff4757', '#ff8c42', '#ffa07a', '#ffb84d'];
@@ -340,6 +463,81 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Pedidos Ativos */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Package className="w-5 h-5 text-primary" />
+                Pedidos Ativos
+              </h2>
+            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Gerenciar Entregas</CardTitle>
+                <CardDescription>Altere o status de entrega dos pedidos pagos</CardDescription>
+                <div className="relative mt-4">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por número ou cliente..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Número</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Rastreio</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Data</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredOrders.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          Nenhum pedido ativo encontrado
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredOrders.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-mono text-xs">{order.numero_pedido}</TableCell>
+                          <TableCell>{order.profiles?.nome_completo || '-'}</TableCell>
+                          <TableCell className="font-mono text-xs">{order.codigo_rastreio || '-'}</TableCell>
+                          <TableCell>R$ {order.total.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <Select 
+                              value={order.status} 
+                              onValueChange={(value) => handleQuickDeliveryStatusChange(order, value)}
+                            >
+                              <SelectTrigger className="w-[180px] h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {deliveryStatusOptions.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(order.created_at).toLocaleDateString('pt-BR')}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </>
         )}
       </div>
