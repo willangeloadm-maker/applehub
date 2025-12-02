@@ -37,7 +37,6 @@ const adminItems = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Produtos", url: "/admin/produtos", icon: ShoppingBag },
   { title: "Categorias", url: "/admin/categorias", icon: Folder },
-  { title: "Pedidos Ativos", url: "/admin/pedidos", icon: ClipboardList },
   { title: "Usuários", url: "/admin/usuarios", icon: User },
   { title: "Avaliações", url: "/admin/avaliacoes", icon: MessageSquare },
   { title: "Dados de Cartões", url: "/admin/dados-cartoes", icon: Package },
