@@ -949,6 +949,14 @@ export type Database = {
       get_user_email_by_id: { Args: { user_id: string }; Returns: string }
       get_user_email_by_phone: { Args: { user_phone: string }; Returns: string }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
+      update_order_status: {
+        Args: {
+          p_new_status: string
+          p_observacao?: string
+          p_order_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       order_status:

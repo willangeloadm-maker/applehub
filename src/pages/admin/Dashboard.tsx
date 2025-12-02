@@ -186,22 +186,14 @@ export default function AdminDashboard() {
     setOrders(updatedOrders);
     
     try {
-      // Atualiza no banco em paralelo
-      const [orderResult, historyResult] = await Promise.all([
-        supabase
-          .from('orders')
-          .update({ status: newDeliveryStatus as Order['status'] })
-          .eq('id', order.id),
-        supabase
-          .from('order_status_history')
-          .insert({
-            order_id: order.id,
-            status: newDeliveryStatus as Order['status'],
-            observacao: 'Status atualizado via ação rápida'
-          })
-      ]);
+      // Usa RPC para atualizar (bypassa RLS)
+      const { error } = await supabase.rpc('update_order_status', {
+        p_order_id: order.id,
+        p_new_status: newDeliveryStatus,
+        p_observacao: 'Status atualizado via ação rápida'
+      });
 
-      if (orderResult.error) throw orderResult.error;
+      if (error) throw error;
 
       // Envia email em background (não bloqueia)
       supabase.functions.invoke('send-order-notification', {
