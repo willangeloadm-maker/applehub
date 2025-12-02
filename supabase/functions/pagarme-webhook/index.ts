@@ -178,10 +178,10 @@ serve(async (req) => {
           }
         } else {
           // Pagamento PIX normal (não é entrada de parcelamento)
-          // Atualizar pedido para em_separacao
+          // Atualizar pedido para pagamento_confirmado (Faturado)
           await supabase
             .from("orders")
-            .update({ status: "em_separacao" })
+            .update({ status: "pagamento_confirmado" })
             .eq("id", transaction.order_id);
 
           // Adicionar ao histórico
@@ -189,11 +189,11 @@ serve(async (req) => {
             .from("order_status_history")
             .insert({
               order_id: transaction.order_id,
-              status: "em_separacao",
-              observacao: "Pagamento PIX confirmado. Pedido sendo preparado para envio.",
+              status: "pagamento_confirmado",
+              observacao: "Pagamento PIX confirmado. Pedido faturado.",
             });
 
-          console.log("Pedido atualizado para em_separacao:", transaction.order_id);
+          console.log("Pedido atualizado para pagamento_confirmado:", transaction.order_id);
         }
       }
 
