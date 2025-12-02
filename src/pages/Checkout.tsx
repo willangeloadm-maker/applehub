@@ -349,7 +349,14 @@ const Checkout = () => {
         estado: profile.estado,
       };
 
-      // Criar pedido com código de rastreio e status inicial "em_separacao"
+      // Definir status inicial baseado no método de pagamento
+      // PIX: aguarda pagamento (em_analise)
+      // Parcelamento: aguarda análise de crédito (em_analise)
+      const statusInicial = paymentType === "pix" || paymentType === "parcelamento_applehub" 
+        ? "em_analise" 
+        : "em_separacao";
+
+      // Criar pedido com código de rastreio
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
@@ -363,7 +370,7 @@ const Checkout = () => {
           parcelas: paymentType === "parcelamento_applehub" ? parcelas : null,
           valor_parcela: paymentType === "parcelamento_applehub" ? calcularValorParcela(total, parcelas) : null,
           endereco_entrega: endereco,
-          status: "em_separacao",
+          status: statusInicial,
         })
         .select()
         .single();
@@ -387,12 +394,18 @@ const Checkout = () => {
       if (itemsError) throw itemsError;
 
       // Criar histórico de status inicial
+      const observacaoStatus = paymentType === "pix" 
+        ? "Aguardando pagamento via PIX." 
+        : paymentType === "parcelamento_applehub"
+        ? "Pedido em análise de crédito."
+        : "Pedido confirmado. Dentro de algumas horas o pedido sairá para envio.";
+
       const { error: historyError } = await supabase
         .from("order_status_history")
         .insert({
           order_id: order.id,
-          status: "em_separacao",
-          observacao: "Pedido confirmado. Dentro de algumas horas o pedido sairá para envio.",
+          status: statusInicial,
+          observacao: observacaoStatus,
         });
 
       if (historyError) throw historyError;

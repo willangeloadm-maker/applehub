@@ -391,11 +391,21 @@ const PixPayment = () => {
 
           {/* Botões de ação */}
           <div className="space-y-3">
+            {paymentConfirmed && (
+              <Button 
+                onClick={() => navigate(`/confirmacao-pedido?order=${orderId}`)} 
+                className="w-full bg-gradient-to-r from-primary to-destructive hover:opacity-90"
+                size="lg"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Ver Confirmação do Pedido
+              </Button>
+            )}
             <Button 
               onClick={() => navigate("/pedidos")} 
               className="w-full"
               size="lg"
-              variant="outline"
+              variant={paymentConfirmed ? "outline" : "default"}
             >
               Ver Meus Pedidos
             </Button>

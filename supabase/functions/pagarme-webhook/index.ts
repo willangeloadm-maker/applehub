@@ -114,53 +114,54 @@ serve(async (req) => {
         );
       }
 
-      // Se for entrada, criar as parcelas futuras
-      if (transaction.tipo === "entrada" && transaction.order_id) {
-        const { data: creditAnalysis } = await supabase
-          .from("credit_analyses")
-          .select("*")
-          .eq("user_id", transaction.user_id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
+      // Atualizar status do pedido baseado no tipo de transação
+      if (transaction.order_id) {
+        if (transaction.tipo === "entrada") {
+          // Se for entrada (parcelamento), criar as parcelas futuras
+          const { data: creditAnalysis } = await supabase
+            .from("credit_analyses")
+            .select("*")
+            .eq("user_id", transaction.user_id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
 
-        if (creditAnalysis) {
-          const valorFinanciado = creditAnalysis.valor_aprovado - transaction.valor;
-          const numParcelas = 24; // Ou buscar do pedido
-          
-          // Buscar configurações de juros (simplificado)
-          const jurosBase = 2.0; // Pode vir do cálculo baseado na entrada
-          const valorParcela = (valorFinanciado * Math.pow(1 + jurosBase/100, numParcelas)) / numParcelas;
+          if (creditAnalysis) {
+            const valorFinanciado = creditAnalysis.valor_aprovado - transaction.valor;
+            const numParcelas = 24; // Ou buscar do pedido
+            
+            // Buscar configurações de juros (simplificado)
+            const jurosBase = 2.0; // Pode vir do cálculo baseado na entrada
+            const valorParcela = (valorFinanciado * Math.pow(1 + jurosBase/100, numParcelas)) / numParcelas;
 
-          // Criar parcelas
-          const parcelas = [];
-          for (let i = 1; i <= numParcelas; i++) {
-            const dataVencimento = new Date();
-            dataVencimento.setDate(dataVencimento.getDate() + (30 * i));
+            // Criar parcelas
+            const parcelas = [];
+            for (let i = 1; i <= numParcelas; i++) {
+              const dataVencimento = new Date();
+              dataVencimento.setDate(dataVencimento.getDate() + (30 * i));
 
-            parcelas.push({
-              user_id: transaction.user_id,
-              order_id: transaction.order_id,
-              tipo: "parcela",
-              valor: valorParcela,
-              status: "pendente",
-              metodo_pagamento: "parcelamento_applehub",
-              parcela_numero: i,
-              total_parcelas: numParcelas,
-              data_vencimento: dataVencimento.toISOString(),
-            });
-          }
+              parcelas.push({
+                user_id: transaction.user_id,
+                order_id: transaction.order_id,
+                tipo: "parcela",
+                valor: valorParcela,
+                status: "pendente",
+                metodo_pagamento: "parcelamento_applehub",
+                parcela_numero: i,
+                total_parcelas: numParcelas,
+                data_vencimento: dataVencimento.toISOString(),
+              });
+            }
 
-          const { error: parcelasError } = await supabase
-            .from("transactions")
-            .insert(parcelas);
+            const { error: parcelasError } = await supabase
+              .from("transactions")
+              .insert(parcelas);
 
-          if (parcelasError) {
-            console.error("Erro ao criar parcelas:", parcelasError);
-          }
+            if (parcelasError) {
+              console.error("Erro ao criar parcelas:", parcelasError);
+            }
 
-          // Atualizar pedido como pagamento_confirmado
-          if (transaction.order_id) {
+            // Atualizar pedido como pagamento_confirmado
             await supabase
               .from("orders")
               .update({ status: "pagamento_confirmado" })
@@ -175,6 +176,24 @@ serve(async (req) => {
                 observacao: "Entrada paga via PIX",
               });
           }
+        } else {
+          // Pagamento PIX normal (não é entrada de parcelamento)
+          // Atualizar pedido para em_separacao
+          await supabase
+            .from("orders")
+            .update({ status: "em_separacao" })
+            .eq("id", transaction.order_id);
+
+          // Adicionar ao histórico
+          await supabase
+            .from("order_status_history")
+            .insert({
+              order_id: transaction.order_id,
+              status: "em_separacao",
+              observacao: "Pagamento PIX confirmado. Pedido sendo preparado para envio.",
+            });
+
+          console.log("Pedido atualizado para em_separacao:", transaction.order_id);
         }
       }
 
