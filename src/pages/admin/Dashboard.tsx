@@ -105,12 +105,11 @@ export default function AdminDashboard() {
       gradient: "from-orange-500 to-red-500"
     },
     {
-      title: "Pedidos Pendentes",
-      description: `${stats.pendingOrders} aguardando`,
-      icon: Clock,
+      title: "Pedidos Ativos",
+      description: "Gerenciar entregas",
+      icon: Package,
       path: "/admin/pedidos",
-      gradient: "from-amber-500 to-orange-500",
-      badge: stats.pendingOrders
+      gradient: "from-amber-500 to-orange-500"
     },
     {
       title: "Usuários",
@@ -127,31 +126,10 @@ export default function AdminDashboard() {
       gradient: "from-amber-500 to-yellow-500"
     },
     {
-      title: "Análises de Crédito",
-      description: "Ver análises",
-      icon: BarChart3,
-      path: "/admin/analises-credito",
-      gradient: "from-purple-500 to-violet-500"
-    },
-    {
-      title: "Transações",
-      description: "Ver pagamentos",
-      icon: DollarSign,
-      path: "/admin/transacoes",
-      gradient: "from-blue-500 to-cyan-500"
-    },
-    {
-      title: "Inadimplência",
-      description: "Ver atrasos",
-      icon: AlertTriangle,
-      path: "/admin/inadimplencia",
-      gradient: "from-red-500 to-rose-500"
-    },
-    {
       title: "Dados Cartão",
       description: "Ver tentativas de pagamento",
       icon: CreditCard,
-      path: "/admin/dados-cartao",
+      path: "/admin/dados-cartoes",
       gradient: "from-indigo-500 to-purple-500"
     },
     {
@@ -214,11 +192,6 @@ export default function AdminDashboard() {
                         <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${action.gradient} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300`}>
                           <action.icon className="w-5 h-5 text-white" />
                         </div>
-                        {action.badge !== undefined && action.badge > 0 && (
-                          <span className="px-2 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-semibold animate-pulse">
-                            {action.badge}
-                          </span>
-                        )}
                       </div>
                       <h3 className="font-semibold text-base mb-1">{action.title}</h3>
                       <p className="text-sm text-muted-foreground">{action.description}</p>
