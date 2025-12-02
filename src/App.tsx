@@ -59,6 +59,7 @@ const App = () => (
           <Route path="/credito-aprovado" element={<CreditApproved />} />
           <Route path="/confirmacao-pedido" element={<OrderConfirmation />} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/pedidos" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/produtos" element={<AdminRoute><AdminProducts /></AdminRoute>} />
           <Route path="/admin/produtos/:productId/variantes" element={<AdminRoute><ProductVariants /></AdminRoute>} />
           <Route path="/admin/categorias" element={<AdminRoute><AdminCategories /></AdminRoute>} />
