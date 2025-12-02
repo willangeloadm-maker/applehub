@@ -29,13 +29,17 @@ interface OrderWithProfile extends Order {
 }
 
 const deliveryStatusOptions = [
-  { value: 'pagamento_confirmado', label: 'Pedido Faturado' },
-  { value: 'em_separacao', label: 'Em Separação' },
-  { value: 'pedido_enviado', label: 'Enviado p/ Transportadora' },
-  { value: 'em_transporte', label: 'Saiu para Entrega' },
-  { value: 'pedido_entregue', label: 'Pedido Entregue' },
-  { value: 'entrega_nao_realizada', label: 'Entrega não realizada' }
+  { value: 'pagamento_confirmado', label: 'Pedido Faturado', color: 'bg-blue-500' },
+  { value: 'em_separacao', label: 'Em Separação', color: 'bg-orange-500' },
+  { value: 'pedido_enviado', label: 'Enviado p/ Transportadora', color: 'bg-purple-500' },
+  { value: 'em_transporte', label: 'Saiu para Entrega', color: 'bg-amber-500' },
+  { value: 'pedido_entregue', label: 'Pedido Entregue', color: 'bg-green-500' },
+  { value: 'entrega_nao_realizada', label: 'Entrega não realizada', color: 'bg-red-500' }
 ];
+
+const getStatusColor = (status: string) => {
+  return deliveryStatusOptions.find(opt => opt.value === status)?.color || 'bg-gray-500';
+};
 
 const isPaidOrder = (status: string) => {
   return ['pagamento_confirmado', 'em_separacao', 'pedido_enviado', 'em_transporte', 'pedido_entregue'].includes(status);
@@ -516,13 +520,19 @@ export default function AdminDashboard() {
                               value={order.status} 
                               onValueChange={(value) => handleQuickDeliveryStatusChange(order, value)}
                             >
-                              <SelectTrigger className="w-[180px] h-8 text-xs">
-                                <SelectValue />
+                              <SelectTrigger className={`w-[200px] h-8 text-xs border-l-4 ${getStatusColor(order.status).replace('bg-', 'border-')}`}>
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 rounded-full ${getStatusColor(order.status)}`} />
+                                  <SelectValue />
+                                </div>
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="bg-background border">
                                 {deliveryStatusOptions.map(opt => (
                                   <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-2 h-2 rounded-full ${opt.color}`} />
+                                      <span>{opt.label}</span>
+                                    </div>
                                   </SelectItem>
                                 ))}
                               </SelectContent>

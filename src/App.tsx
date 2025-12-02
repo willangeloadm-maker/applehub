@@ -17,7 +17,6 @@ import AdminDashboard from "./pages/admin/Dashboard";
 import AdminProducts from "./pages/admin/Products";
 import ProductVariants from "./pages/admin/ProductVariants";
 import AdminCategories from "./pages/admin/Categories";
-import AdminOrders from "./pages/admin/Orders";
 import AdminSettings from "./pages/admin/Settings";
 import AdminUsers from "./pages/admin/Users";
 import AdminCreditAnalyses from "./pages/admin/CreditAnalyses";
@@ -63,7 +62,6 @@ const App = () => (
           <Route path="/admin/produtos" element={<AdminRoute><AdminProducts /></AdminRoute>} />
           <Route path="/admin/produtos/:productId/variantes" element={<AdminRoute><ProductVariants /></AdminRoute>} />
           <Route path="/admin/categorias" element={<AdminRoute><AdminCategories /></AdminRoute>} />
-          <Route path="/admin/pedidos" element={<AdminRoute><AdminOrders /></AdminRoute>} />
           <Route path="/admin/usuarios" element={<AdminRoute><AdminUsers /></AdminRoute>} />
           <Route path="/admin/avaliacoes" element={<AdminRoute><AdminReviews /></AdminRoute>} />
           <Route path="/admin/analises-credito" element={<AdminRoute><AdminCreditAnalyses /></AdminRoute>} />
