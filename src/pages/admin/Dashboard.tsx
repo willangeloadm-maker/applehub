@@ -130,11 +130,18 @@ export default function AdminDashboard() {
 
   const loadOrders = async () => {
     try {
+      console.log('Carregando pedidos ativos...');
+      
+      const { data: session } = await supabase.auth.getSession();
+      console.log('Session:', session?.session?.user?.id || 'Não autenticado');
+      
       const { data, error } = await supabase
         .from('orders')
         .select('id, numero_pedido, status, total, created_at, user_id, codigo_rastreio')
         .in('status', ['pagamento_confirmado', 'em_separacao', 'pedido_enviado', 'em_transporte', 'pedido_entregue'])
         .order('created_at', { ascending: false });
+
+      console.log('Pedidos retornados:', data?.length || 0, 'Erro:', error);
 
       if (error) throw error;
 
