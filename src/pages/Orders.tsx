@@ -71,6 +71,55 @@ const Orders = () => {
 
   useEffect(() => {
     loadOrders();
+
+    // Real-time subscription para atualizações de status
+    const setupRealtimeSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const channel = supabase
+        .channel('orders-status-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'orders',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('Order update received:', payload);
+            // Atualiza o pedido na lista
+            setOrders(prev => prev.map(order => 
+              order.id === payload.new.id 
+                ? { ...order, ...payload.new } 
+                : order
+            ));
+            // Se o pedido selecionado foi atualizado, atualiza ele também
+            setSelectedOrder(prev => {
+              if (prev && prev.id === payload.new.id) {
+                return { ...prev, ...payload.new };
+              }
+              return prev;
+            });
+            // Recarrega o histórico se o pedido selecionado foi atualizado
+            if (payload.new.id) {
+              loadOrderHistory(payload.new.id);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    };
+
+    const cleanup = setupRealtimeSubscription();
+    
+    return () => {
+      cleanup.then(unsub => unsub?.());
+    };
   }, []);
 
   const loadOrders = async () => {
