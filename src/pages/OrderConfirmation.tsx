@@ -13,14 +13,14 @@ const orderSteps = [
     title: "Pedido Faturado", 
     description: "Pagamento confirmado",
     icon: CheckCircle2,
-    status: "completed"
+    status: "current"
   },
   { 
     id: 2, 
     title: "Em Separação", 
     description: "Preparando seus produtos",
     icon: Package,
-    status: "current"
+    status: "pending"
   },
   { 
     id: 3, 
