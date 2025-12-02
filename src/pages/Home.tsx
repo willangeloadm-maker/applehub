@@ -24,7 +24,6 @@ interface Product {
 const Home = () => {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [iphone17ProMaxId, setIphone17ProMaxId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState("recentes");
   const [categories, setCategories] = useState<any[]>([]);
   const { toast } = useToast();
@@ -32,7 +31,6 @@ const Home = () => {
 
   useEffect(() => {
     loadAllProducts();
-    loadIphone17ProMax();
     loadCategories();
   }, [sortBy]);
 
@@ -121,22 +119,6 @@ const Home = () => {
     }
   };
 
-  const loadIphone17ProMax = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id")
-        .ilike("nome", "%iPhone 17 Pro Max%")
-        .eq("ativo", true)
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-      if (data) setIphone17ProMaxId(data.id);
-    } catch (error) {
-      console.error("Erro ao carregar iPhone 17 Pro Max:", error);
-    }
-  };
 
   const handleParcelamentoClick = async () => {
     try {
@@ -176,7 +158,7 @@ const Home = () => {
       <div className="min-h-screen bg-background">
         {/* Hero iPhone Banner with Shader Animation */}
         <section className="px-4 pt-6 pb-6">
-          <IPhoneHeroBanner productId={iphone17ProMaxId} />
+          <IPhoneHeroBanner />
         </section>
 
         {/* Categories */}

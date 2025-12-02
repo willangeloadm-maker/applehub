@@ -3,11 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ShaderAnimation } from "@/components/ShaderAnimation";
 import iphoneColors from "@/assets/iphone-17-hero.png";
 
-interface IPhoneHeroBannerProps {
-  productId: string | null;
-}
-
-export function IPhoneHeroBanner({ productId }: IPhoneHeroBannerProps) {
+export function IPhoneHeroBanner() {
   return (
     <div className="relative w-full aspect-[4/5] sm:aspect-[16/9] lg:aspect-[21/9] rounded-xl overflow-hidden shadow-2xl">
       {/* Shader Animation Background */}
@@ -60,16 +56,14 @@ export function IPhoneHeroBanner({ productId }: IPhoneHeroBannerProps) {
         </p>
         
         {/* CTA Button */}
-        {productId && (
-          <Link to={`/produtos/${productId}`}>
-            <Button 
-              size="lg" 
-              className="bg-white text-orange-600 hover:bg-orange-50 hover:scale-105 transition-all duration-300 font-bold text-base sm:text-lg px-8 py-6 shadow-xl"
-            >
-              Ver agora
-            </Button>
-          </Link>
-        )}
+        <Link to="/produtos?categoria=iphones">
+          <Button 
+            size="lg" 
+            className="bg-white text-orange-600 hover:bg-orange-50 hover:scale-105 transition-all duration-300 font-bold text-base sm:text-lg px-8 py-6 shadow-xl"
+          >
+            Ver agora
+          </Button>
+        </Link>
         
         {/* Features */}
         <div className="flex items-center gap-4 sm:gap-8 mt-6 text-white/70 text-xs sm:text-sm">
