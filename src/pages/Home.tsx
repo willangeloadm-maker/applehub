@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles } from "lucide-react";
+import { ChevronRight, Smartphone, Tablet, Watch, Headphones, Cable, Sparkles, Laptop } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,13 +26,58 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [iphone17ProMaxId, setIphone17ProMaxId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState("recentes");
+  const [categories, setCategories] = useState<any[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
     loadAllProducts();
     loadIphone17ProMax();
+    loadCategories();
   }, [sortBy]);
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('nome, slug')
+        .order('ordem', { ascending: true });
+
+      if (error) throw error;
+
+      const iconMap: Record<string, any> = {
+        'iphone': Smartphone,
+        'ipad': Tablet,
+        'apple-watch': Watch,
+        'airpods': Headphones,
+        'acessorios': Cable,
+        'mac': Laptop,
+      };
+
+      const gradientMap: Record<string, string> = {
+        'iphone': 'from-[#ff6b35] to-[#ff5722]',
+        'ipad': 'from-[#ff4757] to-[#ff3545]',
+        'apple-watch': 'from-[#6b3d3d] to-[#8b4d4d]',
+        'airpods': 'from-[#1e3a52] to-[#2d4a5f]',
+        'acessorios': 'from-[#ff6b35] to-[#6b3d3d]',
+        'mac': 'from-[#818cf8] to-[#4f46e5]',
+      };
+
+      const categoriesWithIcons = [
+        { icon: Sparkles, label: "Todos", slug: "", gradient: "from-[#8b5cf6] to-[#a855f7]" },
+        ...(data || []).map(cat => ({
+          icon: iconMap[cat.slug] || Cable,
+          label: cat.nome,
+          slug: cat.slug,
+          gradient: gradientMap[cat.slug] || 'from-[#6b7280] to-[#4b5563]',
+        }))
+      ];
+
+      setCategories(categoriesWithIcons);
+    } catch (error: any) {
+      console.error('Erro ao carregar categorias:', error);
+    }
+  };
 
   const loadAllProducts = async () => {
     try {
@@ -125,14 +170,6 @@ const Home = () => {
     }
   };
 
-  const categories = [
-    { icon: Sparkles, label: "Todos", slug: "", gradient: "from-[#8b5cf6] to-[#a855f7]" },
-    { icon: Smartphone, label: "iPhone", slug: "iphone", gradient: "from-[#ff6b35] to-[#ff5722]" },
-    { icon: Tablet, label: "iPad", slug: "ipad", gradient: "from-[#ff4757] to-[#ff3545]" },
-    { icon: Watch, label: "Watch", slug: "apple-watch", gradient: "from-[#6b3d3d] to-[#8b4d4d]" },
-    { icon: Headphones, label: "AirPods", slug: "airpods", gradient: "from-[#1e3a52] to-[#2d4a5f]" },
-    { icon: Cable, label: "Acessórios", slug: "acessorios", gradient: "from-[#ff6b35] to-[#6b3d3d]" },
-  ];
 
   return (
     <AppLayout>
