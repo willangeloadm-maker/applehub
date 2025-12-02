@@ -144,7 +144,7 @@ export default function AdminDashboard() {
             .from('profiles')
             .select('nome_completo')
             .eq('id', order.user_id)
-            .single();
+            .maybeSingle();
 
           return {
             ...order,
