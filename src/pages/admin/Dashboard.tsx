@@ -130,35 +130,24 @@ export default function AdminDashboard() {
 
   const loadOrders = async () => {
     try {
-      console.log('Carregando pedidos ativos...');
+      console.log('Carregando pedidos ativos via RPC...');
       
-      const { data: session } = await supabase.auth.getSession();
-      console.log('Session:', session?.session?.user?.id || 'Não autenticado');
-      
-      const { data, error } = await supabase
-        .from('orders')
-        .select('id, numero_pedido, status, total, created_at, user_id, codigo_rastreio')
-        .in('status', ['pagamento_confirmado', 'em_separacao', 'pedido_enviado', 'em_transporte', 'pedido_entregue'])
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_active_orders');
 
       console.log('Pedidos retornados:', data?.length || 0, 'Erro:', error);
 
       if (error) throw error;
 
-      const ordersWithProfiles = await Promise.all(
-        (data || []).map(async (order) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('nome_completo')
-            .eq('id', order.user_id)
-            .maybeSingle();
-
-          return {
-            ...order,
-            profiles: profile
-          };
-        })
-      );
+      const ordersWithProfiles = (data || []).map((order: any) => ({
+        id: order.id,
+        numero_pedido: order.numero_pedido,
+        status: order.status,
+        total: order.total,
+        created_at: order.created_at,
+        user_id: order.user_id,
+        codigo_rastreio: order.codigo_rastreio,
+        profiles: order.cliente_nome ? { nome_completo: order.cliente_nome } : null
+      }));
 
       setOrders(ordersWithProfiles);
       setFilteredOrders(ordersWithProfiles);
