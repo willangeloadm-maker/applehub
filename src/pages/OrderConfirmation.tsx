@@ -10,8 +10,8 @@ import { motion } from "framer-motion";
 const orderSteps = [
   { 
     id: 1, 
-    title: "Pedido Confirmado", 
-    description: "Seu pedido foi recebido",
+    title: "Pedido Faturado", 
+    description: "Pagamento confirmado",
     icon: CheckCircle2,
     status: "completed"
   },
@@ -24,14 +24,21 @@ const orderSteps = [
   },
   { 
     id: 3, 
-    title: "Enviado", 
-    description: "A caminho do destino",
+    title: "Enviado p/ Transportadora", 
+    description: "Saiu do nosso centro",
     icon: Truck,
     status: "pending"
   },
   { 
     id: 4, 
-    title: "Entregue", 
+    title: "Saiu para Entrega", 
+    description: "A caminho do destino",
+    icon: Clock,
+    status: "pending"
+  },
+  { 
+    id: 5, 
+    title: "Pedido Entregue", 
     description: "Chegou no endereço",
     icon: Home,
     status: "pending"
@@ -222,7 +229,7 @@ export default function OrderConfirmation() {
                 {/* Progress Line Active */}
                 <motion.div 
                   initial={{ width: "0%" }}
-                  animate={{ width: "37%" }}
+                  animate={{ width: "25%" }}
                   transition={{ delay: 0.8, duration: 1, ease: "easeOut" }}
                   className="absolute top-8 left-0 h-1 bg-gradient-to-r from-primary to-destructive rounded-full"
                 />
