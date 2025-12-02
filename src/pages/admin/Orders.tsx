@@ -41,6 +41,20 @@ const statusOptions = [
   { value: 'cancelado', label: 'Cancelado' }
 ];
 
+// Status de entrega para pedidos pagos (ação rápida)
+const deliveryStatusOptions = [
+  { value: 'pagamento_confirmado', label: 'Pedido Faturado' },
+  { value: 'em_separacao', label: 'Em Separação' },
+  { value: 'pedido_enviado', label: 'Enviado p/ Transportadora' },
+  { value: 'em_transporte', label: 'Saiu para Entrega' },
+  { value: 'pedido_entregue', label: 'Pedido Entregue' },
+  { value: 'entrega_nao_realizada', label: 'Entrega não realizada' }
+];
+
+const isPaidOrder = (status: string) => {
+  return ['pagamento_confirmado', 'em_separacao', 'pedido_enviado', 'em_transporte', 'pedido_entregue'].includes(status);
+};
+
 export default function AdminOrders() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<OrderWithProfile[]>([]);
@@ -169,7 +183,50 @@ export default function AdminOrders() {
   };
 
   const getStatusLabel = (status: string) => {
-    return statusOptions.find(opt => opt.value === status)?.label || status;
+    return statusOptions.find(opt => opt.value === status)?.label || 
+           deliveryStatusOptions.find(opt => opt.value === status)?.label || 
+           status;
+  };
+
+  const handleQuickDeliveryStatusChange = async (order: OrderWithProfile, newDeliveryStatus: string) => {
+    try {
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ status: newDeliveryStatus as Order['status'] })
+        .eq('id', order.id);
+
+      if (orderError) throw orderError;
+
+      // Adicionar ao histórico
+      await supabase
+        .from('order_status_history')
+        .insert({
+          order_id: order.id,
+          status: newDeliveryStatus as Order['status'],
+          observacao: 'Status atualizado via ação rápida'
+        });
+
+      // Enviar notificação por email
+      try {
+        await supabase.functions.invoke('send-order-notification', {
+          body: {
+            orderId: order.id,
+            status: newDeliveryStatus
+          }
+        });
+      } catch (emailError) {
+        console.error('Erro ao enviar email:', emailError);
+      }
+
+      toast({ description: "Status de entrega atualizado!" });
+      loadOrders();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar status",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -237,9 +294,27 @@ export default function AdminOrders() {
                       <TableCell className="font-mono text-xs">{order.codigo_rastreio || '-'}</TableCell>
                       <TableCell>R$ {order.total.toFixed(2)}</TableCell>
                       <TableCell>
-                        <span className="px-2 py-1 rounded-full text-xs bg-secondary">
-                          {getStatusLabel(order.status)}
-                        </span>
+                        {isPaidOrder(order.status) ? (
+                          <Select 
+                            value={order.status} 
+                            onValueChange={(value) => handleQuickDeliveryStatusChange(order, value)}
+                          >
+                            <SelectTrigger className="w-[180px] h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {deliveryStatusOptions.map(opt => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <span className="px-2 py-1 rounded-full text-xs bg-secondary">
+                            {getStatusLabel(order.status)}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {new Date(order.created_at).toLocaleDateString('pt-BR')}
