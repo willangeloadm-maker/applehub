@@ -178,36 +178,44 @@ export default function AdminDashboard() {
   );
 
   const handleQuickDeliveryStatusChange = async (order: OrderWithProfile, newDeliveryStatus: string) => {
+    // Optimistic update - atualiza UI imediatamente
+    const previousOrders = [...orders];
+    const updatedOrders = orders.map(o => 
+      o.id === order.id ? { ...o, status: newDeliveryStatus as Order['status'] } : o
+    );
+    setOrders(updatedOrders);
+    
     try {
-      const { error: orderError } = await supabase
-        .from('orders')
-        .update({ status: newDeliveryStatus as Order['status'] })
-        .eq('id', order.id);
+      // Atualiza no banco em paralelo
+      const [orderResult, historyResult] = await Promise.all([
+        supabase
+          .from('orders')
+          .update({ status: newDeliveryStatus as Order['status'] })
+          .eq('id', order.id),
+        supabase
+          .from('order_status_history')
+          .insert({
+            order_id: order.id,
+            status: newDeliveryStatus as Order['status'],
+            observacao: 'Status atualizado via ação rápida'
+          })
+      ]);
 
-      if (orderError) throw orderError;
+      if (orderResult.error) throw orderResult.error;
 
-      await supabase
-        .from('order_status_history')
-        .insert({
-          order_id: order.id,
-          status: newDeliveryStatus as Order['status'],
-          observacao: 'Status atualizado via ação rápida'
-        });
+      // Envia email em background (não bloqueia)
+      supabase.functions.invoke('send-order-notification', {
+        body: {
+          orderId: order.id,
+          status: newDeliveryStatus
+        }
+      }).catch(emailError => console.error('Erro ao enviar email:', emailError));
 
-      try {
-        await supabase.functions.invoke('send-order-notification', {
-          body: {
-            orderId: order.id,
-            status: newDeliveryStatus
-          }
-        });
-      } catch (emailError) {
-        console.error('Erro ao enviar email:', emailError);
-      }
-
-      toast({ description: "Status de entrega atualizado!" });
-      loadOrders();
+      toast({ description: "Status atualizado!" });
     } catch (error) {
+      // Rollback em caso de erro
+      setOrders(previousOrders);
+      console.error('Erro ao atualizar:', error);
       toast({
         title: "Erro",
         description: "Erro ao atualizar status",
