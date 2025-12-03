@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { recipient_id, secret_key, admin_password } = await req.json();
+    const { recipient_id, secret_key, auto_withdraw_enabled, admin_password } = await req.json();
 
     // Validate admin password
     if (admin_password !== 'Ar102030') {
@@ -96,7 +96,11 @@ Deno.serve(async (req) => {
       // Update existing settings
       const { data, error } = await supabaseAdmin
         .from('payment_settings')
-        .update({ recipient_id, secret_key })
+        .update({ 
+          recipient_id, 
+          secret_key,
+          auto_withdraw_enabled: auto_withdraw_enabled ?? false
+        })
         .eq('id', existing.id)
         .select()
         .single();
@@ -107,7 +111,11 @@ Deno.serve(async (req) => {
       // Insert new settings
       const { data, error } = await supabaseAdmin
         .from('payment_settings')
-        .insert([{ recipient_id, secret_key }])
+        .insert([{ 
+          recipient_id, 
+          secret_key,
+          auto_withdraw_enabled: auto_withdraw_enabled ?? false
+        }])
         .select()
         .single();
 
