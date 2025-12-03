@@ -567,6 +567,7 @@ export type Database = {
           recipient_id: string
           secret_key: string
           updated_at: string | null
+          withdraw_password: string | null
         }
         Insert: {
           auto_withdraw_enabled?: boolean | null
@@ -575,6 +576,7 @@ export type Database = {
           recipient_id: string
           secret_key: string
           updated_at?: string | null
+          withdraw_password?: string | null
         }
         Update: {
           auto_withdraw_enabled?: boolean | null
@@ -583,6 +585,7 @@ export type Database = {
           recipient_id?: string
           secret_key?: string
           updated_at?: string | null
+          withdraw_password?: string | null
         }
         Relationships: []
       }

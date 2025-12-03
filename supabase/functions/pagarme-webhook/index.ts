@@ -8,11 +8,20 @@ const corsHeaders = {
 };
 
 // Função para criar transferência (saque) na Pagar.me
-async function createTransfer(recipientId: string, secretKey: string, amount: number): Promise<{ success: boolean; data?: any; error?: string }> {
+async function createTransfer(recipientId: string, secretKey: string, withdrawPassword: string | null, amount: number): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
     const amountInCents = Math.round(amount * 100);
     
     console.log(`Iniciando transferência de R$ ${amount} (${amountInCents} centavos) para recipient ${recipientId}`);
+    
+    const requestBody: { amount: number; metadata?: { password?: string } } = {
+      amount: amountInCents
+    };
+    
+    // Adicionar senha se configurada
+    if (withdrawPassword) {
+      requestBody.metadata = { password: withdrawPassword };
+    }
     
     const response = await fetch(`https://api.pagar.me/core/v5/recipients/${recipientId}/transfers`, {
       method: 'POST',
@@ -20,9 +29,7 @@ async function createTransfer(recipientId: string, secretKey: string, amount: nu
         'Authorization': `Basic ${btoa(secretKey + ':')}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        amount: amountInCents
-      })
+      body: JSON.stringify(requestBody)
     });
 
     const data = await response.json();
@@ -53,10 +60,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Buscar configurações de pagamento (incluindo auto_withdraw_enabled)
+    // Buscar configurações de pagamento (incluindo auto_withdraw_enabled e withdraw_password)
     const { data: settings } = await supabase
       .from("payment_settings")
-      .select("secret_key, recipient_id, auto_withdraw_enabled")
+      .select("secret_key, recipient_id, auto_withdraw_enabled, withdraw_password")
       .single();
 
     if (!settings) {
@@ -156,7 +163,7 @@ serve(async (req) => {
         
         console.log(`🏦 Saque automático ativado. Iniciando transferência de R$ ${transferAmount}`);
         
-        transferResult = await createTransfer(settings.recipient_id, settings.secret_key, transferAmount);
+        transferResult = await createTransfer(settings.recipient_id, settings.secret_key, settings.withdraw_password, transferAmount);
         
         if (transferResult.success) {
           console.log(`✅ Saque automático realizado com sucesso! ID: ${transferResult.data?.id}`);

@@ -34,6 +34,7 @@ export default function AdminSettings() {
   const [paymentSettings, setPaymentSettings] = useState({
     recipient_id: '',
     secret_key: '',
+    withdraw_password: '',
     auto_withdraw_enabled: false
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -126,11 +127,13 @@ export default function AdminSettings() {
       if (data?.data) {
         const recipientId = data.data.recipient_id;
         const secretKey = data.data.secret_key;
+        const withdrawPassword = data.data.withdraw_password || '';
         const autoWithdraw = data.data.auto_withdraw_enabled || false;
         
         setPaymentSettings({
           recipient_id: recipientId,
           secret_key: secretKey,
+          withdraw_password: withdrawPassword,
           auto_withdraw_enabled: autoWithdraw
         });
         
@@ -198,6 +201,7 @@ export default function AdminSettings() {
         body: {
           recipient_id: paymentSettings.recipient_id,
           secret_key: paymentSettings.secret_key,
+          withdraw_password: paymentSettings.withdraw_password,
           auto_withdraw_enabled: paymentSettings.auto_withdraw_enabled,
           admin_password: 'Ar102030'
         }
@@ -343,6 +347,19 @@ export default function AdminSettings() {
                     />
                     <p className="text-sm text-muted-foreground mt-1">
                       Chave secreta da API Pagar.me (Secret Key)
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label>Senha de Saque (Withdraw Password)</Label>
+                    <Input
+                      type="password"
+                      value={paymentSettings.withdraw_password}
+                      onChange={(e) => setPaymentSettings({ ...paymentSettings, withdraw_password: e.target.value })}
+                      placeholder="••••••••"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Senha para autorização de saques na Pagar.me
                     </p>
                   </div>
 
