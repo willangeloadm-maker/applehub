@@ -500,18 +500,69 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     console.log("🔄 Criando subscription do carrinho para userId:", cachedUserId);
 
     const channel = supabase
-      .channel('cart_changes')
+      .channel(`cart_realtime_${cachedUserId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
+          schema: 'public',
+          table: 'cart_items',
+          filter: `user_id=eq.${cachedUserId}`,
+        },
+        async (payload) => {
+          console.log("📦 INSERT detectado:", payload.new);
+          const newItem = payload.new as any;
+          
+          // Buscar dados do produto para o novo item
+          const { data: product } = await supabase
+            .from("products")
+            .select("id, nome, preco_vista, imagens, estado, estoque, capacidade, cor")
+            .eq("id", newItem.product_id)
+            .single();
+          
+          if (product) {
+            setCartItems(prev => {
+              // Evitar duplicatas
+              const exists = prev.some(item => item.id === newItem.id);
+              if (exists) return prev;
+              
+              return [...prev, { ...newItem, products: product } as CartItem];
+            });
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
           schema: 'public',
           table: 'cart_items',
           filter: `user_id=eq.${cachedUserId}`,
         },
         (payload) => {
-          console.log("📦 Mudança no carrinho detectada:", payload.eventType);
-          fetchCart(true);
+          console.log("📦 UPDATE detectado:", payload.new);
+          const updatedItem = payload.new as any;
+          setCartItems(prev => 
+            prev.map(item => 
+              item.id === updatedItem.id 
+                ? { ...item, quantidade: updatedItem.quantidade }
+                : item
+            )
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'cart_items',
+          filter: `user_id=eq.${cachedUserId}`,
+        },
+        (payload) => {
+          console.log("📦 DELETE detectado:", payload.old);
+          const deletedItem = payload.old as any;
+          setCartItems(prev => prev.filter(item => item.id !== deletedItem.id));
         }
       )
       .subscribe((status) => {
@@ -522,7 +573,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       console.log("🔌 Removendo subscription do carrinho");
       supabase.removeChannel(channel);
     };
-  }, [fetchCart]);
+  }, []);
 
   // Salva cache quando cartItems mudar
   useEffect(() => {
