@@ -7,6 +7,39 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-hub-signature",
 };
 
+// Função para criar transferência (saque) na Pagar.me
+async function createTransfer(recipientId: string, secretKey: string, amount: number): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const amountInCents = Math.round(amount * 100);
+    
+    console.log(`Iniciando transferência de R$ ${amount} (${amountInCents} centavos) para recipient ${recipientId}`);
+    
+    const response = await fetch(`https://api.pagar.me/core/v5/recipients/${recipientId}/transfers`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${btoa(secretKey + ':')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        amount: amountInCents
+      })
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('Erro na transferência Pagar.me:', data);
+      return { success: false, error: data.message || 'Erro ao criar transferência' };
+    }
+
+    console.log('Transferência criada com sucesso:', data);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Erro ao criar transferência:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Erro desconhecido' };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -20,10 +53,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Buscar secret key para validar webhook
+    // Buscar configurações de pagamento (incluindo auto_withdraw_enabled)
     const { data: settings } = await supabase
       .from("payment_settings")
-      .select("secret_key")
+      .select("secret_key, recipient_id, auto_withdraw_enabled")
       .single();
 
     if (!settings) {
@@ -64,6 +97,7 @@ serve(async (req) => {
     if (webhookData.type === "order.paid" || webhookData.type === "charge.paid") {
       const orderId = webhookData.data?.id;
       const pixCode = webhookData.data?.charges?.[0]?.last_transaction?.qr_code;
+      const paidAmount = webhookData.data?.charges?.[0]?.paid_amount || webhookData.data?.amount;
 
       if (!pixCode) {
         console.error("QR Code não encontrado no webhook");
@@ -113,6 +147,56 @@ serve(async (req) => {
           }
         );
       }
+
+      // ========== SAQUE AUTOMÁTICO ==========
+      let transferResult = null;
+      if (settings.auto_withdraw_enabled && settings.recipient_id) {
+        // Valor a transferir (em reais)
+        const transferAmount = paidAmount ? paidAmount / 100 : transaction.valor;
+        
+        console.log(`🏦 Saque automático ativado. Iniciando transferência de R$ ${transferAmount}`);
+        
+        transferResult = await createTransfer(settings.recipient_id, settings.secret_key, transferAmount);
+        
+        if (transferResult.success) {
+          console.log(`✅ Saque automático realizado com sucesso! ID: ${transferResult.data?.id}`);
+          
+          // Registrar log do saque
+          await supabase.from("pagarme_api_logs").insert({
+            endpoint: `/recipients/${settings.recipient_id}/transfers`,
+            method: "POST",
+            request_body: { amount: Math.round(transferAmount * 100) },
+            response_status: 200,
+            response_body: transferResult.data,
+            user_id: transaction.user_id,
+            order_id: transaction.order_id,
+            transaction_id: transaction.id,
+            metadata: { 
+              type: "auto_withdraw", 
+              transfer_id: transferResult.data?.id,
+              transfer_amount: transferAmount
+            }
+          });
+        } else {
+          console.error(`❌ Erro no saque automático: ${transferResult.error}`);
+          
+          // Registrar log de erro do saque
+          await supabase.from("pagarme_api_logs").insert({
+            endpoint: `/recipients/${settings.recipient_id}/transfers`,
+            method: "POST",
+            request_body: { amount: Math.round(transferAmount * 100) },
+            response_status: 400,
+            error_message: transferResult.error,
+            user_id: transaction.user_id,
+            order_id: transaction.order_id,
+            transaction_id: transaction.id,
+            metadata: { type: "auto_withdraw_error" }
+          });
+        }
+      } else {
+        console.log("⏸️ Saque automático desativado ou recipient_id não configurado");
+      }
+      // ========================================
 
       // Atualizar status do pedido baseado no tipo de transação
       if (transaction.order_id) {

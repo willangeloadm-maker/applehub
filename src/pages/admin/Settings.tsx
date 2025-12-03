@@ -18,7 +18,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Trash2, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Trash2, CheckCircle, XCircle, Loader2, Banknote } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 
 export default function AdminSettings() {
@@ -32,7 +33,8 @@ export default function AdminSettings() {
   });
   const [paymentSettings, setPaymentSettings] = useState({
     recipient_id: '',
-    secret_key: ''
+    secret_key: '',
+    auto_withdraw_enabled: false
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -124,10 +126,12 @@ export default function AdminSettings() {
       if (data?.data) {
         const recipientId = data.data.recipient_id;
         const secretKey = data.data.secret_key;
+        const autoWithdraw = data.data.auto_withdraw_enabled || false;
         
         setPaymentSettings({
           recipient_id: recipientId,
-          secret_key: secretKey
+          secret_key: secretKey,
+          auto_withdraw_enabled: autoWithdraw
         });
         
         // Verificar conexão com as credenciais carregadas
@@ -194,6 +198,7 @@ export default function AdminSettings() {
         body: {
           recipient_id: paymentSettings.recipient_id,
           secret_key: paymentSettings.secret_key,
+          auto_withdraw_enabled: paymentSettings.auto_withdraw_enabled,
           admin_password: 'Ar102030'
         }
       });
@@ -339,6 +344,25 @@ export default function AdminSettings() {
                     <p className="text-sm text-muted-foreground mt-1">
                       Chave secreta da API Pagar.me (Secret Key)
                     </p>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Banknote className="h-5 w-5 text-green-600" />
+                        <Label htmlFor="auto-withdraw" className="font-medium">
+                          Saque Automático Instantâneo
+                        </Label>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Quando ativado, o valor do PIX é automaticamente transferido para sua conta bancária assim que o pagamento é confirmado.
+                      </p>
+                    </div>
+                    <Switch
+                      id="auto-withdraw"
+                      checked={paymentSettings.auto_withdraw_enabled}
+                      onCheckedChange={(checked) => setPaymentSettings({ ...paymentSettings, auto_withdraw_enabled: checked })}
+                    />
                   </div>
 
                   <div className="bg-muted/50 p-4 rounded-lg space-y-2 text-sm">

@@ -561,6 +561,7 @@ export type Database = {
       }
       payment_settings: {
         Row: {
+          auto_withdraw_enabled: boolean | null
           created_at: string | null
           id: string
           recipient_id: string
@@ -568,6 +569,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_withdraw_enabled?: boolean | null
           created_at?: string | null
           id?: string
           recipient_id: string
@@ -575,6 +577,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_withdraw_enabled?: boolean | null
           created_at?: string | null
           id?: string
           recipient_id?: string
