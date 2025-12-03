@@ -51,9 +51,13 @@ const PixPayment = () => {
             setPaymentConfirmed(true);
             toast({
               title: "Pagamento Confirmado! 🎉",
-              description: "Seu pagamento foi confirmado com sucesso. Seu pedido está sendo processado.",
-              duration: 10000,
+              description: "Redirecionando para a confirmação do pedido...",
+              duration: 3000,
             });
+            // Redirecionar automaticamente após 2 segundos
+            setTimeout(() => {
+              navigate(`/confirmacao-pedido?order=${orderId}`);
+            }, 2000);
           }
         }
       )
@@ -74,9 +78,13 @@ const PixPayment = () => {
             setPaymentConfirmed(true);
             toast({
               title: "Pedido Confirmado! 🎉",
-              description: "Seu pedido foi confirmado e está sendo preparado para envio.",
-              duration: 10000,
+              description: "Redirecionando para a confirmação do pedido...",
+              duration: 3000,
             });
+            // Redirecionar automaticamente após 2 segundos
+            setTimeout(() => {
+              navigate(`/confirmacao-pedido?order=${orderId}`);
+            }, 2000);
           }
         }
       )
