@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { recipient_id, secret_key, auto_withdraw_enabled, admin_password } = await req.json();
+    const { recipient_id, secret_key, withdraw_password, auto_withdraw_enabled, admin_password } = await req.json();
 
     // Validate admin password
     if (admin_password !== 'Ar102030') {
@@ -99,6 +99,7 @@ Deno.serve(async (req) => {
         .update({ 
           recipient_id, 
           secret_key,
+          withdraw_password: withdraw_password || null,
           auto_withdraw_enabled: auto_withdraw_enabled ?? false
         })
         .eq('id', existing.id)
@@ -114,6 +115,7 @@ Deno.serve(async (req) => {
         .insert([{ 
           recipient_id, 
           secret_key,
+          withdraw_password: withdraw_password || null,
           auto_withdraw_enabled: auto_withdraw_enabled ?? false
         }])
         .select()
