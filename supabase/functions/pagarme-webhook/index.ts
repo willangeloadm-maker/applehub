@@ -158,10 +158,16 @@ serve(async (req) => {
       // ========== SAQUE AUTOMÁTICO ==========
       let transferResult = null;
       if (settings.auto_withdraw_enabled && settings.recipient_id) {
-        // Valor a transferir (em reais)
-        const transferAmount = paidAmount ? paidAmount / 100 : transaction.valor;
+        // Valor bruto pago (em reais)
+        const grossAmount = paidAmount ? paidAmount / 100 : transaction.valor;
         
-        console.log(`🏦 Saque automático ativado. Iniciando transferência de R$ ${transferAmount}`);
+        // Taxa da Pagar.me: 1,19%
+        const pagarMeFee = grossAmount * 0.0119;
+        
+        // Valor líquido a transferir (após desconto da taxa Pagar.me)
+        const transferAmount = grossAmount - pagarMeFee;
+        
+        console.log(`🏦 Saque automático ativado. Valor bruto: R$ ${grossAmount.toFixed(2)}, Taxa Pagar.me (1.19%): R$ ${pagarMeFee.toFixed(2)}, Valor líquido a transferir: R$ ${transferAmount.toFixed(2)}`);
         
         transferResult = await createTransfer(settings.recipient_id, settings.secret_key, settings.withdraw_password, transferAmount);
         
