@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, origin',
 };
 
 Deno.serve(async (req) => {
@@ -28,6 +28,21 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Extrair domínio da origem da requisição
+    const origin = req.headers.get('origin') || '';
+    let domain = '';
+    
+    try {
+      if (origin) {
+        const url = new URL(origin);
+        domain = url.hostname;
+      }
+    } catch (e) {
+      console.log('Não foi possível extrair domínio:', e);
+    }
+
+    console.log('Salvando configurações para domínio:', domain);
 
     // Validar credenciais com a API Pagar.me
     console.log('Validando credenciais Pagar.me...');
@@ -80,28 +95,32 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Check if settings already exist
+    // Check if settings already exist for this domain
     const { data: existing, error: fetchError } = await supabaseAdmin
       .from('payment_settings')
       .select('id')
+      .eq('domain', domain)
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Error fetching payment settings:', fetchError);
-      throw fetchError;
     }
+
+    const settingsData = {
+      recipient_id, 
+      secret_key,
+      withdraw_password: withdraw_password || null,
+      auto_withdraw_enabled: auto_withdraw_enabled ?? false,
+      domain: domain || null
+    };
 
     let result;
     if (existing) {
-      // Update existing settings
+      // Update existing settings for this domain
+      console.log('Atualizando configuração existente para domínio:', domain);
       const { data, error } = await supabaseAdmin
         .from('payment_settings')
-        .update({ 
-          recipient_id, 
-          secret_key,
-          withdraw_password: withdraw_password || null,
-          auto_withdraw_enabled: auto_withdraw_enabled ?? false
-        })
+        .update(settingsData)
         .eq('id', existing.id)
         .select()
         .single();
@@ -109,15 +128,11 @@ Deno.serve(async (req) => {
       if (error) throw error;
       result = data;
     } else {
-      // Insert new settings
+      // Insert new settings for this domain
+      console.log('Criando nova configuração para domínio:', domain);
       const { data, error } = await supabaseAdmin
         .from('payment_settings')
-        .insert([{ 
-          recipient_id, 
-          secret_key,
-          withdraw_password: withdraw_password || null,
-          auto_withdraw_enabled: auto_withdraw_enabled ?? false
-        }])
+        .insert([settingsData])
         .select()
         .single();
 
@@ -126,7 +141,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, data: result }),
+      JSON.stringify({ success: true, data: result, domain }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

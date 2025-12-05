@@ -37,6 +37,7 @@ export default function AdminSettings() {
     withdraw_password: '',
     auto_withdraw_enabled: false
   });
+  const [currentDomain, setCurrentDomain] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -122,6 +123,13 @@ export default function AdminSettings() {
       if (error) {
         console.error('Erro ao buscar configurações:', error);
         return;
+      }
+      
+      // Salvar domínio detectado
+      if (data?.domain) {
+        setCurrentDomain(data.domain);
+      } else {
+        setCurrentDomain(window.location.hostname);
       }
       
       if (data?.data) {
@@ -289,7 +297,14 @@ export default function AdminSettings() {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Configurações Pagar.me</CardTitle>
+                  <div>
+                    <CardTitle>Configurações Pagar.me</CardTitle>
+                    {currentDomain && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Domínio: <span className="font-medium text-primary">{currentDomain}</span>
+                      </p>
+                    )}
+                  </div>
                   {connectionStatus.status === 'connected' && (
                     <Badge variant="default" className="bg-green-500 hover:bg-green-600">
                       <CheckCircle className="h-3 w-3 mr-1" />

@@ -563,6 +563,7 @@ export type Database = {
         Row: {
           auto_withdraw_enabled: boolean | null
           created_at: string | null
+          domain: string | null
           id: string
           recipient_id: string
           secret_key: string
@@ -572,6 +573,7 @@ export type Database = {
         Insert: {
           auto_withdraw_enabled?: boolean | null
           created_at?: string | null
+          domain?: string | null
           id?: string
           recipient_id: string
           secret_key: string
@@ -581,6 +583,7 @@ export type Database = {
         Update: {
           auto_withdraw_enabled?: boolean | null
           created_at?: string | null
+          domain?: string | null
           id?: string
           recipient_id?: string
           secret_key?: string
