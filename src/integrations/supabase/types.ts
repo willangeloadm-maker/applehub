@@ -963,6 +963,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      validate_admin_password: {
+        Args: { input_password: string }
+        Returns: boolean
+      }
     }
     Enums: {
       order_status:
