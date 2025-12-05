@@ -33,12 +33,12 @@ export const CartSheet = () => {
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
+      <SheetContent className="w-full sm:max-w-lg flex flex-col">
+        <SheetHeader className="flex-shrink-0">
           <SheetTitle>Carrinho ({getItemCount()} {getItemCount() === 1 ? 'item' : 'itens'})</SheetTitle>
         </SheetHeader>
 
-        <div className="flex flex-col h-full mt-6">
+        <div className="flex flex-col flex-1 mt-6 min-h-0">
           {loading ? (
             <div className="flex-1 space-y-4 pr-2">
               {[1, 2, 3].map((i) => (
@@ -114,7 +114,7 @@ export const CartSheet = () => {
                 ))}
               </div>
 
-              <div className="space-y-3 pt-4 border-t mt-4 bg-muted/30 -mx-6 px-6 py-4 animate-fade-in-up">
+              <div className="flex-shrink-0 space-y-3 pt-4 border-t mt-auto bg-muted/30 -mx-6 px-6 pb-6 animate-fade-in-up">
                 <div className="flex justify-between items-center">
                   <span className="text-base font-medium text-muted-foreground">Subtotal</span>
                   <span className="text-lg font-semibold transition-all duration-300">
