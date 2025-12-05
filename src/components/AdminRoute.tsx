@@ -33,14 +33,13 @@ export function AdminRoute({ children }: AdminRouteProps) {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from("admin_settings")
-        .select("senha")
-        .single();
+      // Usa função RPC segura que não expõe a senha
+      const { data: isValid, error } = await supabase
+        .rpc("validate_admin_password", { input_password: senha });
 
       if (error) throw error;
 
-      if (data.senha === senha) {
+      if (isValid) {
         localStorage.setItem("admin_authenticated", "true");
         
         toast({
