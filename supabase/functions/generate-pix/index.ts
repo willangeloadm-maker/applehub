@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, origin",
 };
 
 interface PixRequest {
@@ -28,21 +28,57 @@ serve(async (req) => {
 
     console.log("📌 Gerando PIX para usuário:", user_id, "valor:", amount);
 
-    // Buscar configurações da Pagar.me
-    const { data: settings, error: settingsError } = await supabase
-      .from("payment_settings")
-      .select("*")
-      .maybeSingle();
+    // Extrair domínio da origem da requisição
+    const origin = req.headers.get('origin') || '';
+    let domain = '';
+    
+    try {
+      if (origin) {
+        const url = new URL(origin);
+        domain = url.hostname;
+      }
+    } catch (e) {
+      console.log('Não foi possível extrair domínio:', e);
+    }
 
-    if (settingsError || !settings) {
-      console.error("❌ Erro ao buscar configurações:", settingsError);
-      return new Response(
-        JSON.stringify({ error: "Configurações de pagamento não encontradas" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    console.log('Domínio da requisição:', domain);
+
+    // Buscar configurações da Pagar.me pelo domínio
+    let settings = null;
+    
+    if (domain) {
+      const { data: domainSettings } = await supabase
+        .from("payment_settings")
+        .select("*")
+        .eq("domain", domain)
+        .maybeSingle();
+      
+      if (domainSettings) {
+        settings = domainSettings;
+        console.log("Usando configurações do domínio:", domain);
+      }
+    }
+    
+    // Fallback para qualquer configuração
+    if (!settings) {
+      const { data: fallbackSettings, error: settingsError } = await supabase
+        .from("payment_settings")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (settingsError || !fallbackSettings) {
+        console.error("❌ Erro ao buscar configurações:", settingsError);
+        return new Response(
+          JSON.stringify({ error: "Configurações de pagamento não encontradas" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      settings = fallbackSettings;
+      console.log("Usando configurações fallback");
     }
 
     // Buscar dados do perfil do usuário (obrigatório para PSP)
@@ -181,7 +217,7 @@ serve(async (req) => {
         user_id,
         order_id,
         duration_ms: duration,
-        metadata: { type: "pix_generation", description }
+        metadata: { type: "pix_generation", description, domain }
       });
 
       return new Response(
@@ -229,6 +265,7 @@ serve(async (req) => {
       metadata: { 
         type: "pix_generation", 
         description,
+        domain,
         qr_code_generated: true,
         expires_at: new Date(Date.now() + 3600000).toISOString()
       }
