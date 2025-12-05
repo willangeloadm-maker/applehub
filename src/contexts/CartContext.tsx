@@ -249,55 +249,59 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             }
           });
       } else {
-        const { data: product, error: productError } = await supabase
-          .from("products")
-          .select("id, nome, preco_vista, imagens, estado, estoque, capacidade, cor")
-          .eq("id", productId)
-          .single();
+        // Criar item temporário imediatamente para UI instantânea
+        const tempId = `temp-${Date.now()}`;
+        const tempItem: CartItem = {
+          id: tempId,
+          user_id: userId,
+          product_id: productId,
+          quantidade,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          products: { id: productId, nome: "Carregando...", preco_vista: 0, imagens: [], estado: "novo", estoque: 0, capacidade: null, cor: null } as any,
+        };
+        
+        console.log("📦 Adicionando item temporário instantaneamente");
+        setCartItems(prev => [...prev, tempItem]);
 
-        if (productError) {
-          console.error("❌ Erro ao buscar produto:", productError);
-          throw productError;
-        }
-
-        if (product) {
-          const tempItem: CartItem = {
-            id: `temp-${Date.now()}`,
-            user_id: userId,
-            product_id: productId,
-            quantidade,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            products: product as any,
-          };
-          
-          console.log("📦 Adicionando item temporário ao estado local");
-          setCartItems(prev => [...prev, tempItem]);
-
+        // Buscar produto e inserir no banco em paralelo (não bloqueante)
+        Promise.all([
+          supabase
+            .from("products")
+            .select("id, nome, preco_vista, imagens, estado, estoque, capacidade, cor")
+            .eq("id", productId)
+            .single(),
           supabase
             .from("cart_items")
             .insert({ user_id: userId, product_id: productId, quantidade })
-            .select(`
-              id,
-              user_id,
-              product_id,
-              quantidade,
-              created_at,
-              updated_at
-            `)
+            .select("id, user_id, product_id, quantidade, created_at, updated_at")
             .single()
-            .then(({ data, error }) => {
-              if (error) {
-                console.error("❌ Erro ao inserir no banco:", error);
-                fetchCart(true);
-              } else if (data) {
-                console.log("✅ Item inserido no banco com id:", data.id);
-                setCartItems(prev => 
-                  prev.map(item => item.id === tempItem.id ? { ...item, id: data.id } : item)
-                );
-              }
-            });
-        }
+        ]).then(([productResult, insertResult]) => {
+          if (productResult.error) {
+            console.error("❌ Erro ao buscar produto:", productResult.error);
+            fetchCart(true);
+            return;
+          }
+          if (insertResult.error) {
+            console.error("❌ Erro ao inserir no banco:", insertResult.error);
+            fetchCart(true);
+            return;
+          }
+          
+          const product = productResult.data;
+          const insertedItem = insertResult.data;
+          
+          if (product && insertedItem) {
+            console.log("✅ Item inserido com id:", insertedItem.id);
+            setCartItems(prev => 
+              prev.map(item => 
+                item.id === tempId 
+                  ? { ...insertedItem, products: product } as CartItem
+                  : item
+              )
+            );
+          }
+        });
       }
       
       return true;
