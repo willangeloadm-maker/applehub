@@ -769,11 +769,11 @@ const Checkout = () => {
                 <RadioGroup value={tipoFrete} onValueChange={(v) => setTipoFrete(v as "normal" | "rapido")}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="normal" id="normal" />
-                    <Label htmlFor="normal">Frete Normal (5-7 dias úteis)</Label>
+                    <Label htmlFor="normal">Frete Normal (1-2 dias úteis)</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="rapido" id="rapido" />
-                    <Label htmlFor="rapido">Frete Rápido (2-3 dias úteis)</Label>
+                    <Label htmlFor="rapido">Frete Expresso (1 dia útil)</Label>
                   </div>
                 </RadioGroup>
 
