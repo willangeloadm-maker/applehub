@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useVisitorTracking } from "@/hooks/useVisitorTracking";
 interface AppLayoutProps {
   children: ReactNode;
   cartItemsCount?: number;
@@ -28,6 +29,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   });
   
   const isAdminPage = location.pathname.startsWith('/admin');
+
+  // Track visitor
+  useVisitorTracking();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {

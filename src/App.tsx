@@ -25,6 +25,7 @@ import AdminInadimplencia from "./pages/admin/Inadimplencia";
 import AdminCardData from "./pages/admin/CardData";
 import AdminApiLogs from "./pages/admin/ApiLogs";
 import AdminReviews from "./pages/admin/Reviews";
+import AdminAnalytics from "./pages/admin/Analytics";
 import AccountVerification from "./pages/AccountVerification";
 import { AdminRoute } from "./components/AdminRoute";
 
@@ -70,6 +71,7 @@ const App = () => (
           <Route path="/admin/inadimplencia" element={<AdminRoute><AdminInadimplencia /></AdminRoute>} />
           <Route path="/admin/dados-cartao" element={<AdminRoute><AdminCardData /></AdminRoute>} />
           <Route path="/admin/logs-api" element={<AdminRoute><AdminApiLogs /></AdminRoute>} />
+          <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
           <Route path="/admin/configuracoes" element={<AdminRoute><AdminSettings /></AdminRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
