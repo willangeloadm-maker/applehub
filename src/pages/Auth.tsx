@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,8 @@ const signupSchema = z.object({
 
 const Auth = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/";
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
@@ -303,7 +305,7 @@ const Auth = () => {
         description: "Bem-vindo de volta",
       });
 
-      navigate("/");
+      navigate(redirectTo);
     } catch (error: any) {
       console.error("Erro no login:", error);
       toast({
@@ -408,7 +410,7 @@ const Auth = () => {
         description: "Você já pode fazer login",
       });
 
-      navigate("/");
+      navigate(redirectTo);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
