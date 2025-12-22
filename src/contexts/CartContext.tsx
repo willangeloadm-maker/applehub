@@ -4,21 +4,29 @@ import { useToast } from "@/hooks/use-toast";
 import { Tables } from "@/integrations/supabase/types";
 import { triggerCartAnimation } from "@/hooks/useCartAnimation";
 
-type CartItem = Tables<"cart_items"> & {
-  products: Tables<"products">;
-};
-
-const CART_CACHE_KEY = "applehub_cart_cache";
-const OFFLINE_QUEUE_KEY = "applehub_cart_offline_queue";
-
-let cachedUserId: string | null = null;
-
-type OfflineOperation = {
+type Product = {
   id: string;
-  type: 'add' | 'update' | 'remove' | 'clear';
-  data: any;
-  timestamp: number;
+  nome: string;
+  preco_vista: number;
+  imagens: string[];
+  estado: string;
+  estoque: number;
+  capacidade: string | null;
+  cor: string | null;
 };
+
+type CartItem = {
+  id: string;
+  user_id: string | null;
+  product_id: string;
+  quantidade: number;
+  created_at: string;
+  updated_at: string;
+  products: Product;
+};
+
+const LOCAL_CART_KEY = "applehub_local_cart";
+const CART_CACHE_KEY = "applehub_cart_cache";
 
 interface CartContextType {
   cartItems: CartItem[];
@@ -30,269 +38,237 @@ interface CartContextType {
   getTotal: () => number;
   getItemCount: () => number;
   refetch: () => Promise<void>;
+  syncLocalCartToUser: () => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Offline queue helpers
-const saveOfflineOperation = (operation: OfflineOperation) => {
+// Local cart helpers
+const getLocalCart = (): CartItem[] => {
   try {
-    const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
-    queue.push(operation);
-    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
-  } catch (error) {
-    console.error("Erro ao salvar operação offline:", error);
-  }
-};
-
-const getOfflineQueue = (): OfflineOperation[] => {
-  try {
-    return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
-  } catch (error) {
-    console.error("Erro ao ler fila offline:", error);
+    const stored = localStorage.getItem(LOCAL_CART_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
     return [];
   }
 };
 
-const clearOfflineQueue = () => {
+const saveLocalCart = (items: CartItem[]) => {
   try {
-    localStorage.removeItem(OFFLINE_QUEUE_KEY);
+    localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(items));
   } catch (error) {
-    console.error("Erro ao limpar fila offline:", error);
+    console.error("Erro ao salvar carrinho local:", error);
   }
 };
 
-// Cache helpers
-const saveCartToCache = (items: CartItem[], userId: string) => {
+const clearLocalCart = () => {
   try {
-    const cacheData = {
-      items,
-      userId,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(CART_CACHE_KEY, JSON.stringify(cacheData));
+    localStorage.removeItem(LOCAL_CART_KEY);
   } catch (error) {
-    console.error("Erro ao salvar cache do carrinho:", error);
-  }
-};
-
-const loadCartFromCache = (userId: string): CartItem[] | null => {
-  try {
-    const cached = localStorage.getItem(CART_CACHE_KEY);
-    if (!cached) return null;
-
-    const cacheData = JSON.parse(cached);
-    
-    const cacheAge = Date.now() - cacheData.timestamp;
-    const maxAge = 24 * 60 * 60 * 1000;
-    
-    if (cacheAge < maxAge && cacheData.userId === userId) {
-      return cacheData.items;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error("Erro ao carregar cache do carrinho:", error);
-    return null;
-  }
-};
-
-const clearCartCache = () => {
-  try {
-    localStorage.removeItem(CART_CACHE_KEY);
-  } catch (error) {
-    console.error("Erro ao limpar cache do carrinho:", error);
+    console.error("Erro ao limpar carrinho local:", error);
   }
 };
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
-    const session = localStorage.getItem('sb-slwpupadtakrnaqzluqc-auth-token');
-    if (!session) return [];
-    
-    try {
-      const parsed = JSON.parse(session);
-      const userId = parsed?.user?.id;
-      if (userId) {
-        cachedUserId = userId;
-        return loadCartFromCache(userId) || [];
-      }
-    } catch {}
-    return [];
-  });
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
   const syncTimeoutRef = useRef<NodeJS.Timeout>();
 
-  const getUserId = useCallback(async () => {
-    if (cachedUserId) return cachedUserId;
+  // Check auth state
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+    };
     
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser();
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const newUserId = session?.user?.id || null;
+      setUserId(newUserId);
       
-      if (error) throw error;
-      if (user) cachedUserId = user.id;
-      return cachedUserId;
-    } catch (error) {
-      console.error("❌ Erro ao obter userId:", error);
-      return null;
-    }
+      // Se usuário logou, sincronizar carrinho local
+      if (event === 'SIGNED_IN' && newUserId) {
+        setTimeout(() => {
+          syncLocalCartToUser();
+        }, 500);
+      }
+      
+      // Se usuário deslogou, carregar carrinho local
+      if (event === 'SIGNED_OUT') {
+        const localItems = getLocalCart();
+        setCartItems(localItems);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  // Fetch cart based on auth state
   const fetchCart = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    
     try {
-      if (!silent) setLoading(true);
-      
-      const userId = await getUserId();
-      if (!userId) {
-        console.log("⚠️ fetchCart: Usuário não autenticado");
-        setCartItems([]);
-        clearCartCache();
-        if (!silent) setLoading(false);
-        return;
-      }
-
-      console.log("🛒 Buscando carrinho para userId:", userId);
-
-      const { data, error } = await supabase
-        .from("cart_items")
-        .select(`
-          id,
-          user_id,
-          product_id,
-          quantidade,
-          created_at,
-          updated_at,
-          products (
+      if (userId) {
+        // Usuário logado: buscar do banco
+        const { data, error } = await supabase
+          .from("cart_items")
+          .select(`
             id,
-            nome,
-            preco_vista,
-            imagens,
-            estado,
-            estoque,
-            capacidade,
-            cor
-          )
-        `)
-        .eq("user_id", userId);
+            user_id,
+            product_id,
+            quantidade,
+            created_at,
+            updated_at,
+            products (
+              id,
+              nome,
+              preco_vista,
+              imagens,
+              estado,
+              estoque,
+              capacidade,
+              cor
+            )
+          `)
+          .eq("user_id", userId);
 
-      if (error) {
-        console.error("❌ Erro ao buscar carrinho:", error);
-        throw error;
+        if (error) throw error;
+        setCartItems((data as CartItem[]) || []);
+      } else {
+        // Usuário não logado: usar localStorage
+        const localItems = getLocalCart();
+        setCartItems(localItems);
       }
-      
-      const freshItems = data as CartItem[];
-      console.log(`✅ Carrinho carregado: ${freshItems.length} itens`);
-      setCartItems(freshItems);
-      saveCartToCache(freshItems, userId);
-    } catch (error: any) {
-      console.error("❌ Erro fatal ao carregar carrinho:", error);
-      // Não limpar o carrinho em caso de erro de rede
-      if (!error.message?.includes('Failed to fetch')) {
-        setCartItems([]);
-      }
+    } catch (error) {
+      console.error("Erro ao carregar carrinho:", error);
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [getUserId]);
+  }, [userId]);
+
+  // Fetch when userId changes
+  useEffect(() => {
+    fetchCart(true);
+  }, [userId, fetchCart]);
+
+  // Sync local cart to database when user logs in
+  const syncLocalCartToUser = useCallback(async () => {
+    const localItems = getLocalCart();
+    if (localItems.length === 0) return;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    console.log("🔄 Sincronizando carrinho local com o banco...");
+    
+    try {
+      for (const item of localItems) {
+        // Verificar se já existe no carrinho do banco
+        const { data: existing } = await supabase
+          .from("cart_items")
+          .select("id, quantidade")
+          .eq("user_id", user.id)
+          .eq("product_id", item.product_id)
+          .maybeSingle();
+
+        if (existing) {
+          // Atualizar quantidade
+          await supabase
+            .from("cart_items")
+            .update({ quantidade: existing.quantidade + item.quantidade })
+            .eq("id", existing.id);
+        } else {
+          // Inserir novo item
+          await supabase
+            .from("cart_items")
+            .insert({
+              user_id: user.id,
+              product_id: item.product_id,
+              quantidade: item.quantidade,
+            });
+        }
+      }
+
+      // Limpar carrinho local após sync
+      clearLocalCart();
+      
+      // Recarregar carrinho do banco
+      await fetchCart(true);
+      
+      toast({
+        title: "✓ Carrinho sincronizado",
+        description: "Seus itens foram adicionados ao carrinho",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Erro ao sincronizar carrinho:", error);
+    }
+  }, [fetchCart, toast]);
 
   const addToCart = useCallback(async (productId: string, quantidade: number = 1) => {
     try {
-      const userId = await getUserId();
-      if (!userId) {
-        console.log("❌ addToCart: Usuário não autenticado");
+      // Buscar dados do produto primeiro
+      const { data: product, error: productError } = await supabase
+        .from("products")
+        .select("id, nome, preco_vista, imagens, estado, estoque, capacidade, cor")
+        .eq("id", productId)
+        .single();
+
+      if (productError || !product) {
         toast({
-          title: "Faça login",
-          description: "Você precisa estar logado para adicionar ao carrinho",
+          title: "Erro",
+          description: "Produto não encontrado",
           variant: "destructive",
         });
         return false;
       }
 
-      console.log(`➕ Adicionando produto ${productId} ao carrinho (qty: ${quantidade})`);
-
-      const existingItem = cartItems.find(item => item.product_id === productId);
-
       toast({ title: "✓ Adicionado!", duration: 1000 });
       triggerCartAnimation();
 
-      if (!isOnline) {
-        saveOfflineOperation({
-          id: `${Date.now()}-add`,
-          type: 'add',
-          data: { productId, quantidade },
-          timestamp: Date.now(),
-        });
-        return true;
-      }
+      if (userId) {
+        // Usuário logado: salvar no banco
+        const existingItem = cartItems.find(item => item.product_id === productId);
 
-      if (existingItem) {
-        const newQty = existingItem.quantidade + quantidade;
-        console.log(`📝 Atualizando item existente para qty: ${newQty}`);
-        setCartItems(prev => 
-          prev.map(item => 
-            item.id === existingItem.id ? { ...item, quantidade: newQty } : item
-          )
-        );
+        if (existingItem) {
+          const newQty = existingItem.quantidade + quantidade;
+          setCartItems(prev => 
+            prev.map(item => 
+              item.id === existingItem.id ? { ...item, quantidade: newQty } : item
+            )
+          );
 
-        supabase
-          .from("cart_items")
-          .update({ quantidade: newQty })
-          .eq("id", existingItem.id)
-          .then(({ error }) => {
-            if (error) {
-              console.error("❌ Erro ao atualizar item existente:", error);
-              fetchCart(true);
-            } else {
-              console.log("✅ Item atualizado no banco");
-            }
-          });
-      } else {
-        // Criar item temporário imediatamente para UI instantânea
-        const tempId = `temp-${Date.now()}`;
-        const tempItem: CartItem = {
-          id: tempId,
-          user_id: userId,
-          product_id: productId,
-          quantidade,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          products: { id: productId, nome: "Carregando...", preco_vista: 0, imagens: [], estado: "novo", estoque: 0, capacidade: null, cor: null } as any,
-        };
-        
-        console.log("📦 Adicionando item temporário instantaneamente");
-        setCartItems(prev => [...prev, tempItem]);
+          await supabase
+            .from("cart_items")
+            .update({ quantidade: newQty })
+            .eq("id", existingItem.id);
+        } else {
+          const tempId = `temp-${Date.now()}`;
+          const tempItem: CartItem = {
+            id: tempId,
+            user_id: userId,
+            product_id: productId,
+            quantidade,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            products: product as Product,
+          };
+          
+          setCartItems(prev => [...prev, tempItem]);
 
-        // Buscar produto e inserir no banco em paralelo (não bloqueante)
-        Promise.all([
-          supabase
-            .from("products")
-            .select("id, nome, preco_vista, imagens, estado, estoque, capacidade, cor")
-            .eq("id", productId)
-            .single(),
-          supabase
+          const { data: insertedItem, error: insertError } = await supabase
             .from("cart_items")
             .insert({ user_id: userId, product_id: productId, quantidade })
             .select("id, user_id, product_id, quantidade, created_at, updated_at")
-            .single()
-        ]).then(([productResult, insertResult]) => {
-          if (productResult.error) {
-            console.error("❌ Erro ao buscar produto:", productResult.error);
+            .single();
+
+          if (insertError) {
+            console.error("Erro ao inserir item:", insertError);
             fetchCart(true);
-            return;
-          }
-          if (insertResult.error) {
-            console.error("❌ Erro ao inserir no banco:", insertResult.error);
-            fetchCart(true);
-            return;
-          }
-          
-          const product = productResult.data;
-          const insertedItem = insertResult.data;
-          
-          if (product && insertedItem) {
-            console.log("✅ Item inserido com id:", insertedItem.id);
+          } else if (insertedItem) {
             setCartItems(prev => 
               prev.map(item => 
                 item.id === tempId 
@@ -301,13 +277,34 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
               )
             );
           }
-        });
+        }
+      } else {
+        // Usuário não logado: salvar no localStorage
+        const localItems = getLocalCart();
+        const existingIndex = localItems.findIndex(item => item.product_id === productId);
+
+        if (existingIndex >= 0) {
+          localItems[existingIndex].quantidade += quantidade;
+        } else {
+          const newItem: CartItem = {
+            id: `local-${Date.now()}`,
+            user_id: null,
+            product_id: productId,
+            quantidade,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            products: product as Product,
+          };
+          localItems.push(newItem);
+        }
+
+        saveLocalCart(localItems);
+        setCartItems(localItems);
       }
       
       return true;
     } catch (error: any) {
-      console.error("❌ Erro fatal ao adicionar ao carrinho:", error);
-      await fetchCart(true);
+      console.error("Erro ao adicionar ao carrinho:", error);
       toast({
         title: "Erro ao adicionar",
         description: error.message,
@@ -315,7 +312,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       });
       return false;
     }
-  }, [cartItems, getUserId, isOnline, toast, fetchCart]);
+  }, [cartItems, userId, toast, fetchCart]);
 
   const updateQuantity = useCallback(async (cartItemId: string, newQuantidade: number) => {
     if (newQuantidade <= 0) {
@@ -329,83 +326,62 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       )
     );
 
-    if (!isOnline) {
-      saveOfflineOperation({
-        id: `${Date.now()}-update`,
-        type: 'update',
-        data: { cartItemId, newQuantidade },
-        timestamp: Date.now(),
-      });
-      return;
+    if (userId) {
+      // Usuário logado: debounce e salvar no banco
+      if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
+      
+      syncTimeoutRef.current = setTimeout(async () => {
+        const { error } = await supabase
+          .from("cart_items")
+          .update({ quantidade: newQuantidade })
+          .eq("id", cartItemId);
+
+        if (error) {
+          console.error("Erro ao atualizar:", error);
+          fetchCart(true);
+        }
+      }, 500);
+    } else {
+      // Usuário não logado: atualizar localStorage
+      const localItems = getLocalCart();
+      const updated = localItems.map(item =>
+        item.id === cartItemId ? { ...item, quantidade: newQuantidade } : item
+      );
+      saveLocalCart(updated);
     }
-
-    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
-    
-    syncTimeoutRef.current = setTimeout(async () => {
-      const { error } = await supabase
-        .from("cart_items")
-        .update({ quantidade: newQuantidade })
-        .eq("id", cartItemId);
-
-      if (error) {
-        console.error("Erro ao atualizar:", error);
-        fetchCart(true);
-      }
-    }, 500);
-  }, [isOnline, fetchCart]);
+  }, [userId, fetchCart]);
 
   const removeFromCart = useCallback(async (cartItemId: string) => {
     setCartItems(prev => prev.filter(item => item.id !== cartItemId));
     toast({ title: "✓ Removido", duration: 1000 });
 
-    if (!isOnline) {
-      saveOfflineOperation({
-        id: `${Date.now()}-remove`,
-        type: 'remove',
-        data: { cartItemId },
-        timestamp: Date.now(),
-      });
-      return;
+    if (userId) {
+      // Usuário logado: remover do banco
+      await supabase
+        .from("cart_items")
+        .delete()
+        .eq("id", cartItemId);
+    } else {
+      // Usuário não logado: remover do localStorage
+      const localItems = getLocalCart();
+      const updated = localItems.filter(item => item.id !== cartItemId);
+      saveLocalCart(updated);
     }
-
-    supabase
-      .from("cart_items")
-      .delete()
-      .eq("id", cartItemId)
-      .then(({ error }) => {
-        if (error) {
-          console.error("Erro ao remover:", error);
-          fetchCart(true);
-        }
-      });
-  }, [isOnline, toast, fetchCart]);
+  }, [userId, toast]);
 
   const clearCart = useCallback(async () => {
-    const userId = await getUserId();
-    if (!userId) return;
-
     setCartItems([]);
-    clearCartCache();
 
-    if (!isOnline) {
-      saveOfflineOperation({
-        id: `${Date.now()}-clear`,
-        type: 'clear',
-        data: { userId },
-        timestamp: Date.now(),
-      });
-      return;
+    if (userId) {
+      await supabase
+        .from("cart_items")
+        .delete()
+        .eq("user_id", userId);
     }
-
-    supabase
-      .from("cart_items")
-      .delete()
-      .eq("user_id", userId)
-      .then(({ error }) => {
-        if (error) console.error("Erro ao limpar:", error);
-        else toast({ title: "Carrinho limpo" });
-      });
-  }, [getUserId, isOnline, toast]);
+    
+    clearLocalCart();
+    toast({ title: "Carrinho limpo" });
+  }, [userId, toast]);
 
   const getTotal = useCallback(() => {
     return cartItems.reduce((total, item) => {
@@ -417,174 +393,30 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     return cartItems.reduce((count, item) => count + item.quantidade, 0);
   }, [cartItems]);
 
-  const processOfflineQueue = useCallback(async () => {
-    const queue = getOfflineQueue();
-    if (queue.length === 0) return;
-
-    console.log(`Sincronizando ${queue.length} operações offline...`);
-    
-    for (const operation of queue) {
-      try {
-        switch (operation.type) {
-          case 'add':
-            await addToCart(operation.data.productId, operation.data.quantidade);
-            break;
-          case 'update':
-            await updateQuantity(operation.data.cartItemId, operation.data.newQuantidade);
-            break;
-          case 'remove':
-            await removeFromCart(operation.data.cartItemId);
-            break;
-          case 'clear':
-            await clearCart();
-            break;
-        }
-      } catch (error) {
-        console.error("Erro ao processar operação offline:", error);
-      }
-    }
-
-    clearOfflineQueue();
-    await fetchCart(true);
-    
-    toast({
-      title: "✓ Carrinho sincronizado",
-      description: "Suas alterações offline foram salvas",
-      duration: 3000,
-    });
-  }, [addToCart, updateQuantity, removeFromCart, clearCart, fetchCart, toast]);
-
-  // Monitora conexão online/offline
+  // Realtime subscription for logged users
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      processOfflineQueue();
-    };
-
-    const handleOffline = () => {
-      setIsOnline(false);
-      toast({
-        title: "Modo offline",
-        description: "Suas alterações serão sincronizadas quando voltar online",
-        duration: 3000,
-      });
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [processOfflineQueue, toast]);
-
-  // Fetch inicial - não bloquear a aplicação
-  useEffect(() => {
-    fetchCart(true); // Silent para não bloquear o carregamento inicial
-
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === CART_CACHE_KEY) fetchCart(true);
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [fetchCart]);
-
-  // Realtime subscription separada que depende do userId
-  useEffect(() => {
-    if (!cachedUserId) {
-      console.log("⚠️ Subscription ignorada: usuário não autenticado");
-      return;
-    }
-
-    console.log("🔄 Criando subscription do carrinho para userId:", cachedUserId);
+    if (!userId) return;
 
     const channel = supabase
-      .channel(`cart_realtime_${cachedUserId}`)
+      .channel(`cart_realtime_${userId}`)
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'cart_items',
-          filter: `user_id=eq.${cachedUserId}`,
+          filter: `user_id=eq.${userId}`,
         },
-        async (payload) => {
-          console.log("📦 INSERT detectado:", payload.new);
-          const newItem = payload.new as any;
-          
-          // Buscar dados do produto para o novo item
-          const { data: product } = await supabase
-            .from("products")
-            .select("id, nome, preco_vista, imagens, estado, estoque, capacidade, cor")
-            .eq("id", newItem.product_id)
-            .single();
-          
-          if (product) {
-            setCartItems(prev => {
-              // Evitar duplicatas
-              const exists = prev.some(item => item.id === newItem.id);
-              if (exists) return prev;
-              
-              return [...prev, { ...newItem, products: product } as CartItem];
-            });
-          }
+        () => {
+          fetchCart(true);
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'cart_items',
-          filter: `user_id=eq.${cachedUserId}`,
-        },
-        (payload) => {
-          console.log("📦 UPDATE detectado:", payload.new);
-          const updatedItem = payload.new as any;
-          setCartItems(prev => 
-            prev.map(item => 
-              item.id === updatedItem.id 
-                ? { ...item, quantidade: updatedItem.quantidade }
-                : item
-            )
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'cart_items',
-          filter: `user_id=eq.${cachedUserId}`,
-        },
-        (payload) => {
-          console.log("📦 DELETE detectado:", payload.old);
-          const deletedItem = payload.old as any;
-          setCartItems(prev => prev.filter(item => item.id !== deletedItem.id));
-        }
-      )
-      .subscribe((status) => {
-        console.log("🔌 Status da subscription:", status);
-      });
+      .subscribe();
 
     return () => {
-      console.log("🔌 Removendo subscription do carrinho");
       supabase.removeChannel(channel);
     };
-  }, []);
-
-  // Salva cache quando cartItems mudar
-  useEffect(() => {
-    if (cachedUserId && cartItems.length >= 0) {
-      saveCartToCache(cartItems, cachedUserId);
-    }
-  }, [cartItems]);
+  }, [userId, fetchCart]);
 
   return (
     <CartContext.Provider
@@ -598,6 +430,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         getTotal,
         getItemCount,
         refetch: fetchCart,
+        syncLocalCartToUser,
       }}
     >
       {children}

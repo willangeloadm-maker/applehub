@@ -55,7 +55,22 @@ const Checkout = () => {
   });
 
   useEffect(() => {
-    loadProfile();
+    // Verificar se usuário está logado antes de carregar perfil
+    const checkAuthAndLoad = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Faça login",
+          description: "Você precisa estar logado para finalizar a compra",
+          variant: "destructive",
+        });
+        navigate("/auth?redirect=/checkout");
+        return;
+      }
+      loadProfile();
+    };
+    
+    checkAuthAndLoad();
     loadInstallmentSettings();
   }, []);
 
@@ -87,12 +102,8 @@ const Checkout = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast({
-          title: "Faça login",
-          description: "Você precisa estar logado para fazer o checkout",
-          variant: "destructive",
-        });
-        navigate("/auth");
+        // Usuário não está mais autenticado, redirecionar
+        navigate("/auth?redirect=/checkout");
         return;
       }
 
