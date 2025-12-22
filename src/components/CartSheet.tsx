@@ -1,25 +1,55 @@
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Minus, Plus, Trash2 } from "lucide-react";
+import { ShoppingCart, Minus, Plus, Trash2, LogIn, User, CreditCard, AlertCircle } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router-dom";
 import { useCartAnimation } from "@/hooks/useCartAnimation";
 import OptimizedImage from "@/components/OptimizedImage";
+import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export const CartSheet = () => {
   const { cartItems, loading, updateQuantity, removeFromCart, getTotal, getItemCount } = useCart();
   const navigate = useNavigate();
   const isPulsing = useCartAnimation();
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+    };
+    
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleCheckout = () => {
-    // TODO: Implementar checkout
+    setSheetOpen(false);
     navigate("/checkout");
   };
 
+  const handleGuestCheckout = () => {
+    setSheetOpen(false);
+    navigate("/checkout?guest=true");
+  };
+
+  const handleLogin = () => {
+    setSheetOpen(false);
+    navigate("/auth?redirect=/checkout");
+  };
+
   return (
-    <Sheet>
+    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
           <ShoppingCart className={`w-5 h-5 transition-transform ${isPulsing ? 'animate-pulse scale-125' : ''}`} />
@@ -56,7 +86,7 @@ export const CartSheet = () => {
             <div className="flex-1 flex flex-col items-center justify-center space-y-4 animate-fade-in">
               <ShoppingCart className="w-16 h-16 text-muted-foreground animate-bounce-subtle" />
               <p className="text-muted-foreground">Seu carrinho está vazio</p>
-              <Button onClick={() => navigate("/produtos")} className="hover:scale-105 active:scale-95 transition-transform">
+              <Button onClick={() => { setSheetOpen(false); navigate("/produtos"); }} className="hover:scale-105 active:scale-95 transition-transform">
                 Ver produtos
               </Button>
             </div>
@@ -128,14 +158,67 @@ export const CartSheet = () => {
                     R$ {getTotal().toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
-                <Button 
-                  className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white font-bold shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 active:scale-95 relative overflow-hidden group" 
-                  size="lg" 
-                  onClick={handleCheckout}
-                >
-                  <span className="absolute inset-0 bg-white/20 scale-0 group-hover:scale-100 transition-transform duration-500 rounded-md" />
-                  <span className="relative z-10">Continuar para Pagamento</span>
-                </Button>
+
+                {/* Aviso para usuários não logados */}
+                {isLoggedIn === false && (
+                  <div className="space-y-3 pt-2">
+                    <Alert className="bg-amber-500/10 border-amber-500/30">
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                      <AlertDescription className="text-sm">
+                        <strong>Faça login</strong> para parcelar em até 24x com análise de crédito, 
+                        acompanhar pedidos e ter acesso a ofertas exclusivas.
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        variant="default"
+                        className="bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white font-semibold"
+                        onClick={handleLogin}
+                      >
+                        <LogIn className="w-4 h-4 mr-2" />
+                        Fazer Login
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        onClick={handleGuestCheckout}
+                      >
+                        <User className="w-4 h-4 mr-2" />
+                        Visitante
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground text-center">
+                      Como visitante você pode pagar via <strong>PIX</strong> ou <strong>cartão</strong>.
+                      <br />
+                      O <strong>parcelamento AppleHub</strong> requer login.
+                    </p>
+                  </div>
+                )}
+
+                {/* Botão de checkout para usuários logados */}
+                {isLoggedIn === true && (
+                  <Button 
+                    className="w-full bg-gradient-to-r from-[#ff6b35] to-[#ff4757] hover:from-[#ff5722] hover:to-[#ff3545] text-white font-bold shadow-lg transition-all duration-300 hover:shadow-2xl hover:scale-105 active:scale-95 relative overflow-hidden group" 
+                    size="lg" 
+                    onClick={handleCheckout}
+                  >
+                    <span className="absolute inset-0 bg-white/20 scale-0 group-hover:scale-100 transition-transform duration-500 rounded-md" />
+                    <CreditCard className="w-5 h-5 mr-2 relative z-10" />
+                    <span className="relative z-10">Continuar para Pagamento</span>
+                  </Button>
+                )}
+
+                {/* Loading state */}
+                {isLoggedIn === null && (
+                  <Button 
+                    className="w-full" 
+                    size="lg" 
+                    disabled
+                  >
+                    Carregando...
+                  </Button>
+                )}
               </div>
             </>
           )}

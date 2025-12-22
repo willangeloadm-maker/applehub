@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +10,10 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
-import { ArrowLeft, Truck, CreditCard, QrCode, BadgePercent, AlertCircle } from "lucide-react";
+import { ArrowLeft, Truck, CreditCard, QrCode, BadgePercent, AlertCircle, LogIn, User } from "lucide-react";
 import { Tables } from "@/integrations/supabase/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatCardNumber, formatCardExpiry, validateCardExpiry } from "@/lib/formatters";
 
@@ -20,11 +21,14 @@ type Profile = Tables<"profiles">;
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isGuestMode = searchParams.get("guest") === "true";
   const { toast } = useToast();
   const { cartItems, getTotal, clearCart, loading: cartLoading } = useCart();
   
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [cepFrete, setCepFrete] = useState("");
   const [frete, setFrete] = useState(0);
   const [tipoFrete, setTipoFrete] = useState<"normal" | "rapido">("normal");
@@ -53,12 +57,24 @@ const Checkout = () => {
     cidade: "",
     estado: "",
   });
+  
+  // Dados do visitante
+  const [guestData, setGuestData] = useState({
+    nome_completo: "",
+    email: "",
+    telefone: "",
+    cpf: "",
+  });
 
   useEffect(() => {
-    // Verificar se usuário está logado antes de carregar perfil
     const checkAuthAndLoad = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      setIsLoggedIn(!!user);
+      
+      if (user) {
+        loadProfile();
+      } else if (!isGuestMode) {
+        // Se não está logado e não é modo visitante, redirecionar
         toast({
           title: "Faça login",
           description: "Você precisa estar logado para finalizar a compra",
@@ -66,13 +82,15 @@ const Checkout = () => {
         });
         navigate("/auth?redirect=/checkout");
         return;
+      } else {
+        // Modo visitante: forçar novo endereço
+        setUseNewAddress(true);
       }
-      loadProfile();
     };
     
     checkAuthAndLoad();
     loadInstallmentSettings();
-  }, []);
+  }, [isGuestMode]);
 
   useEffect(() => {
     // Só redireciona se o carrinho realmente estiver vazio E não estiver carregando
@@ -645,6 +663,105 @@ const Checkout = () => {
         <div className="max-w-4xl mx-auto p-4 lg:p-6 space-y-6">
           <h1 className="text-2xl font-bold">Finalizar Compra</h1>
 
+          {/* Aviso de modo visitante */}
+          {isGuestMode && !isLoggedIn && (
+            <Alert className="bg-blue-500/10 border-blue-500/30">
+              <User className="h-4 w-4 text-blue-500" />
+              <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span>
+                  Você está comprando como <strong>visitante</strong>. 
+                  Faça login para parcelar em até 24x e acompanhar pedidos.
+                </span>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => navigate("/auth?redirect=/checkout")}
+                  className="w-fit"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Fazer Login
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Dados do Visitante */}
+          {isGuestMode && !isLoggedIn && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Seus Dados
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label>Nome Completo *</Label>
+                  <Input
+                    value={guestData.nome_completo}
+                    onChange={(e) => setGuestData({ ...guestData, nome_completo: e.target.value })}
+                    placeholder="Digite seu nome completo"
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label>E-mail *</Label>
+                    <Input
+                      type="email"
+                      value={guestData.email}
+                      onChange={(e) => setGuestData({ ...guestData, email: e.target.value })}
+                      placeholder="seu@email.com"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label>Telefone *</Label>
+                    <Input
+                      value={guestData.telefone}
+                      onChange={(e) => {
+                        let valor = e.target.value.replace(/\D/g, "");
+                        if (valor.length <= 2) {
+                          valor = valor;
+                        } else if (valor.length <= 7) {
+                          valor = `(${valor.slice(0, 2)}) ${valor.slice(2)}`;
+                        } else {
+                          valor = `(${valor.slice(0, 2)}) ${valor.slice(2, 7)}-${valor.slice(7, 11)}`;
+                        }
+                        setGuestData({ ...guestData, telefone: valor });
+                      }}
+                      placeholder="(00) 00000-0000"
+                      maxLength={15}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>CPF *</Label>
+                  <Input
+                    value={guestData.cpf}
+                    onChange={(e) => {
+                      let valor = e.target.value.replace(/\D/g, "");
+                      if (valor.length <= 3) {
+                        valor = valor;
+                      } else if (valor.length <= 6) {
+                        valor = `${valor.slice(0, 3)}.${valor.slice(3)}`;
+                      } else if (valor.length <= 9) {
+                        valor = `${valor.slice(0, 3)}.${valor.slice(3, 6)}.${valor.slice(6)}`;
+                      } else {
+                        valor = `${valor.slice(0, 3)}.${valor.slice(3, 6)}.${valor.slice(6, 9)}-${valor.slice(9, 11)}`;
+                      }
+                      setGuestData({ ...guestData, cpf: valor });
+                    }}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                    required
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Endereço de Entrega */}
           <Card>
             <CardHeader>
@@ -654,7 +771,7 @@ const Checkout = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {profile && !useNewAddress && (
+              {profile && !useNewAddress && !isGuestMode && (
                 <div className="bg-secondary/50 rounded-lg p-4 text-sm">
                   <p className="font-semibold">{profile.nome_completo}</p>
                   <p>{profile.rua}, {profile.numero}</p>
@@ -664,22 +781,24 @@ const Checkout = () => {
                 </div>
               )}
 
-              <Button
-                variant={useNewAddress ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setUseNewAddress(!useNewAddress);
-                  if (!useNewAddress) {
-                    setCepFrete("");
-                    setFrete(0);
-                  } else {
-                    setCepFrete(profile?.cep || "");
-                  }
-                }}
-                className="w-full"
-              >
-                {useNewAddress ? "Usar Endereço Cadastrado" : "Cadastrar Novo Endereço"}
-              </Button>
+              {!isGuestMode && profile && (
+                <Button
+                  variant={useNewAddress ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    setUseNewAddress(!useNewAddress);
+                    if (!useNewAddress) {
+                      setCepFrete("");
+                      setFrete(0);
+                    } else {
+                      setCepFrete(profile?.cep || "");
+                    }
+                  }}
+                  className="w-full"
+                >
+                  {useNewAddress ? "Usar Endereço Cadastrado" : "Cadastrar Novo Endereço"}
+                </Button>
+              )}
 
               {useNewAddress && (
                 <div className="space-y-3 border-t pt-3">
@@ -806,7 +925,21 @@ const Checkout = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <RadioGroup value={paymentType} onValueChange={(v) => setPaymentType(v as any)}>
+              <RadioGroup 
+                value={paymentType} 
+                onValueChange={(v) => {
+                  // Visitantes não podem usar parcelamento AppleHub
+                  if (v === "parcelamento_applehub" && isGuestMode && !isLoggedIn) {
+                    toast({
+                      title: "Login necessário",
+                      description: "Faça login para usar o Parcelamento AppleHub",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setPaymentType(v as any);
+                }}
+              >
                 <div className="space-y-3">
                   <div className="flex items-start space-x-3 border rounded-lg p-3 cursor-pointer hover:bg-secondary/50">
                     <RadioGroupItem value="pix" id="pix" className="mt-1" />
@@ -830,16 +963,49 @@ const Checkout = () => {
                     </Label>
                   </div>
 
-                  <div className="flex items-start space-x-3 border rounded-lg p-3 cursor-pointer hover:bg-secondary/50">
-                    <RadioGroupItem value="parcelamento_applehub" id="applehub" className="mt-1" />
-                    <Label htmlFor="applehub" className="cursor-pointer flex-1">
+                  <div 
+                    className={`flex items-start space-x-3 border rounded-lg p-3 ${
+                      isGuestMode && !isLoggedIn 
+                        ? "opacity-50 cursor-not-allowed bg-muted/30" 
+                        : "cursor-pointer hover:bg-secondary/50"
+                    }`}
+                  >
+                    <RadioGroupItem 
+                      value="parcelamento_applehub" 
+                      id="applehub" 
+                      className="mt-1" 
+                      disabled={isGuestMode && !isLoggedIn}
+                    />
+                    <Label 
+                      htmlFor="applehub" 
+                      className={`flex-1 ${isGuestMode && !isLoggedIn ? "cursor-not-allowed" : "cursor-pointer"}`}
+                    >
                       <div className="flex items-center gap-2 font-semibold">
                         <BadgePercent className="w-5 h-5" />
                         Parcelamento AppleHub
+                        {isGuestMode && !isLoggedIn && (
+                          <Badge variant="outline" className="text-xs ml-2">
+                            Requer login
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         Até 24x com análise de crédito
                       </p>
+                      {isGuestMode && !isLoggedIn && (
+                        <Button 
+                          variant="link" 
+                          size="sm" 
+                          className="p-0 h-auto mt-1 text-xs"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate("/auth?redirect=/checkout");
+                          }}
+                        >
+                          <LogIn className="w-3 h-3 mr-1" />
+                          Fazer login para desbloquear
+                        </Button>
+                      )}
                     </Label>
                   </div>
                 </div>
