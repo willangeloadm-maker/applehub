@@ -19,6 +19,7 @@ import {
   Chrome,
   RefreshCw
 } from "lucide-react";
+import VisitorHeatMap from "@/components/admin/VisitorHeatMap";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -394,6 +395,9 @@ export default function Analytics() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Visitor Heat Map */}
+      <VisitorHeatMap />
 
       {/* Top Pages */}
       <Card>
